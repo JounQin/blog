@@ -30,6 +30,7 @@ skip_render:
 # Writing
 new_post_name: :title.md # File name of new posts
 default_layout: post
+auto_spacing: true
 titlecase: false # Transform title into titlecase
 external_link: true # Open external links in new tab
 filename_case: 0
@@ -46,7 +47,9 @@ highlight:
 # Category & Tag
 default_category: uncategorized
 category_map:
+  默认: default
 tag_map:
+  问题修复: bugfix
 
 # Date / Time format
 ## Hexo uses Moment.js to parse and display date
