@@ -7,7 +7,7 @@ title: 1stg
 subtitle: 轮子主义初级阶段 1stG v0.0.1
 description: 开启轮子主义新时代
 author: JounQin
-language: zh-CN
+language: zh-Hans
 timezone: PRC
 
 # URL
@@ -71,3 +71,6 @@ deploy:
   type: git
   repo: https://github.com/JounQin/JounQin.github.io.git
   bransh: master
+
+sitemap:
+  path: sitemap.xml
