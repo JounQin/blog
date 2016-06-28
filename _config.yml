@@ -3,16 +3,16 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
-subtitle:
-description:
-author: John Doe
-language:
-timezone:
+title: 1stg
+subtitle: 轮子主义初级阶段 1stG v0.0.1
+description: 开启轮子主义新时代
+author: JounQin
+language: zh-CN
+timezone: PRC
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://yoursite.com
+url: http://1stg.me
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -63,9 +63,11 @@ pagination_dir: page
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: landscape
+theme: next
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type:
+  type: git
+  repo: https://github.com/JounQin/JounQin.github.io.git
+  bransh: master
