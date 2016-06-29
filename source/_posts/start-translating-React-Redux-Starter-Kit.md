@@ -1,10 +1,7 @@
 ---
 title: 开始翻译 React Redux Starter Kit
 date: 2016-06-29 09:50:17
-categories: 
-- 默认
-- 原创
-- 学习
+categories: [原创, 学习]
 tags: [翻译, 前端]
 ---
 ## react-redux-starter-kit 简要介绍
@@ -12,6 +9,8 @@ tags: [翻译, 前端]
 [react-redux-starter-kit](https://github.com/davezuko/react-redux-starter-kit) 项目主要提供了一种 React-Redux 技术栈整合包, 免除使用者为项目构建、单元测试、热重载等整合服务重复工作.
 
 翻译项目: [react-redux-starter-kit-cn](https://github.com/JounQin/react-redux-starter-kit-cn)
+
+<!--more-->
 
 欢迎其他有兴趣的同学一起参与, 帮助不熟悉的英语的同仁更好地使用 React-Redux 技术栈, 期待你的支持.
 

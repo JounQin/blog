@@ -1,9 +1,7 @@
 ---
 title: 使用 Hexo 搭建免费博客遇到的几个坑
 date: 2016-06-28 21:40:58
-categories: 
-- 默认
-- 原创
+categories: 原创
 tags: 问题修复
 ---
 
