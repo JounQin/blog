@@ -84,3 +84,18 @@ deploy:
 
 sitemap:
   path: sitemap.xml
+
+search:
+  path: search.xml
+  field: post
+
+index_generator:
+  per_page: 5
+
+archive_generator:
+  per_page: 20
+  yearly: true
+  monthly: true
+
+tag_generator:
+  per_page: 10

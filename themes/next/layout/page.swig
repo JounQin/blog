@@ -6,7 +6,7 @@
 
   {% if page.type === "categories" %}
     {{ __('title.category') + page_title_suffix }}
-  {% elif page.type === "tags" %}
+    {% elif page.type === "tags" %}
     {{ __('title.tag') + page_title_suffix }}
   {% else %}
     {{ page.title + page_title_suffix }}
@@ -20,19 +20,26 @@
     {% if page.type === "tags" %}
       <div class="tag-cloud">
         <div class="tag-cloud-title">
-            {{ _p('counter.tag_cloud', site.tags.length) }}
+          {{ _p('counter.tag_cloud', site.tags.length) }}
         </div>
         <div class="tag-cloud-tags">
           {{ tagcloud({min_font: 12, max_font: 30, amount: 200, color: true, start_color: '#ccc', end_color: '#111'}) }}
         </div>
       </div>
-    {% elif page.type === 'categories' %}
+      {% elif page.type === 'categories' %}
       <div class="category-all-page">
         <div class="category-all-title">
-            {{ _p('counter.categories', site.categories.length) }}
+          {{ _p('counter.categories', site.categories.length) }}
         </div>
         <div class="category-all">
           {{ list_categories() }}
+        </div>
+      </div>
+      {% elif page.type === 'about' %}
+      {{ page.content }}
+      <div class="comments" id="comments">
+        <div class="ds-thread" data-thread-key="{{ page.path }}"
+             data-title="{{ page.title }}" data-url="{{ page.permalink }}">
         </div>
       </div>
     {% else %}
@@ -44,4 +51,8 @@
 
 {% block sidebar %}
   {{ sidebar_template.render(false) }}
+{% endblock %}
+
+{% block comment_system %}
+  {% include '_scripts/comments/duoshuo.swig' %}
 {% endblock %}
