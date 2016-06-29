@@ -6,47 +6,54 @@ const gulp = require('gulp'),
     htmlmin = require('posthtml-minifier'),
     autoprefixer = require('autoprefixer'),
     cleancss = require('postcss-clean'),
-    $ = require('gulp-load-plugins')();
-del = require('del');
+    $ = require('gulp-load-plugins')(),
+    del = require('del');
 
-gulp.task('clean', function () {
-    return del('./build');
+const app = {
+        build: 'build'
+    },
+    base = 'public/**/*.';
+
+['css', 'js', 'html'].forEach(function (value) {
+    app[value] = [`${base + value}`, `!${base}min.${value}`];
 });
 
-gulp.task('css', ['clean'], function () {
-    return gulp.src(['public/**/*.css', '!public/**/*.min.css'])
+function clean() {
+    return del(app.build);
+}
+
+function css() {
+    return gulp.src(app.css)
         .pipe($.postcss([
-            autoprefixer({
-                browsers: '> 90% in CN'
-            }),
+            autoprefixer(),
             cleancss()]))
-        .pipe(gulp.dest('./build'));
-});
+        .pipe(gulp.dest(app.build));
+}
 
-gulp.task('js', ['clean'], function () {
-    return gulp.src(['public/**/*.js', '!public/**/*.min.js'])
+function js() {
+    return gulp.src(app.js)
         .pipe($.uglify())
-        .pipe(gulp.dest('./build'));
-});
+        .pipe(gulp.dest(app.build));
+}
 
-gulp.task('html', ['clean'], function () {
-    return gulp.src('public/**/*.html')
+function html() {
+    return gulp.src(app.html)
         .pipe($.posthtml([
-            postcss([
-                autoprefixer({
-                    browsers: '> 0% in CN'
-                })]),
+            postcss([autoprefixer, cleancss]),
             htmlmin({
-                collapseBooleanAttributes:true,
+                collapseBooleanAttributes: true,
                 collapseWhitespace: true,
                 minifyCSS: true,
                 minifyJS: true,
                 removeTagWhitespace: true
             })
         ]))
-        .pipe(gulp.dest('./build'));
-});
+        .pipe(gulp.dest(app.build));
+}
 
-gulp.task('default', ['css', 'js', 'html'], function () {
-    console.log("gulp task finished!");
-});
+gulp.task(clean);
+
+gulp.task('default', gulp.series(
+    clean,
+    gulp.parallel(css, js, html)
+));
