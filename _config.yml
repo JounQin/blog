@@ -48,8 +48,12 @@ highlight:
 default_category: uncategorized
 category_map:
   默认: default
+  原创: orignal
+  学习: study
 tag_map:
   问题修复: bugfix
+  翻译: translation
+  前端: frontend
 
 # Date / Time format
 ## Hexo uses Moment.js to parse and display date
