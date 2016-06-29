@@ -24,5 +24,6 @@ install:
 script:
 - hexo clean
 - hexo g
+- gulp
 - cp -r ./build/* ./public
 - hexo d
