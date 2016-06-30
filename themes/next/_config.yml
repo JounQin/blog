@@ -76,7 +76,7 @@ font:
   enable: true
 
   # Uri of fonts host. E.g. //fonts.googleapis.com (Default)
-  host:
+  host: //fonts.lug.ustc.edu.cn
 
   # Global font settings used on <body> element.
   global:
@@ -281,7 +281,7 @@ duoshuo_info:
   ua_enable: true
   admin_enable: true
   user_id: 709129
-  admin_nickname: 博主大大
+  admin_nickname: Joun
 
 #duoshuo_hotartical: true
 
@@ -358,36 +358,36 @@ vendors:
   _internal: vendors
 
   # Internal version: 2.1.3
-  jquery:
+  jquery: //cdn.bootcss.com/jquery/1.12.4/jquery.min.js
 
   # Internal version: 2.1.5
   # http://fancyapps.com/fancybox/
-  fancybox:
-  fancybox_css:
+  fancybox: //cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.min.js
+  fancybox_css: //cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.min.css
 
   # Internal version: 1.0.6
   # https://github.com/ftlabs/fastclick
-  fastclick:
+  fastclick: //cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js
 
   # Internal version: 1.9.7
   # https://github.com/tuupola/jquery_lazyload
-  lazyload:
+  lazyload: //cdn.bootcss.com/jquery.lazyload/1.9.1/jquery.lazyload.min.js
 
   # Internal version: 1.2.1
   # http://VelocityJS.org
-  velocity:
+  velocity: //cdn.bootcss.com/velocity/1.2.3/velocity.min.js
 
   # Internal version: 1.2.1
   # http://VelocityJS.org
-  velocity_ui:
+  velocity_ui: //cdn.bootcss.com/velocity/1.2.3/velocity.ui.min.js
 
   # Internal version: 0.7.9
   # https://faisalman.github.io/ua-parser-js/
-  ua_parser:
+  ua_parser: //cdn.bootcss.com/UAParser.js/0.7.10/ua-parser.min.js
 
   # Internal version: 4.4.0
   # http://fontawesome.io/
-  fontawesome:
+  fontawesome: //cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css
 
 
 # Assets
