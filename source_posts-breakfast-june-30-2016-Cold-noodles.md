@@ -8,18 +8,17 @@ tags: [美食, 人妻]
 
 今天的早餐是清爽凉拌面!
 
-![01](//ww3.sinaimg.cn/mw690/910ff108gw1f5cxxnbtttj21jk1jkwq1.jpg)
-
 <!--more-->
 
 > 曾经有一份精致的早餐放在我面前, 而我选择了珍惜.
 
-![02](//ww3.sinaimg.cn/mw690/910ff108gw1f5cxxkkjr7j21jk1jkthu.jpg)
+![01](//ww3.sinaimg.cn/mw690/910ff108gw1f5cxxnbtttj21jk1jkwq1.jpg)
+
 
 六月的尾巴，天气愈发炎热.
 如果不想吃饭也大汗淋漓，不如来一盘清爽的凉面吧.
 
-![03](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxrkqwtj21jk1jkgwv.jpg)
+![02](//ww3.sinaimg.cn/mw690/910ff108gw1f5cxxkkjr7j21jk1jkthu.jpg)
 
 『用料』
 
@@ -27,7 +26,7 @@ tags: [美食, 人妻]
 2.配菜（苦菊、黄瓜、番茄，可根据口味自行搭配）
 3.调料（橄榄油、花椒油、香油、老干妈、丘比焙煎芝麻口味沙拉汁、大拌菜口味沙拉汁、老干妈香辣脆油辣椒、盐、糖）
 
-![04](////ww4.sinaimg.cn/mw690/910ff108gw1f5cxxq51ttj21jk1jkwmz.jpg)
+![03](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxrkqwtj21jk1jkgwv.jpg)
 
 『步骤』
 
@@ -35,8 +34,10 @@ tags: [美食, 人妻]
 2.苦菊撕小段、黄瓜切丝、番茄切丁.
 3.将配菜加入面条中，根据口味添加调味料，拌匀，装盘，撒黑芝麻提香.
 
-![05](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxitxtpj21jk1jkk5j.jpg)
+![04](////ww4.sinaimg.cn/mw690/910ff108gw1f5cxxq51ttj21jk1jkwmz.jpg)
 
 いただきます
+
+![05](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxitxtpj21jk1jkk5j.jpg)
 
 感谢原创作者: [@北苑墨崽](//weibo.com/manoir)
