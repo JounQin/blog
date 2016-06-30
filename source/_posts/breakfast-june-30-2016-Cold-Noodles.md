@@ -19,7 +19,7 @@ tags: [美食, 人妻]
 
 ![02](//ww3.sinaimg.cn/mw690/910ff108gw1f5cxxkkjr7j21jk1jkthu.jpg)
 
-『用料』
+<p class="text-center">『用料』</p>
 
  > 1. 面条（尽量不要用挂面，我用的是原味拉面和紫薯拉面，购于超市）
  > 1. 配菜（苦菊、黄瓜、番茄，可根据口味自行搭配）
@@ -27,7 +27,7 @@ tags: [美食, 人妻]
 
 ![03](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxrkqwtj21jk1jkgwv.jpg)
 
-『步骤』
+<p class="text-center">『步骤』</p>
 
  > 1. 面条煮熟捞出，凉水冲淋后沥干水分，加少量橄榄油拌匀备用.
  > 1. 苦菊撕小段、黄瓜切丝、番茄切丁.
@@ -35,7 +35,7 @@ tags: [美食, 人妻]
 
 ![04](////ww4.sinaimg.cn/mw690/910ff108gw1f5cxxq51ttj21jk1jkwmz.jpg)
 
-いただきます
+<p class="text-center">いただきます</p>
 
 ![05](//ww2.sinaimg.cn/mw690/910ff108gw1f5cxxitxtpj21jk1jkk5j.jpg)
 
