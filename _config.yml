@@ -79,7 +79,9 @@ theme: next
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: git@github.com:JounQin/JounQin.github.io.git
+  repo:
+    github: git@github.com:JounQin/JounQin.github.io.git
+    coding: git@git.coding.net:JounQin/JounQin.git
   bransh: master
 
 sitemap:
