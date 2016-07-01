@@ -17,5 +17,5 @@
       }
     });
   </script>
-  <script type="text/javascript" src="{{ theme.mathjax.cdn }}"></script>
+  <script type="text/javascript" src="{{ theme.mathjax.cdn }}" defer></script>
 {% endif %}
