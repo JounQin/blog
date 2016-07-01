@@ -14,8 +14,12 @@ const app = {
     },
     base = 'public/**/*.';
 
-['css', 'js', 'html'].forEach(function (value) {
+['css', 'js'].forEach(function (value) {
     app[value] = [`${base + value}`, `!${base}min.${value}`];
+});
+
+['html', 'xml'].forEach(function (value) {
+    app[value] = `${base + value}`;
 });
 
 function clean() {
@@ -51,9 +55,29 @@ function html() {
         .pipe(gulp.dest(app.build));
 }
 
+function xml() {
+    return gulp.src(app.xml)
+        .pipe($.xml({
+            parseOpts: {
+                trim: true
+            },
+            buildOpts: {
+                renderOpts: {
+                    pretty: false
+                },
+                allowSurrogateChars: true,
+                cdata: true
+            },
+            callback: function (result) {
+                return result.replace(/\s{2,}/g, ' ');
+            }
+        }))
+        .pipe(gulp.dest(app.build));
+}
+
 gulp.task(clean);
 
 gulp.task('default', gulp.series(
     clean,
-    gulp.parallel(css, js, html)
+    gulp.parallel(css, js, html, xml)
 ));
