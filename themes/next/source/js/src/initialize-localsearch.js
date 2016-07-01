@@ -4,11 +4,11 @@
 // Popup Window;
 var isfetched = false;
 // Search DB path;
-var search_path = "{{ config.search.path }}";
+var search_path = LOCAL_SEARCH_CONFIG.searchPath;
 if (search_path.length == 0) {
   search_path = "search.xml";
 }
-var path = "{{ config.root }}" + search_path;
+var path = LOCAL_SEARCH_CONFIG.root + search_path;
 // monitor main search box;
 
 function proceedsearch() {
