@@ -51,12 +51,14 @@ category_map:
   原创: orignal
   学习: study
   生活: life
+  实践: practice
 tag_map:
   问题修复: bugfix
   翻译: translation
   前端: frontend
   美食: food
   人妻: wife
+  优化: optimization
 
 # Date / Time format
 ## Hexo uses Moment.js to parse and display date
