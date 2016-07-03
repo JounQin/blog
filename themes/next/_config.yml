@@ -272,7 +272,7 @@ duoshuo_share: true
 #google_analytics:
 
 # CNZZ count
-#cnzz_siteid:
+cnzz_siteid: 1259802366
 
 
 # Make duoshuo show UA
@@ -330,10 +330,10 @@ busuanzi_count:
   page_pv_footer: 次
 
 # Tencent analytics ID
-tencent_analytics: 57131591
+tencent_analytics: 57082593
 
 # Enable baidu push so that the blog will push the url to baidu automatically which is very helpful for SEO
-baidu_push: false
+baidu_push: true
 
 
 
