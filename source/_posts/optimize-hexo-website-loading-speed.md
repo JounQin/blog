@@ -37,7 +37,7 @@ NexT 主题提供了配置第三方库 CND 的设置 (详见[进阶设定](http:
 
 [gulp 4.0](https://github.com/gulpjs/gulp/tree/4.0) 即将发布, 现在已经可以开始使用.
 
-安装:
+### 安装:
 
 ``` bash
 npm uninstall -g gulp
@@ -45,7 +45,7 @@ npm i -g gulp-cli
 npm i --save-dev autoprefixer del gulpjs/gulp-cli#4.0 gulp-load-plugins gulp-postcss gulp-posthtml gulp-uglify gulp-xml postcss-clean posthtml-minifier posthtml-postcss
 ```
 
-配置(*gulpfile.js*):
+### 配置(*gulpfile.js*):
 
 ``` javascript
 const gulp = require('gulp'),
