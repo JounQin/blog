@@ -21,7 +21,7 @@ deploy:
     coding: git@git.coding.net:JounQin/JounQin.git,master
 ```
 
-绑定好 DNS 的 CNAME 解析到 *pages.coding.me* 并在 Coding 绑定后即可, 这样访问自己的域名就能使用国内的 Coding 服务器了.
+设置 DNS 将域名 CNAME 解析到 *pages.coding.me* 并在 Coding 绑定后即可, 这样访问自己的域名就能使用国内的 Coding 服务器了.
 
 这样处理以后网站的初始化速度已经有了大幅提升了, 然而这还远远不够.
 
@@ -31,7 +31,7 @@ NexT 主题提供了配置第三方库 CND 的设置 (详见[进阶设定](http:
 
 ## 使用 async 或 defer 方式引入 script
 
-由于使用 [阅读次数统计](http://theme-next.iissnan.com/third-party-services.html#analytics-busuanzi) 过程中出现过加载 *leancloud* 加载执行缓慢而造成文档渲染阻塞的问题, 变想办法改进, 幸而 [HTML5](https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/script) 中新增了 `async` 和 `defer` 属性(只支持外部脚本), 可以让文档和其他脚本先加载, 因此找到可以优化的脚本, 如 `localsearch` 和 `leancloud` 部分等.
+由于使用 [阅读次数统计](http://theme-next.iissnan.com/third-party-services.html#analytics-busuanzi) 过程中出现过 *leancloud* 加载执行缓慢而造成文档渲染阻塞的问题, 便想办法改进, 幸而 [HTML5](https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/script) 中新增了 `async` 和 `defer` 属性(只支持外部脚本), 可以让文档和其他脚本先加载, 因此找到可以优化的脚本, 如 `localsearch` 和 `leancloud` 部分等, 根据实际情况添加 `defer` 属性 (注意在本地测试通过后再提交).
 
 ## 使用构建工具对静态资源进行压缩优化
 
@@ -41,8 +41,8 @@ NexT 主题提供了配置第三方库 CND 的设置 (详见[进阶设定](http:
 
 ``` bash
 npm uninstall -g gulp
-npm i -g gulp-cli gulpjs/gulp-cli#4.0
-npm i --save-dev autoprefixer del gulp gulp-load-plugins gulp-postcss gulp-posthtml gulp-uglify gulp-xml postcss-clean posthtml-minifier posthtml-postcss
+npm i -g gulp-cli
+npm i --save-dev autoprefixer del gulpjs/gulp-cli#4.0 gulp-load-plugins gulp-postcss gulp-posthtml gulp-uglify gulp-xml postcss-clean posthtml-minifier posthtml-postcss
 ```
 
 配置(*gulpfile.js*):
@@ -130,7 +130,7 @@ gulp.task('default', gulp.series(
 ));
 ```
 
-PS: [gulp-xml](https://github.com/JounQin/gulp-xml) 是为了处理 `search.xml` 和 `sitemap.xml` 等 `.xml` 文件而使用 [node-xml2js](https://github.com/Leonidas-from-XIV/node-xml2js) 编写的 [gulp 插件](https://github.com/gulpjs/plugins), 欢迎使用.
+PS: [gulp-xml](https://github.com/JounQin/gulp-xml) 是为了处理压缩 `search.xml` 和 `sitemap.xml` 等 `.xml` 文件而使用 [node-xml2js](https://github.com/Leonidas-from-XIV/node-xml2js) 编写的 [gulp 插件](https://github.com/gulpjs/plugins), 欢迎使用.
 
 至此个人能优化的地方已经完成, 至于其他的, 例如服务器端的优化等我们就无能为力了, 另外由于是使用了 hexo 架构, 对资源文件的打包优化也暂不考虑.
 
@@ -140,7 +140,7 @@ PS: [gulp-xml](https://github.com/JounQin/gulp-xml) 是为了处理 `search.xml`
 
 1. 对大部分服务器资源 (除 `index.html` 文件外) 进行 hash 版本化, 使文件缓存事件最大化, 使用 *200(from cache)* 状态取代 *304(Not Modified)*.
 1. 使用构建工具对资源依赖近一步合并: [gulp-concat](https://github.com/contra/gulp-concat) / [gulp-replace](https://github.com/lazd/gulp-replace).
-1. 最彻底的办法可能就是 —— 使用模块系统自己完整地搭建属于自己的网站. :) 也因此我个人也开始用 [react-redux-starter-kit-cn](https://github.com/JounQin/react-redux-starter-kit-cn) 搭建一个完全自主可控的网站.
+1. 最彻底的办法可能就是 —— 使用模块系统自己完整地搭建属于自己的网站. :) 因此我个人也开始用 [react-redux-starter-kit-cn](https://github.com/JounQin/react-redux-starter-kit-cn) 搭建一个完全自主可控的网站.
 
 ## 记录下对 HTTPS 的尝试
 
