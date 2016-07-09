@@ -1,6 +1,6 @@
 ---
 title: 开始使用代码检测工具 Eslint 和 Stylelint
-categories: 默认
+categories: [原创, 学习]
 tags: 前端
 date: 2016-07-07 10:41:14
 ---
