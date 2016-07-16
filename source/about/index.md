@@ -53,9 +53,14 @@ comments: false
     * HTML5
     * CSS3
     * JavaScript(es5, es6)
+    * jQuery
     * Backbone(Marionette)
+    * requireJs
+    * NodeJs
+    * gulp
     * React
     * Vue
+    * webpack
     * koa
 * 后端:
     * Java
@@ -64,3 +69,7 @@ comments: false
     * FreeMarker
     * Thymeleaf
     * SQL(MyBatis, [eql](https://github.com/bingoohuang/eql))
+* 更多
+    * Nginx
+    * Lua
+    * OpenResty
