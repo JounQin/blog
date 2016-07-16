@@ -49,6 +49,7 @@ default_category: uncategorized
 category_map:
   随笔: essay
   原创: orignal
+  转载: reproduced
   学习: study
   生活: life
   实践: practice
