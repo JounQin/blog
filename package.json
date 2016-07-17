@@ -16,7 +16,7 @@
     "hexo-generator-sitemap": "^1.1.2",
     "hexo-generator-tag": "^0.2.0",
     "hexo-renderer-ejs": "^0.2.0",
-    "hexo-renderer-marked": "^0.2.10",
+    "hexo-renderer-marked": "^0.2.11",
     "hexo-renderer-stylus": "^0.3.1",
     "hexo-server": "^0.2.0"
   },
@@ -28,7 +28,7 @@
     "gulp-postcss": "^6.1.1",
     "gulp-posthtml": "^1.5.2",
     "gulp-uglify": "^1.5.4",
-    "gulp-xml": "^1.0.2",
+    "gulp-xml": "^1.0.4",
     "postcss-clean": "^1.0.2",
     "posthtml-minifier": "^0.1.0",
     "posthtml-postcss": "^0.2.2"
