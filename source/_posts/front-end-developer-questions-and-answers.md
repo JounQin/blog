@@ -74,7 +74,7 @@ JavaScript：
 
 - Doctype作用？标准模式与兼容模式各有什么区别?
 
-    1. <!DOCTYPE>声明位于位于HTML文档中的第一行，处于 <html> 标签之前。告知浏览器的解析器用什么文档标准解析这个文档。DOCTYPE不存在或格式不正确会导致文档以兼容模式呈现。
+    1. `<!DOCTYPE>`声明位于位于HTML文档中的第一行，处于 <html> 标签之前。告知浏览器的解析器用什么文档标准解析这个文档。DOCTYPE不存在或格式不正确会导致文档以兼容模式呈现。
     1. 标准模式的排版 和JS运作模式都是以该浏览器支持的最高标准运行。在兼容模式中，页面以宽松的向后兼容的方式显示,模拟老式浏览器的行为以防止站点无法工作。
 
 
@@ -328,10 +328,11 @@ HTML5？
     设置层的外边距
     ``` css
     div {
-        width:500px ; height:300px;//高度可以不设
+        width:500px;
+        height:300px;           //高度可以不设
         margin: -150px 0 0 -250px;
-        position:relative;		 //相对定位
-        background-color:pink;	 //方便看效果
+        position:relative;      //相对定位
+        background-color:pink;	//方便看效果
         left:50%;
         top:50%;
     }
@@ -1677,6 +1678,3 @@ HTML5？
 3. [CSS参考手册](http://css.doyoe.com/)
 4. [JavaScript 标准参考教程](http://javascript.ruanyifeng.com/)
 5. [ECMAScript 6入门](http://es6.ruanyifeng.com/)
-
-
-### 更新时间:  2016-3-25
