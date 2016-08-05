@@ -11,7 +11,7 @@ moveTranslate.js 是一个对手机端 touchstart, touchmove, touchend 事件和
 <!--more-->
 
 # 简单示例:
-<script async src="https://jsfiddle.net/8oxupfsr/embed/"></script>
+<script async src="https//jsfiddle.net/ugw7xzem/embed/"></script>
 
 
 这个工具本身只是为了实现元素的拖动, 同时兼容手机+PC, 兼顾元素点击事件和拖动不冲突, 不过实际应用中由于多个事件可供调用, 可以做出很多不错的效果, 以下是我们项目中用到的一些实例.
