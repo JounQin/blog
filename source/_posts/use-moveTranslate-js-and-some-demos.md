@@ -58,4 +58,4 @@ moveTranslate.js 是一个对手机端 touchstart, touchmove, touchend 事件和
 
 # 源码
 
-[Gist](https://gist.github.com/JounQin/50b8310a14b9215126f420cbab4785a6)
+前往 [Gist](https://gist.github.com/JounQin/50b8310a14b9215126f420cbab4785a6) 查看.
