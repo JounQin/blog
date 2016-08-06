@@ -55,3 +55,7 @@ moveTranslate.js 是一个对手机端 touchstart, touchmove, touchend 事件和
 # 结语
 
 此文只见到介绍了一下 moveTranslate 的一些实际应用, 具体操作实现将在下一篇文章中大致说明.
+
+# 源码
+
+[Gist](https://gist.github.com/JounQin/50b8310a14b9215126f420cbab4785a6)
