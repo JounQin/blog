@@ -1,8 +1,8 @@
 ---
 title: 开始翻译 React Redux Starter Kit
-date: 2016-06-29 09:50:17
 categories: [原创, 学习]
 tags: [翻译, 前端]
+date: 2016-06-29 09:50:17
 ---
 ## react-redux-starter-kit 简要介绍
 
