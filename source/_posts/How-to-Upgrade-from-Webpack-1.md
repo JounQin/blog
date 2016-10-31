@@ -1,12 +1,12 @@
 ---
-title: How to Upgrade from Webpack 1
+title: 如何从 Webpack 1 升级至 Webpack 2
 categories: [转载, 学习]
 tags: [翻译, 前端]
 date: 2016-10-24 12:48:26
 ---
 ### `resolve.root`, `resolve.fallback`, `resolve.modulesDirectories`
 
-These options were replaced by a single option `resolve.modules`. See [resolving](/configuration/resolve) for more usage.
+这些配置项被替换为一个单独的配置 `resolve.modules`。前往 [resolving](/configuration/resolve) 查看更多用例。
 
 ``` diff
   resolve: {
@@ -20,19 +20,19 @@ These options were replaced by a single option `resolve.modules`. See [resolving
 
 ### `resolve.extensions`
 
-This option no longer requires passing an empty string. This behavior was moved to `resolve.enforceExtension`. See [resolving](/configuration/resolve) for more usage.
+这个配置项不再要求传入一个空字符串。此行为已经被移至 `resolve.enforceExtension`。前往 [resolving](/configuration/resolve) 查看更多用例。
 
 ### `resolve.*`
 
-More stuff was changed here. Not listed in detail as it's not commonly used. See [resolving](/configuration/resolve) for details.
+更多的东西都在这里有变化。没有把它详细的列出来因为它不是经常用到。前往 [resolving](/configuration/resolve) 查看更多细节。
 
 ### `debug`
 
-The `debug` option switched loaders to debug mode in webpack 1. This need to be passed via loader options in long-term. See loader documentation for relevant options.
+这个 `debug` 配置在 webpack 1 中切换加载器至调试模式。这需要长期通过加载器配置传入。浏览加载器文档查看相关配置项。
 
-The debug mode for loaders will be removed in webpack 3 or later.
+加载器的调试模式将在 webpack 3 及以后的版本中移除。
 
-To keep compatibility with old loaders, loaders can be switched to debug mode via plugin:
+为了保持与旧的加载器的兼容性，加载器可以通过插件来开启调试模式：
 
 ``` diff
 - debug: true,
@@ -45,8 +45,8 @@ To keep compatibility with old loaders, loaders can be switched to debug mode vi
 
 ### `UglifyJsPlugin` sourceMap
 
-The `sourceMap` option of the `UglifyJsPlugin` now defaults to `false` instead of `true`.
-This means if using SourceMaps for the minimized code you need to pass `sourceMap: true`.
+这个 `UglifyJsPlugin` 的`sourceMap` 配置现在默认为 `false` 而不再是 `true`。
+这意味着如果为压缩的代码使用 SourceMaps 功能你需要传入 `sourceMap: true`。
 
 ``` diff
   devtool: "source-map",
@@ -57,13 +57,13 @@ This means if using SourceMaps for the minimized code you need to pass `sourceMa
   ]
 ```
 
-### `UglifyJsPlugin` minimize loaders
+### `UglifyJsPlugin` 压缩加载器
 
-The UglifyJsPlugin does not longer switch loaders into minimize mode. This need to be passed via loader options in long-term. See loader documentation for relevant options.
+这个 UglifyJsPlugin 不再将加载器切换至压缩模式。这需要长期通过加载器配置传入。浏览加载器文档查看相关配置项。
 
-The minimize mode for loaders will be removed in webpack 3 or later.
+加载器的压缩模式将在 webpack 3 及以后的版本中移除。
 
-To keep compatibility with old loaders, loaders can be switched to minimize mode via plugin:
+为了保持与旧的加载器的兼容性，加载器可以通过插件来开启压缩模式：
 
 ``` diff
   plugins: [
@@ -73,9 +73,9 @@ To keep compatibility with old loaders, loaders can be switched to minimize mode
   ]
 ```
 
-### `OccurrenceOrderPlugin` is now on by default
+### `OccurrenceOrderPlugin` 现在默认启用了
 
-It's no longer neccessary to specify it in configuration.
+它不再必要在配置中特别指定了。
 
 ``` diff
   plugins: [
@@ -83,9 +83,9 @@ It's no longer neccessary to specify it in configuration.
   ]
 ```
 
-### `ExtractTextWebpackPlugin` - breaking change
+### `ExtractTextWebpackPlugin` - 重大变更
 
-[ExtractTextPlugin](https://github.com/webpack/extract-text-webpack-plugin) 1.0.0 does not work with webpack 2. The changes are mainly syntactical
+[ExtractTextPlugin](https://github.com/webpack/extract-text-webpack-plugin) 1.0.0 不能与 webpack 2一起使用。变化注释是语法。The changes are mainly syntactical
 
 #### `ExtractTextPlugin.extract`
 
@@ -117,15 +117,15 @@ plugins: [
 ```
 
 
-### full dynamic requires now fail by default
+### 完全动态的 require 表达式现在默认失败了
 
-A dependency with only an expression (i. e. `require(expr)`) will now create an empty context instead of an context of the complete directory.
+一个仅有一个表达式的依赖（例如 `require(expr)`）将创建一个空的上下文而不是完整目录的上下文。
 
-Best refactor this code as it won't work with ES6 Modules. If this is not possible you can use the `ContextReplacementPlugin` to hint the compiler to the correct resolvings. See [dynamic dependencies](dynamic-dependencies).
+最好重构一下这种代码因为它无法在 ES6 模块中使用。如果做不到的话你可以使用 `ContextReplacementPlugin` 来提示编译器进行正确解析。查看 [dynamic dependencies](dynamic-dependencies)。
 
-### Using custom arguments in CLI and configuration
+### 在命令行和配置中使用自定义参数
 
-If you abused the CLI to pass custom arguments to the configration like so:
+如果你像下面这样滥用命令行来传入自定义参数进行配置：
 
 `webpack --custom-stuff`
 
@@ -135,9 +135,9 @@ var customStuff = process.argv.indexOf("--custom-stuff") >= 0;
 /*...*/
 ```
 
-You may notice that this is no longer allowed. The CLI is more strict now.
+你会发现现在不再运行这样了。命令行现在更严格了。
 
-Instead there is an interface for passing arguments to the configuration. This should be used instead. Future tool may rely on this.
+相反，现在有一个传入参数给配置的接口。这应该用来替代以前的方式。未来的工具可能依赖于此。
 
 `webpack --env.customStuff`
 
@@ -149,19 +149,19 @@ module.exports = function(env) {
 };
 ```
 
-See [CLI](../api/cli).
+查看 [CLI](../api/cli).
 
-### `require.ensure` and AMD `require` is async
+### `require.ensure` 和 AMD `require` 是异步的
 
-These functions are now always async instead of calling their callback sync if the chunk is already loaded.
+这些函数现在会一直是异步的而不是当分块儿已经加载完成时就同步调用他们的回调函数。
 
-### `module.loaders` is now `module.rules`
+### `module.loaders` 现在是 `module.rules`
 
-The old loader configuration was superseeded by a more powerful rules system, which allows to configure loaders and more.
+以前的加载器配置被一个更强大的规则系统取代，这将允许配置加载器和更多信息。
 
-For compatibility reasons the old syntax is still valid and the old names are parsed.
+由于兼容性的原因旧的语法也是合法的，旧的名称会被转译。
 
-The new naming is easier to understand to there are good reasons to upgrade the configuration.
+新的命名更易于理解，有很好的理由进行升级配置。
 
 ``` diff
   module: {
@@ -186,7 +186,7 @@ The new naming is easier to understand to there are good reasons to upgrade the 
   }
 ```
 
-### `module.preLoaders` and `module.postLoaders` was removed
+### `module.preLoaders` 和 `module.postLoaders` 被移除了
 
 ``` diff
   module: {
@@ -201,11 +201,11 @@ The new naming is easier to understand to there are good reasons to upgrade the 
   }
 ```
 
-### `LoaderOptionPlugin` context
+### `LoaderOptionPlugin` 上下文
 
-Some loaders need context information and read them from the configuration. This need to be passed via loader options in long-term. See loader documentation for relevant options.
+一些加载器需要上下文信息并从配置中读取。这需要长期通过加载器配置传入。浏览加载器文档查看相关配置项。
 
-To keep compatibility with old loaders, this information can be passed via plugin:
+为了保持与旧的加载器的兼容性，这个信息可以用个插件传入：
 
 ``` diff
   plugins: [
@@ -217,9 +217,9 @@ To keep compatibility with old loaders, this information can be passed via plugi
   ]
 ```
 
-#### Code Splitting with ES6
+#### 使用 ES6 进行代码分割
 
-In webpack v1, you could use `require.ensure` as a method to lazily-load chunks for your application:
+在 webpack v1 中，你可能会用到 `require.ensure` 为你的应用作为懒加载分块代码的方法：
 
 ```javascript
 require.ensure([], function(require) {
@@ -227,11 +227,11 @@ require.ensure([], function(require) {
 });
 ```
 
-The ES6 Loader spec defines `System.import` as method to load ES6 Modules dynamically on runtime.
+ES6 加载器特别定义了 `System.import` 作为运行时动态加载 ES6 模块的方法。
 
-webpack treats `System.import` as a split-point and puts the requested module in a separate chunk.
+webpack 将 `System.import` 视为代码分割点并将请求的模块都放入成单独的分块中。
 
-`System.import` takes the module name as argument and returns a Promise.
+`System.import` 将模块名称作为参数并返回一个 Promise。
 
 ``` js
 function onClick() {
@@ -243,13 +243,13 @@ function onClick() {
 }
 ```
 
-Good news: Failure to load a chunk can be handled now because they are `Promise` based.
+好消息：加载分块失败现在可以进行处理了，因为他们是基于 `Promise` 的。
 
-#### Dynamic expressions
+#### 动态表达式
 
-It's possible to pass an partial expression to `System.import`. This is handled similar to expressions in CommonJS (webpack creates a [context](https://webpack.github.io/docs/context.html) with all possible files).
+可以传递一部分表达式给 `System.import`。这将和 CommonJS 中的表达式进行类似的处理（webpack 创建一个包含所有可能文件的[上下文](https://webpack.github.io/docs/context.html)）。
 
-`System.import` creates a separate chunk for each possible module.
+`System.import` 为每一个可能的模块创建一个单独的分块。
 
 ``` js
 function route(path, query) {
@@ -259,9 +259,9 @@ function route(path, query) {
 // This creates a separate chunk for each possible route
 ```
 
-#### Mixing ES6 with AMD and CommonJS
+#### 在 ES6 中混合使用 AMD 和 CommonJS
 
-As for AMD and CommonJS you can freely mix all three module types (even within the same file). Webpack behaves similar to babel in this case:
+对于 AMD 和 CommonJS 你可以自由地混合它们三种模块方式（甚至是在同一个文件中）。在这种情况下 webpack 表现得和 babel 类似：
 
 ``` js
 // CommonJS consuming ES6 Module
@@ -281,7 +281,7 @@ typeof fs.readFileSync === "function";
 typeof readFileSync === "function";
 ```
 
-It is important to note that you will want to tell Babel to not parse these module symbols so webpack can use them. You can do this by setting the following in your `.babelrc` or babel-loader options.
+很重要的一点是你需要告诉 Babel 不要解析这些模块标识然后 webpack 就可以利用它们了。你可以通过在你的 `.babelrc` 文件或 babel-loader 的配置中设置以下内容。
 
 **.babelrc**
 
