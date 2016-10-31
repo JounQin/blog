@@ -4,6 +4,13 @@ categories: [转载, 学习]
 tags: [翻译, 前端]
 date: 2016-10-24 12:48:26
 ---
+
+Webpack 2 版本已经基本定型（未完全发布正式版本），其中有不少配置有所变更，下面是 Webpack 提供的一份升级指南。
+
+源内容：[How to Upgrade from Webpack 1?](https://webpack.js.org/how-to/upgrade-from-webpack-1/)
+
+<!--more-->
+
 ### `resolve.root`, `resolve.fallback`, `resolve.modulesDirectories`
 
 这些配置项被替换为一个单独的配置 `resolve.modules`。前往 [resolving](/configuration/resolve) 查看更多用例。
