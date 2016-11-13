@@ -26,4 +26,5 @@ script:
 - hexo g
 - gulp
 - cp -r ./build/* ./public
+- touch ./public/.nojekyll
 - hexo d
