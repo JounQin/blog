@@ -83,7 +83,6 @@ theme: next
 deploy:
   type: git
   repo:
-    github-master: git@github.com:JounQin/JounQin.github.io.git,master
     github-pages: git@github.com:JounQin/blog.git,gh-pages
     coding: git@git.coding.net:JounQin/JounQin.git,master
 
