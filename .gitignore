@@ -6,8 +6,3 @@ node_modules/
 build/
 public/
 .deploy*/
-.idea
-*.iml
-out
-gen
-source/test.html

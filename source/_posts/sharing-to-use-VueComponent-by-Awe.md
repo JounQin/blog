@@ -8,7 +8,7 @@ date: 2016-08-06 21:11:44
 
 主要内容就是讲讲 *Vue.js* 组件化相关的一些点；因为我能力有限，可能会有理解不到位的地方，希望群里大神指正，一起交流。
 
-![1.jpg](http://ww3.sinaimg.cn/large/72f96cbagw1f6kbxjwk6sj20yc0p6jwo.jpg)
+![1.jpg](https://ww3.sinaimg.cn/large/72f96cbagw1f6kbxjwk6sj20yc0p6jwo.jpg)
 
 <!--more-->
 
@@ -18,9 +18,9 @@ date: 2016-08-06 21:11:44
 
 下面进入正题，在 *Vue* 的思想中，就是数据驱动即组件。
 
-![2.jpg](http://ww3.sinaimg.cn/large/72f96cbagw1f6kbxylwsvj20jy0gsmy5.jpg)
+![2.jpg](https://ww3.sinaimg.cn/large/72f96cbagw1f6kbxylwsvj20jy0gsmy5.jpg)
 
-![3.jpg](http://ww4.sinaimg.cn/large/72f96cbagw1f6kby96iywj20u604u0t8.jpg)
+![3.jpg](https://ww4.sinaimg.cn/large/72f96cbagw1f6kby96iywj20u604u0t8.jpg)
 
 所以理解数据驱动是我们进行组件化开发的基础。
 
@@ -35,9 +35,9 @@ date: 2016-08-06 21:11:44
 
 *prop* 是组件数据的一个字段，期望从父组件传下来，子组件需要显式地用 *props* 选项。
 
-![4.jpg](http://ww3.sinaimg.cn/large/72f96cbagw1f6kbyda0k9j20xc0maabm.jpg)
+![4.jpg](https://ww3.sinaimg.cn/large/72f96cbagw1f6kbyda0k9j20xc0maabm.jpg)
 
-![5.jpg](http://ww4.sinaimg.cn/large/72f96cbagw1f6kbygvkdmj20xm0g4q3p.jpg)
+![5.jpg](https://ww4.sinaimg.cn/large/72f96cbagw1f6kbygvkdmj20xm0g4q3p.jpg)
 
 这里两个截图就是，父组件将它自己 Data 中的 parentMsg 的值以 msg 这个名字传递给了子组件。
 
@@ -59,13 +59,13 @@ date: 2016-08-06 21:11:44
 
 在 *Vue* 中，任何一个 *Vue* 组件实例都是一个事件节点，我们可以使用 `$emit` 等在它上面触发事件，和 DOM 事件类似，*Vue* 的事件是冒泡向上传递，不过不同的是，会在第一次触发回调之后就停止冒泡，如果我们在回调函数中 `return true` 事件就会继续向上传递。
 
-![6.jpg](http://ww1.sinaimg.cn/large/72f96cbagw1f6kbykg3mvj20wq0lidh7.jpg)
+![6.jpg](https://ww1.sinaimg.cn/large/72f96cbagw1f6kbykg3mvj20wq0lidh7.jpg)
 
 这里是一个子组件，我们在他的生命周期中的 `ready` 调用了他 `sayHello` 的方法。
 
 `sayHello` 方法 内部调用了 `this.$emit('child-ready', 'Hello!')`，他就是在触发了一个 *key* 为 `child-ready` 的事件，参数是 `'Hello!'` 的字符
 
-![7.jpg](http://ww4.sinaimg.cn/large/72f96cbagw1f6kbyp47bdj20w80lcgn5.jpg)
+![7.jpg](https://ww4.sinaimg.cn/large/72f96cbagw1f6kbyp47bdj20w80lcgn5.jpg)
 
 然后我们在父组件中来接受这个事件：
 
@@ -77,7 +77,7 @@ date: 2016-08-06 21:11:44
 
 恩，这里除了在子组件标签中接收事件，也可以这样来接受事件。
 
-![8.jpg](http://ww3.sinaimg.cn/large/72f96cbagw1f6kbyt2mksj20mm05imxj.jpg)
+![8.jpg](https://ww3.sinaimg.cn/large/72f96cbagw1f6kbyt2mksj20mm05imxj.jpg)
 
 在有些业务中，我们可能不仅光靠传递数据就能完全实现，可能还需要在组件中嵌入另外的视图。
 
@@ -85,16 +85,16 @@ slot：
 
 *slot* 是 *Vue.js* 的内容分发 *API*，参照了当前 *Web* 组件规范草稿，使用特殊的 `<slot>` 元素作为原始内容的插槽。
 
-![9.jpg](http://ww4.sinaimg.cn/large/72f96cbagw1f6kbyx2ouuj20xk0iawfw.jpg)
+![9.jpg](https://ww4.sinaimg.cn/large/72f96cbagw1f6kbyx2ouuj20xk0iawfw.jpg)
 
 这里，我们在 *child* 组件标签中嵌入了一个 `p`， `slot` 就是定义好， 这个 `p` 应该放在 *child* 组件中的具体位置。
 
-![10.jpg](http://ww2.sinaimg.cn/large/72f96cbagw1f6kbz0obpvj20v20aejs2.jpg)
+![10.jpg](https://ww2.sinaimg.cn/large/72f96cbagw1f6kbz0obpvj20v20aejs2.jpg)
 
-![11.jpg](http://ww4.sinaimg.cn/large/72f96cbagw1f6kbz431dij20lg088wf0.jpg)
+![11.jpg](https://ww4.sinaimg.cn/large/72f96cbagw1f6kbz431dij20lg088wf0.jpg)
 
 `p` 就替代了 *child* 组件中 `slot` 的位置。
 
-![12.jpg](http://ww3.sinaimg.cn/large/72f96cbagw1f6kbz8cqilj21080li761.jpg)
+![12.jpg](https://ww3.sinaimg.cn/large/72f96cbagw1f6kbz8cqilj21080li761.jpg)
 
 我们可以看到在子组件的 `slot` 中多了一个 *name* 的属性，与它相对应的就是父子间中 *DOM* 的 `slot` 属性，*Vue* 通过匹配他们就能准确的把内容分发到指定位置，对于父组件中没有指定 name DOM，它就会被放置在子组件中匿名 `slot` 的位置。
