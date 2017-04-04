@@ -1217,7 +1217,7 @@ gulp-xml@^1.0.5:
     replacestream "^4.0.0"
     xml2js "^0.4.17"
 
-"gulp@github:gulpjs/gulp#4.0":
+gulp@gulpjs/gulp#4.0:
   version "4.0.0-alpha.2"
   resolved "https://codeload.github.com/gulpjs/gulp/tar.gz/3f5aba28718dc19e4bf600fb88f128158ff2ff83"
   dependencies:
@@ -2485,7 +2485,7 @@ postcss-value-parser@^3.2.3:
   version "3.3.0"
   resolved "http://registry.npm.taobao.org/postcss-value-parser/download/postcss-value-parser-3.3.0.tgz#87f38f9f18f774a4ab4c8a232f5c5ce8872a9d15"
 
-postcss@5.0.x, postcss@^5.0.12:
+postcss@5.0.x:
   version "5.0.21"
   resolved "http://registry.npm.taobao.org/postcss/download/postcss-5.0.21.tgz#d4cf6f19774648c492ac57c298f6afb3c04caefe"
   dependencies:
@@ -2493,7 +2493,7 @@ postcss@5.0.x, postcss@^5.0.12:
     source-map "^0.5.5"
     supports-color "^3.1.2"
 
-postcss@^5.2.12, postcss@^5.2.16:
+postcss@^5.0.12, postcss@^5.2.12, postcss@^5.2.16:
   version "5.2.16"
   resolved "http://registry.npm.taobao.org/postcss/download/postcss-5.2.16.tgz#732b3100000f9ff8379a48a53839ed097376ad57"
   dependencies:
