@@ -1,3 +1,6 @@
+language: node_js
+version: stable
+
 sudo: true
 
 # master为hexo博客所在分支
@@ -7,9 +10,6 @@ branches:
 
 before_install:
 - set -e
-- npm install -g n
-- n stable
-- node -v
 - openssl aes-256-cbc -K $encrypted_5ff8ca309359_key -iv $encrypted_5ff8ca309359_iv -in .travis/id_rsa.enc -out ~/.ssh/id_rsa -d
 - chmod 600 ~/.ssh/id_rsa
 - eval $(ssh-agent)
