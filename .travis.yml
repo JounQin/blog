@@ -1,4 +1,4 @@
-sudo: false
+sudo: true
 
 # master为hexo博客所在分支
 branches:
