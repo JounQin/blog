@@ -1,7 +1,7 @@
 language: node_js
 node_js: stable
 
-sudo: true
+sudo: false
 
 # master为hexo博客所在分支
 branches:
