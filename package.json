@@ -29,7 +29,7 @@
     "del": "^2.2.2",
     "gulp": "gulpjs/gulp#4.0",
     "gulp-load-plugins": "^1.5.0",
-    "gulp-postcss": "^6.4.0",
+    "gulp-postcss": "^7.0.0",
     "gulp-posthtml": "^3.0.0",
     "gulp-uglify": "^2.1.2",
     "gulp-xml": "^1.0.5",
