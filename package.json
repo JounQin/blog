@@ -31,7 +31,7 @@
     "gulp-load-plugins": "^1.5.0",
     "gulp-postcss": "^7.0.0",
     "gulp-posthtml": "^3.0.0",
-    "gulp-uglify": "^2.1.2",
+    "gulp-uglify": "^3.0.0",
     "gulp-xml": "^1.0.5",
     "postcss-clean": "^1.0.2",
     "posthtml-minifier": "^0.1.0",
