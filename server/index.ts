@@ -68,7 +68,10 @@ const middlewares: Koa.Middleware[] = [
 
     const start = Date.now()
 
-    const context = { ctx, title: 'GraphQL study' }
+    const context = {
+      ctx,
+      title: 'Blog | Blog system built on GitHub API with Vue SSR',
+    }
 
     ctx.respond = false
     ctx.status = 200
