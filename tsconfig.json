@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "baseUrl": ".",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "lib": ["dom", "esnext"],
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "paths": {
+      "*": ["src/*"]
+    },
+    "sourceMap": true,
+    "target": "es5"
+  },
+  "exclude": ["node_modules"]
+}

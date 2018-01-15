@@ -1,0 +1,144 @@
+query archives($name: String!, $owner: String!, $after: String) {
+  repository(name: $name, owner: $owner) {
+    issues(
+      after: $after
+      first: 100
+      orderBy: { direction: DESC, field: CREATED_AT }
+      states: OPEN
+    ) {
+      nodes {
+        createdAt
+        id
+        number
+        title
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}
+
+query categories($name: String!, $owner: String!) {
+  repository(name: $name, owner: $owner) {
+    labels(first: 100) {
+      nodes {
+        color
+        id
+        name
+      }
+    }
+  }
+}
+
+query issue($name: String!, $owner: String!, $number: Int!) {
+  repository(name: $name, owner: $owner) {
+    issue(number: $number) {
+      bodyHTML
+      createdAt
+      title
+      url
+      labels(first: 5) {
+        nodes {
+          color
+          id
+          name
+        }
+      }
+      comments(first: 25) {
+        nodes {
+          author {
+            avatarUrl(size: 100)
+            login
+            url
+          }
+          createdAt
+          bodyHTML
+          url
+        }
+      }
+    }
+  }
+}
+
+query issues(
+  $name: String!
+  $owner: String!
+  $first: Int
+  $last: Int
+  $before: String
+  $after: String
+  $labels: [String!]
+) {
+  repository(name: $name, owner: $owner) {
+    issues(
+      first: $first
+      last: $last
+      before: $before
+      after: $after
+      orderBy: { direction: DESC, field: CREATED_AT }
+      states: OPEN
+      labels: $labels
+    ) {
+      nodes {
+        createdAt
+        id
+        number
+        title
+        labels(first: 5) {
+          nodes {
+            color
+            id
+            name
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+        hasPreviousPage
+        startCursor
+      }
+    }
+  }
+}
+
+query search(
+  $first: Int
+  $last: Int
+  $before: String
+  $after: String
+  $search: String!
+) {
+  search(
+    first: $first
+    last: $last
+    before: $before
+    after: $after
+    query: $search
+    type: ISSUE
+  ) {
+    nodes {
+      ... on Issue {
+        createdAt
+        id
+        number
+        title
+        labels(first: 5) {
+          nodes {
+            color
+            id
+            name
+          }
+        }
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+      hasPreviousPage
+      startCursor
+    }
+  }
+}
