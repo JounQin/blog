@@ -16,6 +16,7 @@
                                :class="{ active: $route.fullPath.split('?')[0] === '/' + link }"
                                :to="'/' + link"
                                :key="link"
+                               :hidden="!link && $t.locale === 'en'"
                                tag="li"
                                @click.native="toggleShow")
             a.nav-link
@@ -34,8 +35,8 @@
       router-view.container.py-4
     footer.row.py-4.bg-light
       .container.d-flex
-        .flex-1 © 2016 - present
-          a.ml-2(href="https://www.1stg.me") 1stg.me
+        .flex-1
+          a.ml-2(href="https://www.1stg.me") © 1stg.me
           a.text-secondary.ml-2(href="https://GitHub.com/JounQin/blog")
             i.fa.fa-github
           a.text-secondary.ml-2(href="javascript:;")
