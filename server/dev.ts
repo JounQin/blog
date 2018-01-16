@@ -5,8 +5,8 @@ import * as webpack from 'webpack'
 
 import { resolve } from '../build/config'
 
-import clientConfig from '../build/client'
-import serverConfig from '../build/server'
+import clientConfig from '../build/vue-client'
+import serverConfig from '../build/vue-server'
 
 const debug = _debug('1stg:server:dev')
 

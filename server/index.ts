@@ -12,7 +12,12 @@ import * as staticCache from 'koa-static-cache'
 import * as LRU from 'lru-cache'
 import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
 
-import { __DEV__, resolve, serverHost, serverPort } from '../build/config'
+import {
+  resolve,
+  runtimeRequire,
+  serverHost,
+  serverPort,
+} from '../build/config'
 
 import startRouter from './router'
 
@@ -24,7 +29,9 @@ const ACCEPT_LANGUAGE = 'Accept-Language'
 
 const { APP_KEYS, GITHUB_TOKEN } = process.env
 
-const debug = _debug(`1stg:server${__DEV__ ? ':core' : ''}`)
+const debug = _debug(
+  `1stg:server${process.env.NODE_ENV === 'development' ? ':core' : ''}`,
+)
 
 const app = new Koa()
 
@@ -35,12 +42,13 @@ let ready: Promise<any>
 // tslint:disable-next-line no-unused-variable
 let mfs: any
 
-const template = __DEV__
-  ? // tslint:disable-next-line:no-var-requires
-    require('pug').renderFile(resolve('server/template.pug'), {
-      pretty: true,
-    })
-  : fs.readFileSync(resolve('dist/template.html'), 'utf-8')
+const template =
+  process.env.NODE_ENV === 'development'
+    ? // tslint:disable-next-line:no-var-requires
+      require('pug').renderFile(resolve('server/template.pug'), {
+        pretty: true,
+      })
+    : fs.readFileSync(resolve('dist/template.html'), 'utf-8')
 
 // https://github.com/vuejs/vue/blob/dev/packages/vue-server-renderer/README.md#why-use-bundlerenderer
 const createRenderer = (bundle: object, options: object) =>
@@ -131,12 +139,11 @@ const middlewares: Koa.Middleware[] = [
 
 const sessionMiddleware = session({}, app)
 
-if (__DEV__) {
+if (process.env.NODE_ENV === 'development') {
   // tslint:disable-next-line:no-var-requires
   const { readyPromise, webpackMiddleware } = require('./dev').default(
-    // tslint:disable-next-line:no-shadowed-variable
-    ({ bundle, clientManifest, fs }: any) => {
-      mfs = fs
+    ({ bundle, clientManifest, fs: xfs }: any) => {
+      mfs = xfs
       renderer = createRenderer(bundle, {
         clientManifest,
       })
@@ -160,11 +167,11 @@ if (__DEV__) {
   mfs = fs
 
   renderer = createRenderer(
-    // tslint:disable-next-line:no-var-requires
-    require(resolve('dist/vue-ssr-server-bundle.json')),
+    runtimeRequire(resolve('dist/vue-ssr-server-bundle.json')),
     {
-      // tslint:disable-next-line:no-var-requires
-      clientManifest: require(resolve('dist/vue-ssr-client-manifest.json')),
+      clientManifest: runtimeRequire(
+        resolve('dist/vue-ssr-client-manifest.json'),
+      ),
     },
   )
 

@@ -11,6 +11,9 @@ declare global {
   interface Window {
     __INITIAL_STATE__: RootState
   }
+
+  // tslint:disable-next-line variable-name
+  const __non_webpack_require__: NodeRequire
 }
 
 declare module 'vue/types/options' {
@@ -23,7 +26,6 @@ declare module 'vue/types/options' {
       },
     ) => any
     title?: string | (() => string)
-    validator?: any
   }
 }
 

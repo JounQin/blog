@@ -14,3 +14,8 @@ export const innerServer = `http://localhost:${serverPort}/`
 
 export const resolve = (...args: string[]) =>
   path.resolve(process.cwd(), ...args)
+
+export const runtimeRequire =
+  typeof __non_webpack_require__ === 'undefined'
+    ? require
+    : __non_webpack_require__
