@@ -96,12 +96,20 @@ export default class About extends Vue {
     display: flex;
     width: 50%;
 
-    @media (max-width: 768px) {
-      width: 100%;
-    }
-
     :global(.card) {
       margin-right: 20px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    margin-right: 0;
+
+    > li {
+      width: 100%;
+
+      :global(.card) {
+        margin-right: 0;
+      }
     }
   }
 }
