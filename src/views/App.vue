@@ -12,13 +12,12 @@
                         :style="{ height: collapseHeight }"
                         @transitionend="transitionEnd")
         ul.navbar-nav.justify-content-end.flex-1.pr-md-4
-          router-link.nav-item(v-for="{ icon, link, text } of routes"
-                               :class="{ active: $route.fullPath.split('?')[0] === '/' + link }"
-                               :to="'/' + link"
-                               :key="link"
-                               :hidden="!link && $t.locale === 'en'"
-                               tag="li"
-                               @click.native="toggleShow")
+          router-link.nav-item.d-block.d-lg-block(v-for="{ icon, link, text } of routes"
+                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': !link && $t.locale === 'en' }"
+                                                  :to="'/' + link"
+                                                  :key="link"
+                                                  tag="li"
+                                                  @click.native="toggleShow")
             a.nav-link
               i.fa.mr-2(:class="`fa-${ icon }`")
               | {{ $t(link || 'home') }}
