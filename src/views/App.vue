@@ -20,14 +20,14 @@
                                @click.native="toggleShow")
             a.nav-link
               i.fa.mr-2(:class="`fa-${ icon }`")
-              | {{ text }}
+              | {{ $t(link || 'home') }}
         form.form-inline.my-2.my-md-0(@submit.prevent="() => search && $router.push(`/?search=${search}`)")
-          input.form-control.mr-2.flex-1(v-model.trim="search", type="search" placeholder="搜索全部文章")
-          button.btn.btn-outline-success(type="submit") 搜索
+          input.form-control.mr-2.flex-1(v-model.trim="search", type="search" :placeholder="$t('search_all_articles')")
+          button.btn.btn-outline-success(type="submit") {{ $t('search') }}
           a.ml-2(v-if="user"
                   :href="user.uuid ? `https://github.com/login/oauth/authorize?client_id=${ GITHUB_CLIENT_ID }&state=${user.uuid}&redirect_uri=${ GITHUB_OAUTH_CALLBACK }?path=${ $route.fullPath }` : user.websiteUrl || user.url"
                   :target="user.uuid ? '_self' : '_blank'")
-            template(v-if="user.uuid") 登录
+            template(v-if="user.uuid") {{ $t('login') }}
             img.user-avatar(v-else, :src="user.avatarUrl")
   .container-fluid.flex-1.scroll-y
     div(:class="$style.main")
@@ -38,6 +38,8 @@
           a.ml-2(href="https://www.1stg.me") 1stg.me
           a.text-secondary.ml-2(href="https://GitHub.com/JounQin/blog")
             i.fa.fa-github
+          a.text-secondary.ml-2(href="javascript:;")
+            i.fa.fa-globe(@click="$t.toggleLocale")
         div
           i.fa.fa-code.mr-2
           | by
@@ -53,7 +55,28 @@ import { User } from 'types'
 
 const COLLAPSE_HEIGHT = '187.5px'
 
-@Component
+@Component({
+  translator: {
+    en: {
+      home: 'Home',
+      categories: 'Categories',
+      about: 'About',
+      archives: 'Archives',
+      search_all_articles: 'Search All Articles',
+      search: 'Search',
+      login: 'Login',
+    },
+    zh: {
+      home: '首页',
+      categories: '分类',
+      about: '关于',
+      archives: '归档',
+      search_all_articles: '搜索全部文章',
+      search: '搜索',
+      login: '登录',
+    },
+  },
+})
 export default class App extends Vue {
   @State('user') user: User
 
@@ -61,22 +84,18 @@ export default class App extends Vue {
     {
       icon: 'home',
       link: '',
-      text: '首页',
     },
     {
       icon: 'th',
       link: 'categories',
-      text: '分类',
     },
     {
       icon: 'user',
       link: 'about',
-      text: '关于',
     },
     {
       icon: 'archive',
       link: 'archives',
-      text: '归档',
     },
   ]
 

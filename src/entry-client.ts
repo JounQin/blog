@@ -1,8 +1,13 @@
 import axios from 'axios'
 
 import createApp from 'app'
+import { LOCALE_COOKIE, setCookie } from 'utils'
 
 const { app, router, store } = createApp()
+
+app.$watch('$t.locale', curr => {
+  setCookie(LOCALE_COOKIE, curr, Infinity, '/')
+})
 
 store.replaceState(window.__INITIAL_STATE__)
 

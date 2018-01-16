@@ -16,6 +16,7 @@ const config: webpack.Configuration = {
   resolve: {
     alias: {
       'date-fns$': 'date-fns/esm',
+      lodash$: 'lodash-es',
     },
     extensions: ['.ts', '.js'],
     modules: [resolve('src'), 'node_modules'],
@@ -104,7 +105,9 @@ const config: webpack.Configuration = {
     new webpack.DefinePlugin({
       ...Object.entries(process.env).reduce(
         (result, [key, value]) => {
-          result[`process.env.${key}`] = JSON.stringify(value)
+          if (key !== 'VUE_ENV') {
+            result[`process.env.${key}`] = JSON.stringify(value)
+          }
           return result
         },
         {} as { [key: string]: string },

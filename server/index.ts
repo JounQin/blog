@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 
+import acceptLanguage from 'accept-language'
 import * as _debug from 'debug'
 import * as Koa from 'koa'
 import * as proxy from 'koa-better-http-proxy'
@@ -14,6 +15,12 @@ import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
 import { __DEV__, resolve, serverHost, serverPort } from '../build/config'
 
 import startRouter from './router'
+
+import { INFINITY_DATE, LOCALE_COOKIE, Locale } from 'utils'
+
+acceptLanguage.languages([Locale.ZH, Locale.EN])
+
+const ACCEPT_LANGUAGE = 'Accept-Language'
 
 const { APP_KEYS, GITHUB_TOKEN } = process.env
 
@@ -68,8 +75,22 @@ const middlewares: Koa.Middleware[] = [
 
     const start = Date.now()
 
+    const originalLocale = ctx.cookies.get(LOCALE_COOKIE)
+
+    const locale =
+      originalLocale || acceptLanguage.get(ctx.get(ACCEPT_LANGUAGE))
+
+    if (!originalLocale) {
+      ctx.cookies.set(LOCALE_COOKIE, locale, {
+        httpOnly: false,
+        path: '/',
+        expires: new Date(INFINITY_DATE),
+      })
+    }
+
     const context = {
       ctx,
+      locale,
       title: 'Blog | Blog system built on GitHub API with Vue SSR',
     }
 

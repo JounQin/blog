@@ -38,3 +38,9 @@ declare module 'vue/types/vue' {
     http: AxiosInstance
   }
 }
+
+declare module 'vue-translator/dist/esm/translator' {
+  export interface Translator {
+    toggleLocale?(): void
+  }
+}

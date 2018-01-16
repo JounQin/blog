@@ -1,7 +1,7 @@
 <template lang="pug">
 main
   .my-2.my-md-5(:class="$style.main")
-    h6(:class="[$style.item, $style.title]") 目前共计 {{ archives.length }} 篇日志。继续努力。
+    h6(:class="[$style.item, $style.title]") {{ $t('total_archives_count', [archives.length]) }}
     ol.list-unstyled
       li(v-for="{ archives, year } of archivesMap")
         h5.mt-5.my-3(:class="$style.item") {{ year }}
@@ -55,8 +55,14 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData({ store }) {
-    return fetchArchieves(store)
+  asyncData: ({ store }) => fetchArchieves(store),
+  translator: {
+    en: {
+      total_archives_count: 'There are { 0 } articles now, keep it up.',
+    },
+    zh: {
+      total_archives_count: '目前共计 { 0 } 篇日志，继续努力。',
+    },
   },
 })
 export default class Archives extends Vue {

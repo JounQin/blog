@@ -1,6 +1,6 @@
 <template lang="pug">
 main
-  h4.my-5.text-center 目前共计 {{ labels.length }} 个分类
+  h4.my-5.text-center {{ $t('total_categories_count', [labels.length]) }}
   ul.list-unstyled
     router-link.d-inline-flex.mx-2.my-2(v-for="{color, id, name} of labels"
                                         tag="li"
@@ -27,6 +27,14 @@ import * as querires from 'queries.gql'
       variables: REPOSITORY,
     })
     store.commit('SET_LABELS', data.repository.labels.nodes)
+  },
+  translator: {
+    en: {
+      total_categories_count: 'There are { 0 } categories totally now',
+    },
+    zh: {
+      total_categories_count: '目前共计 { 0 } 个分类',
+    },
   },
 })
 export default class Categories extends Vue {

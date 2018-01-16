@@ -1,10 +1,14 @@
 import _axios from 'axios'
+import { createTranslator } from 'vue-translator'
 
 import { ServerContext } from 'types'
+import { Locale, parseSetCookies } from 'utils'
 
 import createApp from 'app'
 
 const SET_COOKIE = 'set-cookie'
+
+const KOA_SESS_SIG = 'koa:sess.sig'
 
 export default (context: ServerContext) =>
   new Promise(async (resolve, reject) => {
@@ -25,15 +29,32 @@ export default (context: ServerContext) =>
       headers: ctx.headers,
     })
 
+    const translator = createTranslator({
+      locale: context.locale,
+      defaultLocale: Locale.ZH,
+    })
+
+    context.translator = translator
+
     axios.interceptors.response.use(
       response => {
         const { headers } = response
-        const setCookie = headers[SET_COOKIE]
-        if (setCookie) {
-          ctx.set({
-            [SET_COOKIE]: setCookie,
-          })
+        const cookies = headers[SET_COOKIE] as string[]
+
+        if (cookies) {
+          parseSetCookies(cookies).forEach(
+            ({ name, expires, httponly: httpOnly, path, value }) => {
+              if (name !== KOA_SESS_SIG) {
+                ctx.cookies.set(name, value, {
+                  expires: expires && new Date(expires),
+                  httpOnly,
+                  path,
+                })
+              }
+            },
+          )
         }
+
         return response
       },
       e => {

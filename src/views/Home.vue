@@ -18,7 +18,7 @@ main(v-if="issues.length", :class="$style.main")
         a.page-link Previous
       router-link.page-item(:to="nextRoute", :class="{ disabled: !pageInfo.hasNextPage }", tag="li")
         a.page-link Next
-main.py-5.text-center.text-muted(v-else) 当前{{ $route.query.labels ? '分类下' : '' }}暂无内容
+main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
@@ -90,8 +90,18 @@ const fetch = async (to: Route, store: Store<RootState>) => {
 }
 
 @Component({
-  asyncData({ route, store }) {
-    return fetch(route, store)
+  asyncData: ({ route, store }) => fetch(route, store),
+  translator: {
+    en: {
+      no_content: 'No content{ 0 }',
+      in_categories: ' in current categories',
+      in_search: ' under current search conditions',
+    },
+    zh: {
+      no_content: '当前{ 0 }暂无内容',
+      in_categories: '分类下',
+      in_search: '搜索条件下',
+    },
   },
 })
 export default class Home extends Vue {
