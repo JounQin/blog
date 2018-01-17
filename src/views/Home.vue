@@ -3,7 +3,7 @@ main(v-if="issues.length", :class="$style.main")
   ul.list-unstyled
     li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ title }}
+        router-link.heading-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
         router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"
@@ -11,13 +11,13 @@ main(v-if="issues.length", :class="$style.main")
                                        :key="id"
                                        :to="{ path: '/', query: { labels: name } }"
                                        :style="{ backgroundColor: color }")
-          a.px-2.small(:style="{ color: invertColor(color) }") {{ name }}
+          a.px-2.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
   nav
     ul.pagination.justify-content-end
       router-link.page-item(:to="prevRoute", :class="{ disabled: !pageInfo.hasPreviousPage }", tag="li")
-        a.page-link Previous
+        a.page-link {{ $t('previous_page') }}
       router-link.page-item(:to="nextRoute", :class="{ disabled: !pageInfo.hasNextPage }", tag="li")
-        a.page-link Next
+        a.page-link {{ $t('next_page') }}
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
@@ -33,7 +33,7 @@ import {
   RootState,
   SearchResultItemConnection,
 } from 'types'
-import { REPOSITORY, invertColor } from 'utils'
+import { REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
 
@@ -45,7 +45,12 @@ interface Issues {
 const { apollo } = Vue
 
 const fetch = async (to: Route, store: Store<RootState>) => {
-  const { before, after, labels, search } = to.query
+  const {
+    before,
+    after,
+    labels = store.state.labels.map(({ name }) => name),
+    search,
+  } = to.query
 
   const searchText = search && search.trim()
 
@@ -96,19 +101,21 @@ const fetch = async (to: Route, store: Store<RootState>) => {
       no_content: 'No content{ 0 }',
       in_categories: ' in current categories',
       in_search: ' under current search conditions',
+      previous_page: 'Previous',
+      next_page: 'Next',
     },
     zh: {
       no_content: '当前{ 0 }暂无内容',
       in_categories: '分类下',
       in_search: '搜索条件下',
+      previous_page: '上一页',
+      next_page: '下一页',
     },
   },
 })
 export default class Home extends Vue {
   @State('issues') issues: Issue[]
   @State('pageInfo') pageInfo: PageInfo
-
-  invertColor = invertColor
 
   async beforeRouteUpdate(to: Route, from: Route, next: () => void) {
     await fetch(to, this.$store)

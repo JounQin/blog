@@ -2,7 +2,7 @@ import _axios from 'axios'
 import { createTranslator } from 'vue-translator'
 
 import { ServerContext } from 'types'
-import { Locale, parseSetCookies } from 'utils'
+import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
 import createApp from 'app'
 
@@ -31,7 +31,7 @@ export default (context: ServerContext) =>
 
     const translator = createTranslator({
       locale: context.locale,
-      defaultLocale: Locale.ZH,
+      defaultLocale: DEFAULT_LOCALE,
     })
 
     context.translator = translator
@@ -64,7 +64,7 @@ export default (context: ServerContext) =>
       },
     )
 
-    await store.dispatch('fetchUser', axios)
+    await store.dispatch('fetchInfo', axios)
 
     router.push(ctx.url)
 

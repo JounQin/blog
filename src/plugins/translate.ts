@@ -2,17 +2,16 @@ import { merge } from 'lodash'
 import Vue from 'vue'
 import VueTranslator from 'vue-translator'
 
-import { LOCALE_COOKIE, Locale, getCookie } from 'utils'
-
-const { EN, ZH } = Locale
-
-const TOGGLE_LOCALE = {
-  [EN]: ZH,
-  [ZH]: EN,
-}
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  Locale,
+  TOGGLE_LOCALE,
+  getCookie,
+} from 'utils'
 
 Vue.use(VueTranslator, {
-  defaultLocale: Locale.ZH,
+  defaultLocale: DEFAULT_LOCALE,
   locale: (!__SERVER__ && (getCookie(LOCALE_COOKIE) as Locale)) || undefined,
   merge,
 })

@@ -21,9 +21,9 @@ import {
 
 import startRouter from './router'
 
-import { INFINITY_DATE, LOCALE_COOKIE, Locale } from 'utils'
+import { INFINITY_DATE, LOCALES, LOCALE_COOKIE } from 'utils'
 
-acceptLanguage.languages([Locale.ZH, Locale.EN])
+acceptLanguage.languages(LOCALES)
 
 const ACCEPT_LANGUAGE = 'Accept-Language'
 

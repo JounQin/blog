@@ -1,10 +1,16 @@
-query archives($name: String!, $owner: String!, $after: String) {
+query archives(
+  $name: String!
+  $owner: String!
+  $after: String
+  $labels: [String!]
+) {
   repository(name: $name, owner: $owner) {
     issues(
       after: $after
       first: 100
       orderBy: { direction: DESC, field: CREATED_AT }
       states: OPEN
+      labels: $labels
     ) {
       nodes {
         createdAt

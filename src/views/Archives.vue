@@ -10,7 +10,7 @@ main
              :class="[$style.item, $style.article]"
              :key="id")
             small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
-            router-link(:to="`/article/${number}`") {{ title }}
+            router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
@@ -33,6 +33,7 @@ const fetchArchieves = async (
     variables: {
       ...REPOSITORY,
       after,
+      labels: store.state.labels.map(({ name }) => name),
     },
   })
 

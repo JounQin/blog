@@ -183,6 +183,10 @@ a:hover {
   text-decoration: none;
 }
 
+.clickable {
+  cursor: pointer;
+}
+
 .heading-link {
   display: inline-block;
 

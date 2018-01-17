@@ -7,27 +7,15 @@ main
                                         :key="id"
                                         :to="{ path: '/', query: { labels: name } }"
                                         :style="{ backgroundColor: color }")
-      a.px-3.py-1.small(:style="{ color: invertColor(color) }") {{ name }}
+      a.px-3.py-1.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 
-import { Label, Repository } from 'types'
-import { REPOSITORY, invertColor } from 'utils'
-
-import * as querires from 'queries.gql'
+import { Label } from 'types'
 
 @Component({
-  async asyncData({ store }) {
-    const { data } = await Vue.apollo.query<{
-      repository: Repository
-    }>({
-      query: querires.categories,
-      variables: REPOSITORY,
-    })
-    store.commit('SET_LABELS', data.repository.labels.nodes)
-  },
   translator: {
     en: {
       total_categories_count: 'There are { 0 } categories totally now',
@@ -39,7 +27,5 @@ import * as querires from 'queries.gql'
 })
 export default class Categories extends Vue {
   @State('labels') labels: Label[]
-
-  invertColor = invertColor
 }
 </script>

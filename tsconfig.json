@@ -10,6 +10,11 @@
     "paths": {
       "*": ["src/*"]
     },
+    "plugins": [
+      {
+        "name": "tslint-language-service"
+      }
+    ],
     "sourceMap": true,
     "target": "es5"
   },
