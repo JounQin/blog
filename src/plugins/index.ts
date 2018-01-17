@@ -1,4 +1,5 @@
 import './filters'
-import './graphql'
 import './http'
 import './translate'
+
+export * from './graphql'

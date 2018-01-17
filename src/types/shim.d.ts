@@ -10,6 +10,7 @@ import { RootState } from 'types'
 declare global {
   interface Window {
     __INITIAL_STATE__: RootState
+    __APOLLO_STATE__: NormalizedCacheObject
   }
 
   // tslint:disable-next-line variable-name

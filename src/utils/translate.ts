@@ -22,11 +22,9 @@ const allPlacehodlers = {
   [Placehodler.CONTENT]: LOCALES.map(contentPlaceholder),
 }
 
-const END = '_end_'
-
 const endPlacehodlers = {
-  [Placehodler.TITLE]: titlePlaceholder(END).value,
-  [Placehodler.CONTENT]: contentPlaceholder(END).value,
+  [Placehodler.TITLE]: titlePlaceholder('_end_').value,
+  [Placehodler.CONTENT]: contentPlaceholder('<em>end</em>').value,
 }
 
 /**
@@ -75,7 +73,9 @@ const translateTemplate = (
 
   const hasEnd = endIndex !== -1
 
-  const end = hasEnd ? template.substr(endIndex) : ''
+  const end = hasEnd
+    ? template.substr(endIndex + endPlacehodlers[placehodler].length)
+    : ''
 
   const main = hasEnd
     ? template.substring(startIndex, endIndex)

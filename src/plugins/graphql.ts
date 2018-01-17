@@ -3,11 +3,18 @@ import ApolloClient from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import Vue from 'vue'
 
+export const cache = new InMemoryCache()
+
+if (!__SERVER__ && window.__APOLLO_STATE__) {
+  cache.restore(window.__APOLLO_STATE__)
+}
+
 const apollo = new ApolloClient({
   link: createHttpLink({
     uri: SERVER_PREFIX + 'graphql',
   }),
-  cache: new InMemoryCache(),
+  cache,
+  ssrMode: __SERVER__,
 })
 
 Object.defineProperty(Vue, 'apollo', {
