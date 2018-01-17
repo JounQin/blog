@@ -74,9 +74,9 @@
     "@types/minimatch" "*"
     "@types/node" "*"
 
-"@types/graphql@^0.11.8":
-  version "0.11.8"
-  resolved "https://registry.yarnpkg.com/@types/graphql/-/graphql-0.11.8.tgz#53ff3604e99db810dd43347f19fcd1c59725a7bb"
+"@types/graphql@0.12.0":
+  version "0.12.0"
+  resolved "https://registry.yarnpkg.com/@types/graphql/-/graphql-0.12.0.tgz#dc620cd2d24d4e52f3ed5a900a94193dc1b2eb40"
 
 "@types/html-minifier@*":
   version "3.5.0"
