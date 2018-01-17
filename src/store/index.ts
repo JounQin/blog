@@ -35,6 +35,9 @@ const actions: {
 const mutations: {
   [key: string]: Mutation<RootState>
 } = {
+  SET_PROGRESS(state, progress) {
+    state.progress = progress
+  },
   SET_USER(state, user) {
     state.user = user
   },
@@ -70,6 +73,7 @@ export default () =>
       labels: null,
       owner: null,
       pageInfo: null,
+      progress: 0,
       user: null,
     },
     actions,

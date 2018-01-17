@@ -9,5 +9,6 @@ export interface RootState {
   labels: Label[]
   owner: Owner
   pageInfo: PageInfo
+  progress: number
   user: User
 }

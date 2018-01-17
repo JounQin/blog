@@ -11,6 +11,8 @@ app.$watch('$t.locale', curr => {
 
 store.replaceState(window.__INITIAL_STATE__)
 
+const SET_PROGRESS = 'SET_PROGRESS'
+
 router.onReady(() => {
   router.beforeResolve(async (to, from, next) => {
     const matched = router.getMatchedComponents(to)
@@ -26,6 +28,8 @@ router.onReady(() => {
       (comp, index) => diffed || (diffed = prevMatched[index] !== comp),
     )
 
+    store.commit(SET_PROGRESS, 70)
+
     if (activated.length) {
       await Promise.all(
         activated.map(({ options }: any) => {
@@ -36,6 +40,12 @@ router.onReady(() => {
     }
 
     next()
+
+    store.commit(SET_PROGRESS, 100)
+
+    setTimeout(() => {
+      store.commit(SET_PROGRESS, 0)
+    }, 500)
   })
 
   router.afterEach(() => {

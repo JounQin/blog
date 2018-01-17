@@ -1,5 +1,6 @@
 <template lang="pug">
 #app.d-flex.flex-column
+  hi-progress(:progress="progress")
   nav.navbar.navbar-expand-md.navbar-light.bg-light
     .container
       router-link.navbar-brand(to="/")
@@ -8,7 +9,7 @@
           span 1stg
       button.navbar-toggler(type="button", @click="toggleShow")
         span.navbar-toggler-icon
-      .navbar-collapse(:class="[{ show }, `collaps${collapsing ? 'ing' : 'e'}`]"
+      .navbar-collapse(:class="[$style.collapse, { show }, `collaps${collapsing ? 'ing' : 'e'}`]"
                         :style="{ height: collapseHeight }"
                         @transitionend="transitionEnd")
         ul.navbar-nav.justify-content-end.flex-1.pr-md-4
@@ -51,6 +52,8 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 
+import HiProgress from 'components/HiProgress.vue'
+
 import { User } from 'types'
 
 const COLLAPSE_HEIGHT = '187.5px'
@@ -76,8 +79,12 @@ const COLLAPSE_HEIGHT = '187.5px'
       login: '登录',
     },
   },
+  components: {
+    HiProgress,
+  },
 })
 export default class App extends Vue {
+  @State('progress') progress: number
   @State('user') user: User
 
   routes = [
@@ -122,6 +129,7 @@ export default class App extends Vue {
 
     const show = !this.show
     this.toShow = show
+    this.collapsing = false
 
     if (show) {
       this.show = show
@@ -162,6 +170,10 @@ html {
 
 body {
   font-family: Lato, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+button:focus {
+  outline: 0;
 }
 
 .flex-1 {
@@ -344,5 +356,17 @@ a:hover {
   min-height: calc(100% - 53px);
   margin: 0 -15px -63px -15px;
   padding-bottom: 63px;
+}
+
+@media (max-width: 768px) {
+  .collapse {
+    position: absolute;
+    z-index: 1;
+    top: 53px;
+    left: 0;
+    right: 0;
+    padding: 0 1rem;
+    background-color: #f8f9fa;
+  }
 }
 </style>
