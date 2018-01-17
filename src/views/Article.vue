@@ -2,7 +2,7 @@
 main(v-if="issue")
   h4
     a.heading-link(:href="issue.url") {{ $utils.translateTitle(issue.title, $t.locale) }}
-  small.text-secondary {{ issue.createdAt | timeAgo }}
+  small.text-secondary {{ issue.createdAt | timeAgo($t.locale) }}
   ul.list-unstyled.d-inline-flex.mb-0
     router-link.d-inline-flex.ml-2.px-2(v-for="{ id, color, name } of issue.labels.nodes"
                                         tag="li"
