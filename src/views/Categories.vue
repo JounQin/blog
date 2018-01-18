@@ -6,7 +6,7 @@ main
                                         tag="li"
                                         :key="id"
                                         :to="{ path: '/', query: { labels: name } }"
-                                        :style="{ backgroundColor: color }")
+                                        :style="{ backgroundColor: '#' + color }")
       a.px-3.py-1.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
 </template>
 <script lang="ts">

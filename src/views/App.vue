@@ -353,7 +353,7 @@ a:hover {
 }
 
 .main {
-  min-height: calc(100% - 53px);
+  min-height: 100%;
   margin: 0 -15px -63px -15px;
   padding-bottom: 63px;
 }

@@ -10,7 +10,9 @@ import { __DEV__, resolve } from './config'
 import baseConfig from './base'
 
 export default merge.smart(baseConfig, {
-  entry: './src/entry-client.ts',
+  entry: {
+    app: ['./src/entry-client.ts'],
+  },
   target: 'web',
   devtool: __DEV__ ? 'cheap-module-eval-source-map' : false,
   plugins: [

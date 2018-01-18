@@ -10,7 +10,7 @@ main(v-if="issues.length", :class="$style.main")
                                        tag="li"
                                        :key="id"
                                        :to="{ path: '/', query: { labels: name } }"
-                                       :style="{ backgroundColor: color }")
+                                       :style="{ backgroundColor: '#' + color }")
           a.px-2.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
   nav
     ul.pagination.justify-content-end
