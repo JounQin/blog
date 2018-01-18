@@ -94,6 +94,18 @@ const config: webpack.Configuration = {
                     includePaths: [resolve('node_modules/bootstrap/scss')],
                   },
                 },
+                {
+                  loader: 'sass-resources-loader',
+                  options: {
+                    resources: [
+                      'src/styles/_pre-variables.scss',
+                      ...['functions', 'variables', 'mixins'].map(
+                        item => `node_modules/bootstrap/scss/_${item}.scss`,
+                      ),
+                      'src/styles/_post-variables.scss',
+                    ],
+                  },
+                },
               ],
             }),
           },

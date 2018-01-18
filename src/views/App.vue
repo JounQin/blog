@@ -37,7 +37,7 @@
       .container.d-flex
         .flex-1
           a.ml-2(href="https://www.1stg.me") © 1stg.me
-          a.text-secondary.ml-2(href="https://GitHub.com/JounQin/blog")
+          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
             i.fa.fa-github
           a.text-secondary.ml-2(href="javascript:;")
             i.fa.fa-globe(@click="$t.toggleLocale")
@@ -55,6 +55,7 @@ import { State } from 'vuex-class'
 import HiProgress from 'components/HiProgress.vue'
 
 import { User } from 'types'
+import { REPOSITORY } from 'utils'
 
 const COLLAPSE_HEIGHT = '187.5px'
 
@@ -106,6 +107,7 @@ export default class App extends Vue {
     },
   ]
 
+  REPOSITORY = REPOSITORY
   GITHUB_CLIENT_ID: string = process.env.GITHUB_CLIENT_ID
   GITHUB_OAUTH_CALLBACK = process.env.GITHUB_OAUTH_CALLBACK
 
@@ -186,15 +188,6 @@ button:focus {
   -webkit-overflow-scrolling: touch;
 }
 
-a {
-  color: #555;
-}
-
-a:hover {
-  color: darken(#555, 20%);
-  text-decoration: none;
-}
-
 .clickable {
   cursor: pointer;
 }
@@ -202,7 +195,7 @@ a:hover {
 .heading-link {
   display: inline-block;
 
-  @media (min-width: 769px) {
+  @media (min-width: $grid-breakpoints-md + 1px) {
     &:hover:after {
       width: 100%;
     }
@@ -214,7 +207,7 @@ a:hover {
       margin-right: auto;
       width: 0;
       height: 2px;
-      background-color: #222;
+      background-color: $link-hover-color;
       transition: width 0.5s ease;
     }
   }
@@ -230,7 +223,7 @@ a:hover {
   width: 50px;
   height: 50px;
 
-  @media (max-width: 768px) {
+  @media (max-width: $grid-breakpoints-md) {
     width: 32px;
     height: 32px;
   }
@@ -292,7 +285,7 @@ a:hover {
     content: '';
     display: block;
     height: 2px;
-    background-color: #222;
+    background-color: $link-color;
     animation: 1s ease;
   }
 
@@ -358,14 +351,14 @@ a:hover {
   padding-bottom: 63px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: $grid-breakpoints-md) {
   .collapse {
     position: absolute;
     z-index: 1;
     top: 53px;
     left: 0;
     right: 0;
-    padding: 0 1rem;
+    padding: 0 14px;
     background-color: #f8f9fa;
   }
 }
