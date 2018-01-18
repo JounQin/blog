@@ -1,6 +1,7 @@
 import Vue from 'vue'
+import VueApollo from 'vue-apollo'
 
-import 'plugins'
+import { apolloClient } from 'plugins'
 import { invertColor, translateContent, translateTitle } from 'utils'
 
 import createRouter from 'router'
@@ -21,11 +22,16 @@ export default () => {
   const router = createRouter()
   const store = createStore()
 
+  const apolloProvider = new VueApollo({
+    defaultClient: apolloClient,
+  })
+
   const app = new Vue({
     router,
     store,
+    apolloProvider,
     render: h => h(App),
   })
 
-  return { app, router, store }
+  return { app, router, store, apolloProvider }
 }

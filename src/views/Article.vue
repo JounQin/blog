@@ -30,7 +30,7 @@ main(v-if="issue")
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
+import { Route } from 'vue-router'
 
 import { Issue } from 'types'
 import { REPOSITORY } from 'utils'
@@ -38,17 +38,23 @@ import { REPOSITORY } from 'utils'
 import * as querires from 'queries.gql'
 
 @Component({
-  async asyncData({ route, store }) {
-    const { data } = await Vue.apollo.query<{
-      repository: { issue: Issue }
-    }>({
+  apollo: {
+    issue: {
       query: querires.issue,
-      variables: {
-        ...REPOSITORY,
-        number: +route.params.number,
+      prefetch: ({ route }: { route: Route }) => {
+        return {
+          ...REPOSITORY,
+          number: +route.params.number,
+        }
       },
-    })
-    store.commit('SET_ISSUE', data.repository.issue)
+      variables() {
+        return {
+          ...REPOSITORY,
+          number: +this.$route.params.number,
+        }
+      },
+      update: (data: { repository: { issue: Issue } }) => data.repository.issue,
+    },
   },
   translator: {
     en: {
@@ -61,7 +67,5 @@ import * as querires from 'queries.gql'
     },
   },
 })
-export default class Article extends Vue {
-  @State('issue') issue: Issue
-}
+export default class Article extends Vue {}
 </script>

@@ -3,7 +3,7 @@ import axios from 'axios'
 import createApp from 'app'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
-const { app, router, store } = createApp()
+const { app, router, store, apolloProvider } = createApp()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
@@ -31,12 +31,18 @@ router.onReady(() => {
     store.commit(SET_PROGRESS, 70)
 
     if (activated.length) {
-      await Promise.all(
-        activated.map(({ options }: any) => {
+      await Promise.all([
+        ...activated.map(({ options }: any) => {
           const { asyncData } = options || { asyncData: null }
           return asyncData && asyncData({ axios, route: to, store })
         }),
-      )
+        apolloProvider.prefetchAll(
+          {
+            route: to,
+          },
+          activated,
+        ),
+      ])
     }
 
     next()

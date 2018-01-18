@@ -4,7 +4,6 @@ export type Owner = User & Organization
 
 export interface RootState {
   archives: Issue[]
-  issue: Issue
   issues: Issue[]
   labels: Label[]
   owner: Owner

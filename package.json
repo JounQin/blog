@@ -87,6 +87,7 @@
     "serialize-javascript": "^1.4.0",
     "uuid": "^3.2.1",
     "vue": "^2.5.13",
+    "vue-apollo": "^3.0.0-alpha.2",
     "vue-class-component": "^6.1.2",
     "vue-property-decorator": "^6.0.0",
     "vue-router": "^3.0.1",

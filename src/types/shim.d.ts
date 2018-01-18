@@ -10,7 +10,9 @@ import { RootState } from 'types'
 declare global {
   interface Window {
     __INITIAL_STATE__: RootState
-    __APOLLO_STATE__: NormalizedCacheObject
+    __APOLLO_STATE__: {
+      defaultClient: NormalizedCacheObject
+    }
   }
 
   // tslint:disable-next-line variable-name
@@ -27,12 +29,14 @@ declare module 'vue/types/options' {
       },
     ) => any
     title?: string | (() => string)
+    apollo?: any
+    apolloProvider?: any
   }
 }
 
 declare module 'vue/types/vue' {
   interface Vue {
-    $apollo: ApolloClient<NormalizedCacheObject>
+    $apollo: any
     $http: AxiosInstance
   }
 

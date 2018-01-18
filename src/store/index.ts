@@ -47,9 +47,6 @@ const mutations: {
   SET_PAGE_INFO(state, pageInfo) {
     state.pageInfo = pageInfo
   },
-  SET_ISSUE(state, issue) {
-    state.issue = issue
-  },
   SET_LABELS(state, labels) {
     state.labels = labels
   },
@@ -68,7 +65,6 @@ export default () =>
   new Vuex.Store<RootState>({
     state: {
       archives: null,
-      issue: null,
       issues: null,
       labels: null,
       owner: null,

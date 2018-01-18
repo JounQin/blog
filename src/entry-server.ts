@@ -1,8 +1,6 @@
 import _axios from 'axios'
-import * as serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
-import { cache } from 'plugins'
 import { ServerContext } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
@@ -12,7 +10,7 @@ const SET_COOKIE = 'set-cookie'
 
 const KOA_SESS_SIG = 'koa:sess.sig'
 
-const APOLLO_STATE_SUFFIX = __DEV__
+const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
@@ -22,7 +20,7 @@ export default (context: ServerContext) =>
 
     const { ctx } = context
 
-    const { app, router, store } = createApp()
+    const { app, router, store, apolloProvider } = createApp()
 
     const { url } = ctx
     const { fullPath } = router.resolve(url).route
@@ -90,12 +88,18 @@ export default (context: ServerContext) =>
       }
 
       try {
-        await Promise.all(
-          matched.map(({ options }: any) => {
+        await Promise.all([
+          ...matched.map(({ options }: any) => {
             const { asyncData } = options || { asyncData: null }
             return asyncData && asyncData({ axios, route, store })
           }),
-        )
+          apolloProvider.prefetchAll(
+            {
+              route,
+            },
+            matched,
+          ),
+        ])
       } catch (e) {
         return reject(e.response ? e.response.data : e)
       }
@@ -105,11 +109,9 @@ export default (context: ServerContext) =>
         console.log(`data pre-fetch: ${Date.now() - (start as number)}ms`)
       }
 
-      context.apolloState = `<script>window.__APOLLO_STATE__=${serialize(
-        cache.extract(),
-      ) + APOLLO_STATE_SUFFIX}</script>`
-
-      context.state = store.state
+      context.script = `window.__INITIAL_STATE__=${JSON.stringify(
+        store.state,
+      )};${apolloProvider.exportStates() + SCRIPT_SUFFIX}`
 
       resolve(app)
     }, reject)
