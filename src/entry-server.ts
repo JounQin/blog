@@ -109,9 +109,9 @@ export default (context: ServerContext) =>
         console.log(`data pre-fetch: ${Date.now() - (start as number)}ms`)
       }
 
-      context.script = `window.__INITIAL_STATE__=${JSON.stringify(
+      context.script = `<script>window.__INITIAL_STATE__=${JSON.stringify(
         store.state,
-      )};${apolloProvider.exportStates() + SCRIPT_SUFFIX}`
+      )};${apolloProvider.exportStates() + SCRIPT_SUFFIX}</script>`
 
       resolve(app)
     }, reject)
