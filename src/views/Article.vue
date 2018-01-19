@@ -30,25 +30,23 @@ main(v-if="issue")
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
 
 import { Issue } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
 
+const getQueryOptions = (issueNumber: number | string) => ({
+  query: querires.issue,
+  variables: {
+    ...REPOSITORY,
+    number: +issueNumber,
+  },
+})
+
 @Component({
-  async asyncData({ route, store }) {
-    const { data } = await Vue.apollo.query<{
-      repository: { issue: Issue }
-    }>({
-      query: querires.issue,
-      variables: {
-        ...REPOSITORY,
-        number: +route.params.number,
-      },
-    })
-    store.commit('SET_ISSUE', data.repository.issue)
+  asyncData({ route, store }) {
+    return Vue.apollo.query(getQueryOptions(route.params.number))
   },
   translator: {
     en: {
@@ -62,6 +60,10 @@ import * as querires from 'queries.gql'
   },
 })
 export default class Article extends Vue {
-  @State('issue') issue: Issue
+  get issue(): Issue {
+    return this.$apollo.readQuery<{ repository: { issue: Issue } }>(
+      getQueryOptions(this.$route.params.number),
+    ).repository.issue
+  }
 }
 </script>
