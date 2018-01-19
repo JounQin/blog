@@ -99,7 +99,7 @@
   "devDependencies": {
     "@types/debug": "^0.0.30",
     "@types/extract-text-webpack-plugin": "^3.0.0",
-    "@types/graphql": "^0.11.8",
+    "@types/graphql": "^0.12.1",
     "@types/html-webpack-plugin": "^2.30.1",
     "@types/koa": "^2.0.43",
     "@types/koa-bodyparser": "^3.0.26",
