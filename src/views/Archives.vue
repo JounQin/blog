@@ -13,16 +13,20 @@ main
             router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
 </template>
 <script lang="ts">
+import { NormalizedCacheObject } from 'apollo-cache-inmemory'
+import ApolloClient from 'apollo-client'
 import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 import { State } from 'vuex-class'
 
+import { getDefaultLabels } from 'commons'
 import { Issue, Repository, RootState } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as queries from 'queries.gql'
 
 const fetchArchieves = async (
+  apollo: ApolloClient<NormalizedCacheObject>,
   store: Store<RootState>,
   after?: string,
 ): Promise<undefined> => {
@@ -33,7 +37,7 @@ const fetchArchieves = async (
     variables: {
       ...REPOSITORY,
       after,
-      labels: store.state.labels.map(({ name }) => name),
+      labels: getDefaultLabels(apollo).map(({ name }) => name),
     },
   })
 
@@ -42,7 +46,7 @@ const fetchArchieves = async (
   store.commit(after ? 'ADD_ARCHIVES' : 'SET_ARCHIVES', nodes)
 
   if (pageInfo.hasNextPage) {
-    return fetchArchieves(store, pageInfo.endCursor)
+    return fetchArchieves(apollo, store, pageInfo.endCursor)
   }
 }
 
@@ -56,7 +60,7 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: ({ store }) => fetchArchieves(store),
+  asyncData: ({ apollo, store }) => fetchArchieves(apollo, store),
   translator: {
     en: {
       total_archives_count: 'There are { 0 } articles now, keep it up.',

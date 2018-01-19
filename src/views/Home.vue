@@ -23,14 +23,13 @@ main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.label
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
-import { Store } from 'vuex'
-import { State } from 'vuex-class'
 
+import { getDefaultLabels } from 'commons'
 import {
+  AsyncDataFn,
   Issue,
   PageInfo,
   Repository,
-  RootState,
   SearchResultItemConnection,
 } from 'types'
 import { REPOSITORY } from 'utils'
@@ -42,15 +41,13 @@ interface Issues {
   pageInfo: PageInfo
 }
 
-const { apollo } = Vue
-
-const fetch = async (to: Route, store: Store<RootState>) => {
+const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
   const {
     before,
     after,
-    labels = store.state.labels.map(({ name }) => name),
+    labels = getDefaultLabels(apollo).map(({ name }) => name),
     search,
-  } = to.query
+  } = route.query
 
   const searchText = search && search.trim()
 
@@ -68,34 +65,14 @@ const fetch = async (to: Route, store: Store<RootState>) => {
       } is:issue is:open ${searchText}`,
   }
 
-  let issues: Issues
-
-  if (search) {
-    const { data } = await apollo.query<{
-      search: SearchResultItemConnection
-    }>({
-      query: querires.search,
-      variables,
-    })
-
-    issues = data.search as Issues
-  } else {
-    const { data: { repository } } = await apollo.query<{
-      repository: Repository
-    }>({
-      query: querires.issues,
-      variables,
-    })
-
-    issues = repository.issues as Issues
+  return {
+    query: search ? querires.search : querires.issues,
+    variables,
   }
-
-  store.commit('SET_ISSUES', issues.nodes)
-  store.commit('SET_PAGE_INFO', issues.pageInfo)
 }
 
 @Component({
-  asyncData: ({ route, store }) => fetch(route, store),
+  asyncData: params => params.apollo.query(getQueryOptions(params)),
   translator: {
     en: {
       no_content: 'No content{ 0 }',
@@ -114,12 +91,48 @@ const fetch = async (to: Route, store: Store<RootState>) => {
   },
 })
 export default class Home extends Vue {
-  @State('issues') issues: Issue[]
-  @State('pageInfo') pageInfo: PageInfo
+  issues: Issue[] = null
+  pageInfo: PageInfo = null
+
+  setData() {
+    const data = this.$apollo.readQuery<
+      {
+        search: SearchResultItemConnection
+      } & {
+        repository: Repository
+      }
+    >(
+      getQueryOptions({
+        apollo: this.$apollo,
+        route: this.$route,
+      }),
+    )
+
+    let issues: Issues
+
+    if (data.search) {
+      issues = data.search as Issues
+    } else {
+      issues = data.repository.issues as Issues
+    }
+
+    this.issues = issues.nodes
+    this.pageInfo = issues.pageInfo
+  }
+
+  created() {
+    this.setData()
+  }
 
   async beforeRouteUpdate(to: Route, from: Route, next: () => void) {
-    await fetch(to, this.$store)
+    await this.$apollo.query(
+      getQueryOptions({
+        apollo: this.$apollo,
+        route: to,
+      }),
+    )
     next()
+    this.setData()
   }
 
   get prevRoute() {
@@ -144,10 +157,10 @@ export default class Home extends Vue {
 }
 </script>
 <style lang="scss" module>
-@media (max-width: 768px) {
+@media (max-width: $grid-breakpoints-md) {
   .main {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
   }
 }
 </style>

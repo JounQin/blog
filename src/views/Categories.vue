@@ -11,8 +11,8 @@ main
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
 
+import { getDefaultLabels } from 'commons'
 import { Label } from 'types'
 
 @Component({
@@ -26,6 +26,8 @@ import { Label } from 'types'
   },
 })
 export default class Categories extends Vue {
-  @State('labels') labels: Label[]
+  get labels(): Label[] {
+    return getDefaultLabels(this.$apollo)
+  }
 }
 </script>

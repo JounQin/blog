@@ -1,5 +1,6 @@
 import _axios from 'axios'
 import * as serialize from 'serialize-javascript'
+import Vue from 'vue'
 import { createTranslator } from 'vue-translator'
 
 import { cache } from 'plugins'
@@ -91,7 +92,8 @@ export default (context: ServerContext) =>
         await Promise.all(
           matched.map(
             ({ options, asyncData = options && options.asyncData }: any) =>
-              asyncData && asyncData({ axios, route, store }),
+              asyncData &&
+              asyncData({ apollo: Vue.apollo, axios, route, store }),
           ),
         )
       } catch (e) {

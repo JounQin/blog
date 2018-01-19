@@ -5,7 +5,7 @@ import Vue, { ComponentOptions } from 'vue'
 import { Route } from 'vue-router'
 import { Store } from 'vuex'
 
-import { RootState } from 'types'
+import { AsyncDataFn, RootState } from 'types'
 
 declare global {
   interface Window {
@@ -19,13 +19,7 @@ declare global {
 
 declare module 'vue/types/options' {
   interface ComponentOptions<V extends Vue> {
-    asyncData?: (
-      params: {
-        axios: AxiosInstance
-        store: Store<RootState>
-        route: Route
-      },
-    ) => any
+    asyncData?: AsyncDataFn
     title?: string | (() => string)
   }
 }
