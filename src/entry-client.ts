@@ -32,10 +32,10 @@ router.onReady(() => {
 
     if (activated.length) {
       await Promise.all(
-        activated.map(({ options }: any) => {
-          const { asyncData } = options || { asyncData: null }
-          return asyncData && asyncData({ axios, route: to, store })
-        }),
+        activated.map(
+          ({ options, asyncData = options && options.asyncData }: any) =>
+            asyncData && asyncData({ axios, route: to, store }),
+        ),
       )
     }
 

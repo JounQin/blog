@@ -74,9 +74,9 @@
     "@types/minimatch" "*"
     "@types/node" "*"
 
-"@types/graphql@^0.11.8":
-  version "0.11.8"
-  resolved "https://registry.yarnpkg.com/@types/graphql/-/graphql-0.11.8.tgz#53ff3604e99db810dd43347f19fcd1c59725a7bb"
+"@types/graphql@^0.12.1":
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/@types/graphql/-/graphql-0.12.1.tgz#2c2f9a0da3cd23ee1ce7a6e6c9135ceeb9131c05"
 
 "@types/html-minifier@*":
   version "3.5.1"
@@ -101,9 +101,9 @@
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@types/keygrip/-/keygrip-1.0.1.tgz#ff540462d2fb4d0a88441ceaf27d287b01c3d878"
 
-"@types/koa-bodyparser@^3.0.26":
-  version "3.0.26"
-  resolved "https://registry.yarnpkg.com/@types/koa-bodyparser/-/koa-bodyparser-3.0.26.tgz#fe17932fe0dbf52369bcf94adea5def41bb6269c"
+"@types/koa-bodyparser@^4.2.0":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@types/koa-bodyparser/-/koa-bodyparser-4.2.0.tgz#04febc567f3d3dd40e3d1a0e095cdf7b07c4d7ce"
   dependencies:
     "@types/koa" "*"
 
@@ -130,9 +130,9 @@
   dependencies:
     "@types/koa" "*"
 
-"@types/koa-session@^3.0.6":
-  version "3.0.6"
-  resolved "https://registry.yarnpkg.com/@types/koa-session/-/koa-session-3.0.6.tgz#e45ee03a2e8fcaf277a85f7615997f600d782c53"
+"@types/koa-session@^5.7.0":
+  version "5.7.0"
+  resolved "https://registry.yarnpkg.com/@types/koa-session/-/koa-session-5.7.0.tgz#60b626affac85160233d7a9e23243090ccd13311"
   dependencies:
     "@types/koa" "*"
 
@@ -158,9 +158,9 @@
     "@types/koa-compose" "*"
     "@types/node" "*"
 
-"@types/lodash@^4.14.92":
-  version "4.14.92"
-  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.92.tgz#6e3cb0b71a1e12180a47a42a744e856c3ae99a57"
+"@types/lodash@^4.14.93":
+  version "4.14.93"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.93.tgz#a6d2a1e1601a3c29196f38ef1990b68a9afa1e1c"
 
 "@types/loglevel@*":
   version "1.5.3"
@@ -811,9 +811,9 @@ boom@5.x.x:
   dependencies:
     hoek "4.x.x"
 
-bootstrap@^4.0.0-beta.3:
-  version "4.0.0-beta.3"
-  resolved "https://registry.yarnpkg.com/bootstrap/-/bootstrap-4.0.0-beta.3.tgz#60f0660bc3d121176514b361f6f83201c7ff8874"
+bootstrap@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/bootstrap/-/bootstrap-4.0.0.tgz#ceb03842c145fcc1b9b4e15da2a05656ba68469a"
 
 boxen@^0.6.0:
   version "0.6.0"
@@ -6864,8 +6864,8 @@ tsconfig@^7.0.0:
     strip-json-comments "^2.0.0"
 
 tslib@^1.7.1, tslib@^1.8.0, tslib@^1.8.1:
-  version "1.8.1"
-  resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.8.1.tgz#6946af2d1d651a7b1863b531d6e5afa41aa44eac"
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.9.0.tgz#e37a86fda8cbbaf23a057f473c9f4dc64e5fc2e8"
 
 tslint-config-prettier@^1.6.0:
   version "1.6.0"
@@ -7357,13 +7357,13 @@ webpack-dev-middleware@^2.0.3:
     webpack-log "^1.0.1"
 
 webpack-hot-client@^1.0.1:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/webpack-hot-client/-/webpack-hot-client-1.2.0.tgz#0354b7b3dd07d39d2471af9aed4061b3a6ded8f4"
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/webpack-hot-client/-/webpack-hot-client-1.2.1.tgz#ebec233607a2ecb216406bd3fc3c3f605b14e72c"
   dependencies:
     loglevelnext "^1.0.2"
     uuid "^3.1.0"
     webpack-log "^1.1.1"
-    ws "^3.3.3"
+    ws "^4.0.0"
 
 webpack-log@^1.0.1, webpack-log@^1.1.1:
   version "1.1.1"
@@ -7520,9 +7520,9 @@ write-file-atomic@^2.0.0:
     imurmurhash "^0.1.4"
     signal-exit "^3.0.2"
 
-ws@^3.3.3:
-  version "3.3.3"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-3.3.3.tgz#f1cf84fe2d5e901ebce94efaece785f187a228f2"
+ws@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-4.0.0.tgz#bfe1da4c08eeb9780b986e0e4d10eccd7345999f"
   dependencies:
     async-limiter "~1.0.0"
     safe-buffer "~5.1.0"

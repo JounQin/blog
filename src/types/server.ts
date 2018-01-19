@@ -5,10 +5,10 @@ import { Translator } from 'vue-translator'
 import { Locale } from 'utils'
 
 export interface ServerContext {
-  apolloState: string
   ctx: Context
   axios: AxiosInstance
   locale: Locale
+  script: string
   state: object
   title: string
   translator: Translator

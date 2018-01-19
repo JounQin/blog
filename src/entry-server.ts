@@ -12,7 +12,7 @@ const SET_COOKIE = 'set-cookie'
 
 const KOA_SESS_SIG = 'koa:sess.sig'
 
-const APOLLO_STATE_SUFFIX = __DEV__
+const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
@@ -47,19 +47,17 @@ export default (context: ServerContext) =>
         const { headers } = response
         const cookies = headers[SET_COOKIE] as string[]
 
-        if (cookies) {
-          parseSetCookies(cookies).forEach(
-            ({ name, expires, httponly: httpOnly, path, value }) => {
-              if (name !== KOA_SESS_SIG) {
-                ctx.cookies.set(name, value, {
-                  expires: expires && new Date(expires),
-                  httpOnly,
-                  path,
-                })
-              }
-            },
-          )
-        }
+        parseSetCookies(cookies).forEach(
+          ({ name, expires, httponly: httpOnly, path, value }) => {
+            if (name !== KOA_SESS_SIG) {
+              ctx.cookies.set(name, value, {
+                expires: expires && new Date(expires),
+                httpOnly,
+                path,
+              })
+            }
+          },
+        )
 
         return response
       },
@@ -91,10 +89,10 @@ export default (context: ServerContext) =>
 
       try {
         await Promise.all(
-          matched.map(({ options }: any) => {
-            const { asyncData } = options || { asyncData: null }
-            return asyncData && asyncData({ axios, route, store })
-          }),
+          matched.map(
+            ({ options, asyncData = options && options.asyncData }: any) =>
+              asyncData && asyncData({ axios, route, store }),
+          ),
         )
       } catch (e) {
         return reject(e.response ? e.response.data : e)
@@ -105,11 +103,10 @@ export default (context: ServerContext) =>
         console.log(`data pre-fetch: ${Date.now() - (start as number)}ms`)
       }
 
-      context.apolloState = `<script>window.__APOLLO_STATE__=${serialize(
-        cache.extract(),
-      ) + APOLLO_STATE_SUFFIX}</script>`
-
-      context.state = store.state
+      context.script = `<script>window.__INITIAL_STATE__=${serialize(
+        store.state,
+      )};window.__APOLLO_STATE__=${serialize(cache.extract()) +
+        SCRIPT_SUFFIX}</script>`
 
       resolve(app)
     }, reject)

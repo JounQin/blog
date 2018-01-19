@@ -57,6 +57,9 @@ export const parseSetCookies = (setCookies: string | string[]) => {
   }
   return setCookies.reduce(
     (result, cookies) => {
+      if (!cookies) {
+        return result
+      }
       const [item, ...rests] = cookies.split(/; */)
       const cookie = item.split('=')
       const setCookieItem = {
