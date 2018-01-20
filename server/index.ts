@@ -21,7 +21,7 @@ import {
 
 import startRouter from './router'
 
-import { INFINITY_DATE, LOCALES, LOCALE_COOKIE } from 'utils'
+import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
 
 acceptLanguage.languages(LOCALES)
 
@@ -97,11 +97,7 @@ const middlewares: Koa.Middleware[] = [
       })
     }
 
-    const context = {
-      ctx,
-      locale,
-      title: 'Blog | Blog system built on GitHub API with Vue SSR',
-    }
+    const context = { ctx, locale, title: TITLE }
 
     ctx.respond = false
     ctx.status = 200

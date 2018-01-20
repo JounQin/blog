@@ -71,6 +71,15 @@ import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
 
     store.commit('SET_OWNER', owner[OWNER_TYPE])
   },
+  title: (vm: About) => vm.$t('about'),
+  translator: {
+    en: {
+      about: 'About',
+    },
+    zh: {
+      about: '关于',
+    },
+  },
 })
 export default class About extends Vue {
   @State('owner') owner: Owner

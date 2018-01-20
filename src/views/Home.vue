@@ -74,8 +74,10 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
 
 @Component({
   asyncData: params => params.apollo.query(getQueryOptions(params)),
+  title: (vm: Home) => vm.$t('home'),
   translator: {
     en: {
+      home: 'Home',
       no_content: 'No content{ 0 }',
       in_categories: ' in current categories',
       in_search: ' under current search conditions',
@@ -83,6 +85,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
       next_page: 'Next',
     },
     zh: {
+      home: '首页',
       no_content: '当前{ 0 }暂无内容',
       in_categories: '分类下',
       in_search: '搜索条件下',

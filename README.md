@@ -6,4 +6,4 @@
 [![David Dev](https://img.shields.io/david/dev/JounQin/blog.svg)](https://david-dm.org/JounQin/blog?type=dev)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
-Blog system built on GitHub API with Vue SSR
+a Blog system built on GitHub GraphQL API with Vue SSR

@@ -16,11 +16,14 @@ import { getDefaultLabels } from 'commons'
 import { Label } from 'types'
 
 @Component({
+  title: (vm: Categories) => vm.$t('categories'),
   translator: {
     en: {
+      categories: 'Categories',
       total_categories_count: 'There are { 0 } categories totally now',
     },
     zh: {
+      categories: '分类',
       total_categories_count: '目前共计 { 0 } 个分类',
     },
   },

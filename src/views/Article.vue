@@ -32,7 +32,7 @@ main(v-if="issue")
 import { Component, Vue } from 'vue-property-decorator'
 
 import { Issue } from 'types'
-import { REPOSITORY } from 'utils'
+import { Locale, REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
 
@@ -48,6 +48,8 @@ const getQueryOptions = (issueNumber: number | string) => ({
   asyncData({ apollo, route, store }) {
     return apollo.query(getQueryOptions(route.params.number))
   },
+  title: (vm: Article) =>
+    vm.$utils.translateTitle(vm.issue.title, vm.$t.locale as Locale),
   translator: {
     en: {
       add_comment: 'Add Comment',

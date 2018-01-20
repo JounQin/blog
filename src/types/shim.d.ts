@@ -3,9 +3,11 @@ import ApolloClient from 'apollo-client'
 import { AxiosInstance } from 'axios'
 import Vue, { ComponentOptions } from 'vue'
 import { Route } from 'vue-router'
+import { Translator } from 'vue-translator'
 import { Store } from 'vuex'
 
 import { AsyncDataFn, RootState } from 'types'
+import { translateTitle } from 'utils'
 
 declare global {
   interface Window {
@@ -20,7 +22,7 @@ declare global {
 declare module 'vue/types/options' {
   interface ComponentOptions<V extends Vue> {
     asyncData?: AsyncDataFn
-    title?: string | (() => string)
+    title?: string | ((vm: any) => string)
   }
 }
 
@@ -28,11 +30,10 @@ declare module 'vue/types/vue' {
   interface Vue {
     $apollo: ApolloClient<NormalizedCacheObject>
     $http: AxiosInstance
-  }
-
-  interface VueConstructor {
-    apollo: ApolloClient<NormalizedCacheObject>
-    http: AxiosInstance
+    $t: Translator
+    $utils: {
+      translateTitle: typeof translateTitle
+    }
   }
 }
 

@@ -67,11 +67,14 @@ type ArchivesList = Array<{
       },
     })
   },
+  title: (vm: Archives) => vm.$t('archives'),
   translator: {
     en: {
+      archives: 'Archives',
       total_archives_count: 'There are { 0 } articles now, keep it up.',
     },
     zh: {
+      archives: '归档',
       total_archives_count: '目前共计 { 0 } 篇日志，继续努力。',
     },
   },
