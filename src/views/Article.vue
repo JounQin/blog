@@ -45,7 +45,7 @@ const getQueryOptions = (issueNumber: number | string) => ({
 })
 
 @Component({
-  asyncData({ apollo, route, store }) {
+  asyncData({ apollo, route }) {
     return apollo.query(getQueryOptions(route.params.number))
   },
   title: (vm: Article) =>

@@ -65,7 +65,7 @@ const queryOptions = {
 }
 
 @Component({
-  asyncData: ({ apollo, store }) => apollo.query(queryOptions),
+  asyncData: ({ apollo }) => apollo.query(queryOptions),
   title: (vm: About) => vm.$t('about'),
   translator: {
     en: {
