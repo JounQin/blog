@@ -45,8 +45,8 @@ const getQueryOptions = (issueNumber: number | string) => ({
 })
 
 @Component({
-  asyncData({ route, store }) {
-    return Vue.apollo.query(getQueryOptions(route.params.number))
+  asyncData({ apollo, route, store }) {
+    return apollo.query(getQueryOptions(route.params.number))
   },
   translator: {
     en: {

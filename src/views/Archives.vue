@@ -15,22 +15,20 @@ main
 <script lang="ts">
 import { NormalizedCacheObject } from 'apollo-cache-inmemory'
 import ApolloClient from 'apollo-client'
+import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
-import { Store } from 'vuex'
-import { State } from 'vuex-class'
 
 import { getDefaultLabels } from 'commons'
-import { Issue, Repository, RootState } from 'types'
+import { Issue, Repository } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as queries from 'queries.gql'
 
 const fetchArchieves = async (
   apollo: ApolloClient<NormalizedCacheObject>,
-  store: Store<RootState>,
   after?: string,
-): Promise<undefined> => {
-  const { data: { repository: { issues } } } = await Vue.apollo.query<{
+): Promise<Issue[]> => {
+  const { data: { repository: { issues } } } = await apollo.query<{
     repository: Repository
   }>({
     query: queries.archives,
@@ -43,11 +41,11 @@ const fetchArchieves = async (
 
   const { nodes, pageInfo } = issues
 
-  store.commit(after ? 'ADD_ARCHIVES' : 'SET_ARCHIVES', nodes)
+  const nextIssues = pageInfo.hasNextPage
+    ? await fetchArchieves(apollo, pageInfo.endCursor)
+    : []
 
-  if (pageInfo.hasNextPage) {
-    return fetchArchieves(apollo, store, pageInfo.endCursor)
-  }
+  return [...nodes, ...nextIssues]
 }
 
 interface ArchivesMap {
@@ -60,7 +58,15 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: ({ apollo, store }) => fetchArchieves(apollo, store),
+  asyncData: async ({ apollo }) => {
+    const archives = uniqBy(await fetchArchieves(apollo), 'id')
+    apollo.writeQuery({
+      query: queries.allArchives,
+      data: {
+        issues: archives,
+      },
+    })
+  },
   translator: {
     en: {
       total_archives_count: 'There are { 0 } articles now, keep it up.',
@@ -71,7 +77,13 @@ type ArchivesList = Array<{
   },
 })
 export default class Archives extends Vue {
-  @State('archives') archives: Issue[]
+  get archives(): Issue[] {
+    return this.$apollo.readQuery<{
+      issues: Issue[]
+    }>({
+      query: queries.allArchives,
+    }).issues
+  }
 
   get archivesMap(): ArchivesList {
     const archivesMap: ArchivesMap = {}

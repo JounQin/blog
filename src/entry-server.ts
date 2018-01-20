@@ -69,7 +69,9 @@ export default (context: ServerContext) =>
       },
     )
 
-    await store.dispatch('fetchInfo', axios)
+    const { apollo } = Vue
+
+    await store.dispatch('fetchInfo', { apollo, axios })
 
     router.push(ctx.url)
 

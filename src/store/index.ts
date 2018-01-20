@@ -1,3 +1,5 @@
+import { NormalizedCacheObject } from 'apollo-cache-inmemory'
+import { ApolloClient } from 'apollo-client'
 import { AxiosInstance } from 'axios'
 import Vue from 'vue'
 import Vuex, { Action, Mutation } from 'vuex'
@@ -12,10 +14,16 @@ Vue.use(Vuex)
 const actions: {
   [key: string]: Action<RootState, RootState>
 } = {
-  async fetchInfo({ commit }, axios: AxiosInstance) {
+  async fetchInfo(
+    { commit },
+    {
+      apollo,
+      axios,
+    }: { apollo: ApolloClient<NormalizedCacheObject>; axios: AxiosInstance },
+  ) {
     const [{ data: user }] = await Promise.all([
       axios.get<User>('/user'),
-      Vue.apollo.query<{
+      apollo.query<{
         repository: Repository
       }>({
         query: querires.categories,
@@ -38,18 +46,11 @@ const mutations: {
   SET_OWNER(state, owner) {
     state.owner = owner
   },
-  SET_ARCHIVES(state, archives) {
-    state.archives = archives
-  },
-  ADD_ARCHIVES(state, archives) {
-    state.archives = [...state.archives, ...archives]
-  },
 }
 
 export default () =>
   new Vuex.Store<RootState>({
     state: {
-      archives: null,
       owner: null,
       progress: 0,
       user: null,

@@ -21,6 +21,7 @@ main(v-if="issues.length", :class="$style.main")
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
+import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
@@ -116,7 +117,7 @@ export default class Home extends Vue {
       issues = data.repository.issues as Issues
     }
 
-    this.issues = issues.nodes
+    this.issues = uniqBy(issues.nodes, 'id')
     this.pageInfo = issues.pageInfo
   }
 
