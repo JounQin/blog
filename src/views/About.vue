@@ -32,17 +32,12 @@ main
 <script lang="ts">
 import gql from 'graphql-tag'
 import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
 
 import { Owner } from 'types'
 import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
 
-@Component({
-  async asyncData({ apollo, store }) {
-    const { data: owner } = await apollo.query<{
-      [ownerType: string]: Owner
-    }>({
-      query: gql(`query pinnedRepositories($login: String!) {
+const queryOptions = {
+  query: gql(`query pinnedRepositories($login: String!) {
   ${OWNER_TYPE}(login: $login) {
     avatarUrl(size: 100)
     ${IS_USER ? 'bio company' : 'description'}
@@ -66,11 +61,11 @@ import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
     }
   }
 }`),
-      variables: LOGIN,
-    })
+  variables: LOGIN,
+}
 
-    store.commit('SET_OWNER', owner[OWNER_TYPE])
-  },
+@Component({
+  asyncData: ({ apollo, store }) => apollo.query(queryOptions),
   title: (vm: About) => vm.$t('about'),
   translator: {
     en: {
@@ -82,7 +77,11 @@ import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
   },
 })
 export default class About extends Vue {
-  @State('owner') owner: Owner
+  get owner(): Owner {
+    return this.$apollo.readQuery<{
+      [ownerType: string]: Owner
+    }>(queryOptions)[OWNER_TYPE]
+  }
 
   login = LOGIN.login
 }

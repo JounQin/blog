@@ -4,7 +4,7 @@ import { AxiosInstance } from 'axios'
 import Vue from 'vue'
 import Vuex, { Action, Mutation } from 'vuex'
 
-import { Repository, RootState, User } from 'types'
+import { RootState, User } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
@@ -23,9 +23,7 @@ const actions: {
   ) {
     const [{ data: user }] = await Promise.all([
       axios.get<User>('/user'),
-      apollo.query<{
-        repository: Repository
-      }>({
+      apollo.query({
         query: querires.categories,
         variables: REPOSITORY,
       }),
@@ -43,15 +41,11 @@ const mutations: {
   SET_USER(state, user) {
     state.user = user
   },
-  SET_OWNER(state, owner) {
-    state.owner = owner
-  },
 }
 
 export default () =>
   new Vuex.Store<RootState>({
     state: {
-      owner: null,
       progress: 0,
       user: null,
     },
