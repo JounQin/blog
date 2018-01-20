@@ -1,10 +1,9 @@
 import axios from 'axios'
-import Vue from 'vue'
 
 import createApp from 'app'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
-const { app, router, store } = createApp()
+const { apollo, app, router, store } = createApp()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
@@ -35,8 +34,7 @@ router.onReady(() => {
       await Promise.all(
         activated.map(
           ({ options, asyncData = options && options.asyncData }: any) =>
-            asyncData &&
-            asyncData({ apollo: Vue.apollo, axios, route: to, store }),
+            asyncData && asyncData({ apollo, axios, route: to, store }),
         ),
       )
     }

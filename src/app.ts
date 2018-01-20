@@ -1,6 +1,6 @@
 import Vue from 'vue'
 
-import 'plugins'
+import { createApollo } from 'plugins'
 import { invertColor, translateContent, translateTitle } from 'utils'
 
 import createRouter from 'router'
@@ -18,6 +18,7 @@ Object.defineProperty(Vue.prototype, '$utils', {
 })
 
 export default () => {
+  const apollo = createApollo()
   const router = createRouter()
   const store = createStore()
 
@@ -27,5 +28,5 @@ export default () => {
     render: h => h(App),
   })
 
-  return { app, router, store }
+  return { apollo, app, router, store }
 }

@@ -1,9 +1,7 @@
 import _axios from 'axios'
 import * as serialize from 'serialize-javascript'
-import Vue from 'vue'
 import { createTranslator } from 'vue-translator'
 
-import { cache } from 'plugins'
 import { ServerContext } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
@@ -23,7 +21,7 @@ export default (context: ServerContext) =>
 
     const { ctx } = context
 
-    const { app, router, store } = createApp()
+    const { apollo, app, router, store } = createApp()
 
     const { url } = ctx
     const { fullPath } = router.resolve(url).route
@@ -36,12 +34,14 @@ export default (context: ServerContext) =>
       headers: ctx.headers,
     })
 
-    const translator = createTranslator({
-      locale: context.locale,
-      defaultLocale: DEFAULT_LOCALE,
+    Object.assign(context, {
+      apollo,
+      axios,
+      translator: createTranslator({
+        locale: context.locale,
+        defaultLocale: DEFAULT_LOCALE,
+      }),
     })
-
-    context.translator = translator
 
     axios.interceptors.response.use(
       response => {
@@ -69,8 +69,6 @@ export default (context: ServerContext) =>
       },
     )
 
-    const { apollo } = Vue
-
     await store.dispatch('fetchInfo', { apollo, axios })
 
     router.push(ctx.url)
@@ -94,8 +92,7 @@ export default (context: ServerContext) =>
         await Promise.all(
           matched.map(
             ({ options, asyncData = options && options.asyncData }: any) =>
-              asyncData &&
-              asyncData({ apollo: Vue.apollo, axios, route, store }),
+              asyncData && asyncData({ apollo, axios, route, store }),
           ),
         )
       } catch (e) {
@@ -109,7 +106,7 @@ export default (context: ServerContext) =>
 
       context.script = `<script>window.__INITIAL_STATE__=${serialize(
         store.state,
-      )};window.__APOLLO_STATE__=${serialize(cache.extract()) +
+      )};window.__APOLLO_STATE__=${serialize(apollo.cache.extract()) +
         SCRIPT_SUFFIX}</script>`
 
       resolve(app)

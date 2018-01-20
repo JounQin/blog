@@ -38,9 +38,7 @@ import { Owner } from 'types'
 import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
 
 @Component({
-  async asyncData({ store }) {
-    const { apollo } = Vue
-
+  async asyncData({ apollo, store }) {
     const { data: owner } = await apollo.query<{
       [ownerType: string]: Owner
     }>({
