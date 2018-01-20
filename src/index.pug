@@ -1,9 +1,31 @@
 html(lang="en")
   head
-    meta(charset="UTF-8")
-    meta(name="viewport", content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no")
-    meta(http-equiv="X-UA-Compatible", content="IE=edge,chrome=1")
     title 1sG Blog | a Blog system built on GitHub GraphQL API with Vue SSR
+    meta(charset="UTF-8")
+    meta(http-equiv="X-UA-Compatible", content="IE=edge,chrome=1")
+    meta(name="viewport", content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no")
+    meta(name="theme-color" content="#6c757d")
+    link(rel="apple-touch-icon" sizes="120x120" href="/logo-120.png")
+    link(rel="shortcut icon" sizes="48x48" href="/logo-48.png")
+    link(rel="manifest" href="/manifest.json")
     base(target="_blank")
+    style.
+      #skip a {
+         position: absolute;
+         left: -10000px;
+         top: auto;
+         width: 1px;
+         height:1 px;
+         overflow: hidden;
+      }
+      #skip a:focus {
+         position:static;
+         width:auto;
+         height:auto;
+       }
   body
+    #skip
+      a(href="#app") skip to content
     #app
+    if !__DEV__
+      script(src="https://cdn.polyfill.io/v2/polyfill.min.js")

@@ -134,6 +134,11 @@ const middlewares: Koa.Middleware[] = [
   },
 ]
 
+const MAX_AGE = 1000 * 3600 * 24 * 365 // one year
+
+const publicStatic = staticCache('public', {
+  maxAge: MAX_AGE,
+})
 const sessionMiddleware = session({}, app)
 
 if (process.env.NODE_ENV === 'development') {
@@ -152,6 +157,7 @@ if (process.env.NODE_ENV === 'development') {
   middlewares.splice(
     1,
     0,
+    publicStatic,
     sessionMiddleware,
     webpackMiddleware,
     proxy(serverHost, {
@@ -172,14 +178,13 @@ if (process.env.NODE_ENV === 'development') {
     },
   )
 
-  const MAX_AGE = 1000 * 3600 * 24 * 365 // one year
-
   const files: staticCache.StaticCacheFiles = {}
 
   middlewares.splice(
     1,
     0,
     compress(),
+    publicStatic,
     staticCache(
       resolve('dist/static'),
       {

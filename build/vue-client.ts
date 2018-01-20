@@ -38,7 +38,6 @@ export default merge.smart(baseConfig, {
     }),
     new HtmlWebpackPlugin({
       template: 'src/index.pug',
-      favicon: 'src/assets/favicon.ico',
       filename: '__non_ssr_page__.html',
     }),
     ...(__DEV__

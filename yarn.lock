@@ -47,9 +47,10 @@
   resolved "https://registry.yarnpkg.com/@types/events/-/events-1.1.0.tgz#93b1be91f63c184450385272c47b6496fd028e02"
 
 "@types/express-serve-static-core@*":
-  version "4.11.0"
-  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.11.0.tgz#aaaf472777191c3e56ec7aa160034c6b55ebdd59"
+  version "4.11.1"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.11.1.tgz#f6f7212382d59b19d696677bcaa48a37280f5d45"
   dependencies:
+    "@types/events" "*"
     "@types/node" "*"
 
 "@types/express@*":
@@ -266,9 +267,9 @@
   dependencies:
     "@types/webpack" "*"
 
-"@types/webpack-node-externals@^1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@types/webpack-node-externals/-/webpack-node-externals-1.6.0.tgz#50c67cb94ddb1ba827829945553783339ec1419d"
+"@types/webpack-node-externals@^1.6.1":
+  version "1.6.1"
+  resolved "https://registry.yarnpkg.com/@types/webpack-node-externals/-/webpack-node-externals-1.6.1.tgz#32497d86abea9c97b287ad6e37c06c09e638c05d"
   dependencies:
     "@types/webpack" "*"
 

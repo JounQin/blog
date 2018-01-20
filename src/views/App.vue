@@ -4,7 +4,7 @@
   nav.navbar.navbar-expand-md.navbar-light.bg-light
     .container
       router-link.navbar-brand(to="/")
-        img.brand-img(src="~assets/logo.png")
+        img.brand-img(src="/logo-48.png")
         span(:class="$style.brandName")
           span 1stg
       button.navbar-toggler(type="button", @click="toggleShow")
