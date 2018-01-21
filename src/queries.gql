@@ -64,7 +64,7 @@ query issue($name: String!, $owner: String!, $number: Int!) {
       comments(first: 25) {
         nodes {
           author {
-            avatarUrl(size: 100)
+            avatarUrl
             login
             url
           }

@@ -4,7 +4,7 @@
   nav.navbar.navbar-expand-md.navbar-light.bg-light
     .container
       router-link.navbar-brand(to="/")
-        img.brand-img(src="/logo-48.png")
+        img.brand-img(src="/logo-30.png", srcset="/logo-60.png 2x", alt="1stG")
         span(:class="$style.brandName")
           span 1stg
       button.navbar-toggler(type="button", @click="toggleShow")
@@ -27,9 +27,10 @@
           button.btn.btn-outline-success(type="submit") {{ $t('search') }}
           a.ml-2(v-if="user"
                   :href="user.uuid ? `https://github.com/login/oauth/authorize?client_id=${ GITHUB_CLIENT_ID }&state=${user.uuid}&redirect_uri=${ GITHUB_OAUTH_CALLBACK }?path=${ $route.fullPath }` : user.websiteUrl || user.url"
-                  :target="user.uuid ? '_self' : '_blank'")
+                  :target="user.uuid ? '_self' : '_blank'"
+                  rel="noopener")
             template(v-if="user.uuid") {{ $t('login') }}
-            img.user-avatar(v-else, :src="user.avatarUrl")
+            img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
   .container-fluid.flex-1.scroll-y
     div(:class="$style.main")
       router-view.container.py-4
@@ -37,9 +38,9 @@
       .container.d-flex
         .flex-1
           a.ml-2(href="https://www.1stg.me") © 1stg.me
-          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
+          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`", name="repository")
             i.fa.fa-github
-          a.text-secondary.ml-2(href="javascript:;")
+          a.text-secondary.ml-2(href="javascript:;", name="locale")
             i.fa.fa-globe(@click="$t.toggleLocale")
         div
           i.fa.fa-code.mr-2

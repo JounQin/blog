@@ -15,12 +15,12 @@ main(v-if="issue")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
       a.d-none.d-md-block(:href="author.url")
-        img.rounded.mr-3.avatar-img(:src="author.avatarUrl")
+        img.rounded.mr-3.avatar-img(:src="author.avatarUrl + '&s=50'", :srcset="author.avatarUrl + '&s=100 2x'")
       .media-body
         .card
           .card-header.d-flex.align-items-center
             a.d-md-none(:href="author.url")
-              img.rounded.mr-3.avatar-img(:src="author.avatarUrl")
+              img.rounded.mr-3.avatar-img(:src="author.avatarUrl + '&s=32'", :srcset="author.avatarUrl + '&s=64 2x'")
             .d-inline-block
               a.text-dark(:href="author.url") {{ author.login }}
               a.small.text-secondary.d-block.d-md-inline-block.ml-0.ml-md-2(:href="url") {{ createdAt | timeAgo }}

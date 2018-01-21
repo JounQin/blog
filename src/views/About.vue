@@ -2,7 +2,7 @@
 main
   blockquote.d-flex.align-items-center.justify-content-center.text-secondary.quote(:class="$style.profile")
     a(:href="owner.url")
-      img.mr-2(:src="owner.avatarUrl", :class="$style.avatar")
+      img.mr-2(:src="owner.avatarUrl + '&s=40'", :srcset="owner.avatarUrl + '&s=80 2x'", :class="$style.avatar")
     .text-left
       a(:href="owner.url") {{ owner.name }}
       template(v-if="owner.email") ({{ owner.email }})
@@ -39,7 +39,7 @@ import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
 const queryOptions = {
   query: gql(`query pinnedRepositories($login: String!) {
   ${OWNER_TYPE}(login: $login) {
-    avatarUrl(size: 100)
+    avatarUrl
     ${IS_USER ? 'bio company' : 'description'}
     email
     id
