@@ -22,7 +22,7 @@
             a.nav-link
               i.fa.mr-2(:class="`fa-${ icon }`")
               | {{ $t(link || 'home') }}
-        form.form-inline.my-2.my-md-0(@submit.prevent="() => search && $router.push(`/?search=${search}`)")
+        form.form-inline.my-2.my-md-0(@submit.prevent="submit")
           input.form-control.mr-2.flex-1(v-model.trim="search", type="search" :placeholder="$t('search_all_articles')")
           button.btn.btn-outline-success(type="submit") {{ $t('search') }}
           a.ml-2(v-if="user"
@@ -152,6 +152,13 @@ export default class App extends Vue {
     this.collapsing = false
     this.collapseHeight = null
     this.show = this.toShow
+  }
+
+  submit() {
+    if (this.search) {
+      this.toggleShow()
+      this.$router.push(`/?search=${this.search}`)
+    }
   }
 }
 </script>

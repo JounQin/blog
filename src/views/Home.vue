@@ -12,7 +12,7 @@ main(v-if="issues.length", :class="$style.main")
                                        :to="{ path: '/', query: { labels: name } }"
                                        :style="{ backgroundColor: '#' + color }")
           a.px-2.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
-  nav
+  nav(v-if="pageInfo.hasPreviousPage || pageInfo.hasNextPage")
     ul.pagination.justify-content-end
       router-link.page-item(:to="prevRoute", :class="{ disabled: !pageInfo.hasPreviousPage }", tag="li")
         a.page-link {{ $t('previous_page') }}
