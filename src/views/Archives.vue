@@ -13,19 +13,17 @@ main
             router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
 </template>
 <script lang="ts">
-import { NormalizedCacheObject } from 'apollo-cache-inmemory'
-import ApolloClient from 'apollo-client'
 import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 
 import { getDefaultLabels } from 'commons'
-import { Issue, Repository } from 'types'
+import { Apollo, Issue, Repository } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as queries from 'queries.gql'
 
 const fetchArchieves = async (
-  apollo: ApolloClient<NormalizedCacheObject>,
+  apollo: Apollo,
   after?: string,
 ): Promise<Issue[]> => {
   const { data: { repository: { issues } } } = await apollo.query<{

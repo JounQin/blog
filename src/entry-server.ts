@@ -1,8 +1,9 @@
 import _axios from 'axios'
+import * as LRU from 'lru-cache'
 import * as serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
-import { ServerContext } from 'types'
+import { Apollo, ServerContext } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
 import createApp from 'app'
@@ -15,13 +16,18 @@ const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
+const cache = LRU<string, Apollo>({
+  max: 1000,
+  maxAge: 1000 * 60 * 15,
+})
+
 export default (context: ServerContext) =>
   new Promise(async (resolve, reject) => {
     const start: boolean | number = __DEV__ && Date.now()
 
     const { ctx } = context
 
-    const { apollo, app, router, store } = createApp()
+    const { app, createApollo, router, store } = createApp()
 
     const { url } = ctx
     const { fullPath } = router.resolve(url).route
@@ -33,6 +39,12 @@ export default (context: ServerContext) =>
     const axios = _axios.create({
       headers: ctx.headers,
     })
+
+    let apollo = cache.get(url)
+
+    if (!apollo) {
+      cache.set(url, (apollo = createApollo()))
+    }
 
     Object.assign(context, {
       apollo,

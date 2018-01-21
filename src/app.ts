@@ -18,7 +18,6 @@ Object.defineProperty(Vue.prototype, '$utils', {
 })
 
 export default () => {
-  const apollo = createApollo()
   const router = createRouter()
   const store = createStore()
 
@@ -28,5 +27,5 @@ export default () => {
     render: h => h(App),
   })
 
-  return { apollo, app, router, store }
+  return { app, createApollo, router, store }
 }

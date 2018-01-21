@@ -3,7 +3,9 @@ import axios from 'axios'
 import createApp from 'app'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
-const { apollo, app, router, store } = createApp()
+const { app, createApollo, router, store } = createApp()
+
+const apollo = createApollo()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')

@@ -6,8 +6,10 @@ import { Store } from 'vuex'
 
 import { RootState } from './store'
 
+export type Apollo = ApolloClient<NormalizedCacheObject>
+
 export interface AsyncData {
-  apollo?: ApolloClient<NormalizedCacheObject>
+  apollo?: Apollo
   axios?: AxiosInstance
   store?: Store<RootState>
   route?: Route

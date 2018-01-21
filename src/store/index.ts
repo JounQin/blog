@@ -1,10 +1,8 @@
-import { NormalizedCacheObject } from 'apollo-cache-inmemory'
-import { ApolloClient } from 'apollo-client'
 import { AxiosInstance } from 'axios'
 import Vue from 'vue'
 import Vuex, { Action, Mutation } from 'vuex'
 
-import { RootState, User } from 'types'
+import { Apollo, RootState, User } from 'types'
 import { REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
@@ -16,10 +14,7 @@ const actions: {
 } = {
   async fetchInfo(
     { commit },
-    {
-      apollo,
-      axios,
-    }: { apollo: ApolloClient<NormalizedCacheObject>; axios: AxiosInstance },
+    { apollo, axios }: { apollo: Apollo; axios: AxiosInstance },
   ) {
     const [{ data: user }] = await Promise.all([
       axios.get<User>('/user'),

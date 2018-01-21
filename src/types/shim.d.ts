@@ -6,7 +6,7 @@ import { Route } from 'vue-router'
 import { Translator } from 'vue-translator'
 import { Store } from 'vuex'
 
-import { AsyncDataFn, RootState } from 'types'
+import { Apollo, AsyncDataFn, RootState } from 'types'
 import { translateTitle } from 'utils'
 
 declare global {
@@ -28,7 +28,7 @@ declare module 'vue/types/options' {
 
 declare module 'vue/types/vue' {
   interface Vue {
-    $apollo: ApolloClient<NormalizedCacheObject>
+    $apollo: Apollo
     $http: AxiosInstance
     $t: Translator
     $utils: {

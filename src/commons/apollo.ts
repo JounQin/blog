@@ -1,12 +1,9 @@
-import { NormalizedCacheObject } from 'apollo-cache-inmemory'
-import { ApolloClient } from 'apollo-client'
-
-import { Repository } from 'types'
+import { Apollo, Repository } from 'types'
 import { GITHUB_EXCLUDED_LABELS, REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
 
-export const getDefaultLabels = (apollo: ApolloClient<NormalizedCacheObject>) =>
+export const getDefaultLabels = (apollo: Apollo) =>
   apollo
     .readQuery<{
       repository: Repository
