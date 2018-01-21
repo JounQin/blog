@@ -53,11 +53,9 @@ const getQueryOptions = (issueNumber: number | string) => ({
   translator: {
     en: {
       add_comment: 'Add Comment',
-      toggle_locale: '切换至中文',
     },
     zh: {
       add_comment: '添加评论',
-      toggle_locale: 'Switch to English',
     },
   },
 })

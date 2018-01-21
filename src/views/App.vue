@@ -7,7 +7,7 @@
         img.brand-img(src="/logo-30.png", srcset="/logo-60.png 2x", alt="1stG")
         span(:class="$style.brandName")
           span 1stg
-      button.navbar-toggler(type="button", @click="toggleShow")
+      button.navbar-toggler(:aria-label="$t('toggle_navigation')", type="button", @click="toggleShow")
         span.navbar-toggler-icon
       .navbar-collapse(:class="[$style.collapse, { show }, `collaps${collapsing ? 'ing' : 'e'}`]"
                         :style="{ height: collapseHeight }"
@@ -38,10 +38,12 @@
       .container.d-flex
         .flex-1
           a.ml-2(href="https://www.1stg.me") © 1stg.me
-          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`", name="repository")
-            i.fa.fa-github
-          a.text-secondary.ml-2(href="javascript:;", name="locale")
-            i.fa.fa-globe(@click="$t.toggleLocale")
+          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
+            .sr-only {{ REPOSITORY.owner + '/' + REPOSITORY.name }}
+            i.fa.fa-github(aria-hidden="true")
+          a.text-secondary.ml-2(href="javascript:;", :title="$t('toggle_locale')")
+            .sr-only {{ $t('toggle_locale') }}
+            i.fa.fa-globe(aria-hidden="true", @click="$t.toggleLocale")
         div
           i.fa.fa-code.mr-2
           | by
@@ -70,6 +72,8 @@ const COLLAPSE_HEIGHT = '187.5px'
       search_all_articles: 'Search All Articles',
       search: 'Search',
       login: 'Login',
+      toggle_navigation: 'Toggle Navigation',
+      toggle_locale: '切换至中文',
     },
     zh: {
       home: '首页',
@@ -79,6 +83,8 @@ const COLLAPSE_HEIGHT = '187.5px'
       search_all_articles: '搜索全部文章',
       search: '搜索',
       login: '登录',
+      toggle_navigation: '切换导航',
+      toggle_locale: 'Switch to English',
     },
   },
   components: {
