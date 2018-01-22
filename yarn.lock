@@ -2760,6 +2760,22 @@ google-fonts-webpack-plugin@^0.4.4:
     webpack-sources "^0.2.0"
     yauzl "^2.8.0"
 
+google-translate-api@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/google-translate-api/-/google-translate-api-2.3.0.tgz#626730a123da0d57af3735dd707cda71cee919c7"
+  dependencies:
+    configstore "^2.0.0"
+    google-translate-token latest
+    got "^6.3.0"
+    safe-eval "^0.3.0"
+
+google-translate-token@latest:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/google-translate-token/-/google-translate-token-1.0.0.tgz#be943445786f00c3765dec31f490dac21228d3f8"
+  dependencies:
+    configstore "^2.0.0"
+    got "^6.3.0"
+
 got@^5.0.0:
   version "5.7.1"
   resolved "https://registry.yarnpkg.com/got/-/got-5.7.1.tgz#5f81635a61e4a6589f180569ea4e381680a51f35"
@@ -2780,7 +2796,7 @@ got@^5.0.0:
     unzip-response "^1.0.2"
     url-parse-lax "^1.0.0"
 
-got@^6.7.1:
+got@^6.3.0, got@^6.7.1:
   version "6.7.1"
   resolved "https://registry.yarnpkg.com/got/-/got-6.7.1.tgz#240cd05785a9a18e561dc1b44b41c763ef1e8db0"
   dependencies:
@@ -6043,6 +6059,10 @@ rxjs@^5.4.2:
 safe-buffer@^5.0.1, safe-buffer@^5.1.0, safe-buffer@^5.1.1, safe-buffer@~5.1.0, safe-buffer@~5.1.1:
   version "5.1.1"
   resolved "https://registry.yarnpkg.com/safe-buffer/-/safe-buffer-5.1.1.tgz#893312af69b2123def71f57889001671eeb2c853"
+
+safe-eval@^0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/safe-eval/-/safe-eval-0.3.0.tgz#06ce111eebd9c185abaff008ec0fcffc5c5be00c"
 
 sass-graph@^2.2.4:
   version "2.2.4"

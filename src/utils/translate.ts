@@ -145,8 +145,8 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
               sourceText: firstTranslation,
             },
           })
-          .then(({ data: { targetText } }) => {
-            translationsCache[main] = targetText
+          .then(({ data: { targetText, text } }) => {
+            translationsCache[main] = targetText || text
             vm.$forceUpdate()
           })
       }

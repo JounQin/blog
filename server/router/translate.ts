@@ -1,11 +1,13 @@
 import axios from 'axios'
 import * as crypto from 'crypto'
+import * as googleTranslateAPI from 'google-translate-api'
 import { Middleware } from 'koa'
 import * as qs from 'qs'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from 'utils'
 
 const {
+  GOOGLE_TRANSLATE_ENABLED: googleTranslateEnabled,
   TENCENT_TRANSLATE_API_SECRET_ID: SecretId,
   TENCENT_TRANSLATE_API_SECRET_KEY: SecretKey,
 } = process.env
@@ -34,10 +36,28 @@ const getTranslatePrams = (params: TranslateParams) => ({
 
 const alphabeticalSort = (a: string, b: string) => (a > b ? 1 : a < b ? -1 : 0)
 
+const GoogleTranslateLocales: {
+  [key: string]: string
+} = {
+  zh: 'zh-cn',
+  en: 'en',
+}
+
 const translate: Middleware = async (ctx, next) => {
   const { query: { source, sourceText } } = ctx
 
   if (!sourceText) {
+    return
+  }
+
+  if (googleTranslateEnabled) {
+    const translated = await googleTranslateAPI(sourceText, {
+      from: GoogleTranslateLocales[source],
+      to: TOGGLE_LOCALE[source as Locale],
+    })
+    ctx.body = Object.assign(translated, {
+      text: translated.text.replace(/<\/ ([^<>]+)>/g, '</$1>'),
+    })
     return
   }
 
