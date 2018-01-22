@@ -130,27 +130,29 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
 
   const sourceText = main.substr(Placehodlers[placehodler](source).value.length)
 
-  if (!__SERVER__ && body == null) {
+  if (body == null) {
     if (translationsCache[main]) {
       return start + translationsCache[main] + end
+    } else {
+      body = translationsCache[main] = ' loading... '
+
+      if (!__SERVER__) {
+        axios
+          .get('/translate', {
+            params: {
+              source,
+              sourceText,
+            },
+          })
+          .then(({ data: { targetText } }) => {
+            translationsCache[main] = targetText
+            vm.$forceUpdate()
+          })
+      }
     }
-
-    axios
-      .get('/translate', {
-        params: {
-          source,
-          sourceText,
-        },
-      })
-      .then(({ data: { targetText } }) => {
-        translationsCache[main] = targetText
-        vm.$forceUpdate()
-      })
-
-    body = translationsCache[main] = ' loading... '
   }
 
-  return start + (body || main) + end
+  return start + (body || sourceText) + end
 }
 
 export const translateTitle: TranslateTemplate = (title, vm) =>

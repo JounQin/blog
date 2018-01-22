@@ -32,7 +32,7 @@ main(v-if="issue")
 import { Component, Vue } from 'vue-property-decorator'
 
 import { Issue } from 'types'
-import { Locale, REPOSITORY } from 'utils'
+import { REPOSITORY } from 'utils'
 
 import * as querires from 'queries.gql'
 
