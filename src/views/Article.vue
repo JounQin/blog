@@ -11,7 +11,7 @@ main(v-if="issue")
                                         :style="{ backgroundColor: '#' + color }")
       a.small(:style="{ color: $utils.invertColor('#' + color) }") {{ name }}
   small.pull-right.text-primary.clickable(@click="$t.toggleLocale") {{ $t('toggle_locale') }}
-  .markdown-body.comment-body.my-3.my-md-5(v-html="$utils.translateContent(issue.bodyHTML, $t.locale)")
+  .markdown-body.comment-body.my-3.my-md-5(v-html="$utils.translateContent(issue.bodyHTML, $t.locale, _self)")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
       a.d-none.d-md-block(:href="author.url")
@@ -49,7 +49,7 @@ const getQueryOptions = (issueNumber: number | string) => ({
     return apollo.query(getQueryOptions(route.params.number))
   },
   title: (vm: Article) =>
-    vm.$utils.translateTitle(vm.issue.title, vm.$t.locale as Locale),
+    vm.$utils.translateTitle(vm.issue.title, vm.$t.locale as Locale, vm),
   translator: {
     en: {
       add_comment: 'Add Comment',

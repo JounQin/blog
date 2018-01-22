@@ -1,6 +1,8 @@
+import axios from 'axios'
+import Vue from 'vue'
 import { Translations } from 'vue-translator'
 
-import { DEFAULT_LOCALE, LOCALES, Locale } from './constant'
+import { DEFAULT_LOCALE, LOCALES, Locale, TOGGLE_LOCALE } from './constant'
 
 enum Placehodler {
   TITLE = 'title',
@@ -17,6 +19,11 @@ const contentPlaceholder = (locale: string) => ({
   value: `<p>[${locale}]</p>`,
 })
 
+const Placehodlers = {
+  [Placehodler.TITLE]: titlePlaceholder,
+  [Placehodler.CONTENT]: contentPlaceholder,
+}
+
 const allPlacehodlers = {
   [Placehodler.TITLE]: LOCALES.map(titlePlaceholder),
   [Placehodler.CONTENT]: LOCALES.map(contentPlaceholder),
@@ -26,6 +33,15 @@ const endPlacehodlers = {
   [Placehodler.TITLE]: titlePlaceholder('_end_').value,
   [Placehodler.CONTENT]: contentPlaceholder('<em>end</em>').value,
 }
+
+interface TranslateTemplate {
+  (template: string, locale: Locale, vm: Vue, placehodler?: Placehodler): string
+  loading?: boolean
+}
+
+const translationsCache: {
+  [key: string]: string
+} = {}
 
 /**
  * DSL:
@@ -49,10 +65,11 @@ const endPlacehodlers = {
  * footer
  * ```
  */
-const translateTemplate = (
-  template: string,
-  locale: Locale,
-  placehodler: Placehodler,
+const translateTemplate: TranslateTemplate = (
+  template,
+  locale,
+  vm,
+  placehodler,
 ) => {
   const placehodlers = allPlacehodlers[placehodler]
 
@@ -110,13 +127,37 @@ const translateTemplate = (
         : main.substring(itemIndex, indexes[index + 1].index)
   })
 
-  return (
-    start + (translations[locale] || translations[DEFAULT_LOCALE] || '') + end
-  )
+  let body = translations[locale] || translations[DEFAULT_LOCALE]
+
+  if (!__SERVER__ && body == null) {
+    if (translationsCache[main]) {
+      return start + translationsCache[main] + end
+    }
+
+    const source = TOGGLE_LOCALE[locale]
+
+    axios
+      .get('/translate', {
+        params: {
+          source,
+          sourceText: main.substr(
+            Placehodlers[placehodler](source).value.length,
+          ),
+        },
+      })
+      .then(({ data: { targetText } }) => {
+        translationsCache[main] = targetText
+        vm.$forceUpdate()
+      })
+
+    body = ' loading... '
+  }
+
+  return start + (body || '') + end
 }
 
-export const translateTitle = (title: string, locale: Locale) =>
-  translateTemplate(title, locale, Placehodler.TITLE)
+export const translateTitle: TranslateTemplate = (title, locale, vm) =>
+  translateTemplate(title, locale, vm, Placehodler.TITLE)
 
-export const translateContent = (content: string, locale: Locale) =>
-  translateTemplate(content, locale, Placehodler.CONTENT)
+export const translateContent: TranslateTemplate = (content, locale, vm) =>
+  translateTemplate(content, locale, vm, Placehodler.CONTENT)

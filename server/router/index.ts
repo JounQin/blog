@@ -16,6 +16,8 @@ import { serverHost, serverPort } from '../../build/config'
 
 import { User } from 'types'
 
+import translate from './translate'
+
 global.fetch = fetch as any
 
 const { APP_KEYS, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } = process.env
@@ -99,6 +101,7 @@ router
 
     ctx.redirect(`${path.replace(/ /g, '%2B')}`)
   })
+  .get('/translate', translate)
 
 export default (app?: Koa) => {
   const provided = !!app
