@@ -1,7 +1,7 @@
 <template lang="pug">
-#app.d-flex.flex-column
+#app.container-fluid
   hi-progress(:progress="progress")
-  nav.navbar.navbar-expand-md.navbar-light.bg-light
+  nav.fixed-top.navbar.navbar-expand-md.navbar-light.bg-light
     .container
       router-link.navbar-brand(to="/")
         img.brand-img(src="/logo-30.png", srcset="/logo-60.png 2x", alt="1stG")
@@ -31,25 +31,24 @@
                   rel="noopener")
             template(v-if="user.uuid") {{ $t('login') }}
             img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
-  .container-fluid.flex-1.scroll-y
-    div(:class="$style.main")
-      router-view.container.py-4
-    footer.row.py-4.bg-light
-      .container.d-flex
-        .flex-1
-          a.ml-2(href="https://www.1stg.me") © 1stg.me
-          a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
-            .sr-only {{ REPOSITORY.owner + '/' + REPOSITORY.name }}
-            i.fa.fa-github(aria-hidden="true")
-          a.text-secondary.ml-2(href="javascript:;", :title="$t('toggle_locale')")
-            .sr-only {{ $t('toggle_locale') }}
-            i.fa.fa-globe(aria-hidden="true", @click="$t.toggleLocale")
-        div
-          i.fa.fa-code.mr-2
-          | by
-          a.mx-2(href="https://GitHub.com/JounQin") JounQin
-          | with
-          i.fa.fa-heart.ml-2
+  div(:class="$style.main")
+    router-view.container.py-4
+  footer.row.py-4.bg-light
+    .container.d-flex
+      .flex-1
+        a.ml-2(href="https://www.1stg.me") © 1stg.me
+        a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
+          .sr-only {{ REPOSITORY.owner + '/' + REPOSITORY.name }}
+          i.fa.fa-github(aria-hidden="true")
+        a.text-secondary.ml-2(href="javascript:;", :title="$t('toggle_locale')")
+          .sr-only {{ $t('toggle_locale') }}
+          i.fa.fa-globe(aria-hidden="true", @click="$t.toggleLocale")
+      div
+        i.fa.fa-code.mr-2
+        | by
+        a.mx-2(href="https://GitHub.com/JounQin") JounQin
+        | with
+        i.fa.fa-heart.ml-2
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
@@ -362,6 +361,7 @@ button:focus {
 .main {
   min-height: 100%;
   margin: 0 -15px -63px -15px;
+  padding-top: 53px;
   padding-bottom: 63px;
 }
 
