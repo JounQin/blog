@@ -35,7 +35,7 @@ const endPlacehodlers = {
 }
 
 interface TranslateTemplate {
-  (template: string, locale: Locale, vm: Vue, placehodler?: Placehodler): string
+  (template: string, vm: Vue, placehodler?: Placehodler): string
   loading?: boolean
 }
 
@@ -65,12 +65,7 @@ const translationsCache: {
  * footer
  * ```
  */
-const translateTemplate: TranslateTemplate = (
-  template,
-  locale,
-  vm,
-  placehodler,
-) => {
+const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
   const placehodlers = allPlacehodlers[placehodler]
 
   let startIndex
@@ -127,22 +122,24 @@ const translateTemplate: TranslateTemplate = (
         : main.substring(itemIndex, indexes[index + 1].index)
   })
 
+  const locale = vm.$t.locale as Locale
+
   let body = translations[locale] || translations[DEFAULT_LOCALE]
+
+  const source = TOGGLE_LOCALE[locale]
+
+  const sourceText = main.substr(Placehodlers[placehodler](source).value.length)
 
   if (!__SERVER__ && body == null) {
     if (translationsCache[main]) {
       return start + translationsCache[main] + end
     }
 
-    const source = TOGGLE_LOCALE[locale]
-
     axios
       .get('/translate', {
         params: {
           source,
-          sourceText: main.substr(
-            Placehodlers[placehodler](source).value.length,
-          ),
+          sourceText,
         },
       })
       .then(({ data: { targetText } }) => {
@@ -150,14 +147,14 @@ const translateTemplate: TranslateTemplate = (
         vm.$forceUpdate()
       })
 
-    body = ' loading... '
+    body = translationsCache[main] = ' loading... '
   }
 
-  return start + (body || '') + end
+  return start + (body || main) + end
 }
 
-export const translateTitle: TranslateTemplate = (title, locale, vm) =>
-  translateTemplate(title, locale, vm, Placehodler.TITLE)
+export const translateTitle: TranslateTemplate = (title, vm) =>
+  translateTemplate(title, vm, Placehodler.TITLE)
 
-export const translateContent: TranslateTemplate = (content, locale, vm) =>
-  translateTemplate(content, locale, vm, Placehodler.CONTENT)
+export const translateContent: TranslateTemplate = (content, vm) =>
+  translateTemplate(content, vm, Placehodler.CONTENT)

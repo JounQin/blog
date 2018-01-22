@@ -10,7 +10,7 @@ main
              :class="[$style.item, $style.article]"
              :key="id")
             small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
-            router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
+            router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
 </template>
 <script lang="ts">
 import { uniqBy } from 'lodash'

@@ -3,7 +3,7 @@ main(v-if="issues.length", :class="$style.main")
   ul.list-unstyled
     li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, $t.locale) }}
+        router-link.heading-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
         router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"

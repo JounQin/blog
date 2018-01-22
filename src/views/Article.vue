@@ -1,7 +1,7 @@
 <template lang="pug">
 main(v-if="issue")
   h4
-    a.heading-link(:href="issue.url") {{ $utils.translateTitle(issue.title, $t.locale) }}
+    a.heading-link(:href="issue.url") {{ $utils.translateTitle(issue.title, _self) }}
   small.text-secondary {{ issue.createdAt | timeAgo($t.locale) }}
   ul.list-unstyled.d-inline-flex.mb-0
     router-link.d-inline-flex.ml-2.px-2(v-for="{ id, color, name } of issue.labels.nodes"
@@ -11,7 +11,7 @@ main(v-if="issue")
                                         :style="{ backgroundColor: '#' + color }")
       a.small(:style="{ color: $utils.invertColor('#' + color) }") {{ name }}
   small.pull-right.text-primary.clickable(@click="$t.toggleLocale") {{ $t('toggle_locale') }}
-  .markdown-body.comment-body.my-3.my-md-5(v-html="$utils.translateContent(issue.bodyHTML, $t.locale, _self)")
+  .markdown-body.comment-body.my-3.my-md-5(v-html="$utils.translateContent(issue.bodyHTML, _self)")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
       a.d-none.d-md-block(:href="author.url")
@@ -48,8 +48,7 @@ const getQueryOptions = (issueNumber: number | string) => ({
   asyncData({ apollo, route }) {
     return apollo.query(getQueryOptions(route.params.number))
   },
-  title: (vm: Article) =>
-    vm.$utils.translateTitle(vm.issue.title, vm.$t.locale as Locale, vm),
+  title: (vm: Article) => vm.$utils.translateTitle(vm.issue.title, vm),
   translator: {
     en: {
       add_comment: 'Add Comment',
