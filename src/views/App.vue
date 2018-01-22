@@ -73,6 +73,7 @@ const COLLAPSE_HEIGHT = '187.5px'
       login: 'Login',
       toggle_navigation: 'Toggle Navigation',
       toggle_locale: '切换至中文',
+      translating: 'Translating',
     },
     zh: {
       home: '首页',
@@ -84,6 +85,7 @@ const COLLAPSE_HEIGHT = '187.5px'
       login: '登录',
       toggle_navigation: '切换导航',
       toggle_locale: 'Switch to English',
+      translating: '翻译中',
     },
   },
   components: {

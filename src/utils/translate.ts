@@ -2,7 +2,7 @@ import axios from 'axios'
 import Vue from 'vue'
 import { Translations } from 'vue-translator'
 
-import { DEFAULT_LOCALE, LOCALES, Locale, TOGGLE_LOCALE } from './constant'
+import { DEFAULT_LOCALE, LOCALES, Locale } from './constant'
 
 enum Placehodler {
   TITLE = 'title',
@@ -18,11 +18,6 @@ const contentPlaceholder = (locale: string) => ({
   locale,
   value: `<p>[${locale}]</p>`,
 })
-
-const Placehodlers = {
-  [Placehodler.TITLE]: titlePlaceholder,
-  [Placehodler.CONTENT]: contentPlaceholder,
-}
 
 const allPlacehodlers = {
   [Placehodler.TITLE]: LOCALES.map(titlePlaceholder),
@@ -114,34 +109,40 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
 
   const translations: Translations = {}
 
+  let firstLocale: string
+  let firstTranslation: string
+
   indexes.forEach((item, index) => {
     const itemIndex = item.index + item.placehodler.length
-    translations[item.locale] =
+    const translation =
       index === indexes.length - 1
         ? main.substr(itemIndex)
         : main.substring(itemIndex, indexes[index + 1].index)
+
+    if (!index) {
+      firstLocale = item.locale
+      firstTranslation = translation
+    }
+
+    translations[item.locale] = translation
   })
 
   const locale = vm.$t.locale as Locale
 
   let body = translations[locale] || translations[DEFAULT_LOCALE]
 
-  const source = TOGGLE_LOCALE[locale]
-
-  const sourceText = main.substr(Placehodlers[placehodler](source).value.length)
-
   if (body == null) {
-    if (translationsCache[main]) {
-      return start + translationsCache[main] + end
-    } else {
-      body = translationsCache[main] = ' loading... '
+    body = translationsCache[main]
+
+    if (!body) {
+      body = translationsCache[main] = ` ${vm.$t('translating')}... `
 
       if (!__SERVER__) {
         axios
           .get('/translate', {
             params: {
-              source,
-              sourceText,
+              source: firstLocale,
+              sourceText: firstTranslation,
             },
           })
           .then(({ data: { targetText } }) => {
@@ -152,7 +153,7 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
     }
   }
 
-  return start + (body || sourceText) + end
+  return start + (body || firstTranslation) + end
 }
 
 export const translateTitle: TranslateTemplate = (title, vm) =>

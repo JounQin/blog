@@ -68,7 +68,10 @@ const translate: Middleware = async (ctx, next) => {
     targetText:
       targetText &&
       targetText.replace(/\<([^<>]+)\>/g, (matched, $0: string) => {
-        $0 = $0.toLowerCase().replace(/ /g, '')
+        $0 = $0
+          .toLowerCase()
+          .replace(/ /g, '')
+          .replace(/\/+/g, '/')
         const index = $0.indexOf('/')
         if (index !== -1) {
           $0 = $0.substr(index)
