@@ -1,7 +1,8 @@
 <template lang="pug">
 main(v-if="issue")
+  div(hidden) {{ $tt.loading }}
   h4
-    a.heading-link(:href="issue.url") {{ $utils.translateTitle(issue.title, _self) }}
+    a.heading-link(:href="issue.url") {{ $tt(issue.title, $t) }}
   small.text-secondary {{ issue.createdAt | timeAgo($t.locale) }}
   ul.list-unstyled.d-inline-flex.mb-0
     router-link.d-inline-flex.ml-2.px-2(v-for="{ id, color, name } of issue.labels.nodes"
@@ -10,8 +11,8 @@ main(v-if="issue")
                                         :to="{ path: '/', query: { labels: name } }"
                                         :style="{ backgroundColor: '#' + color }")
       a.small(:style="{ color: $utils.invertColor('#' + color) }") {{ name }}
-  small.pull-right.text-primary.clickable(@click="$t.toggleLocale") {{ $t('toggle_locale') }}
-  .markdown-body.comment-body.my-3.my-md-5(v-html="$utils.translateContent(issue.bodyHTML, _self)")
+  small.pull-right.text-primary.clickable(@click="toggleLocale") {{ $t('toggle_locale') }}
+  .markdown-body.comment-body.my-3.my-md-5(v-html="$tt(issue.bodyHTML, $t, false)")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
       a.d-none.d-md-block(:href="author.url")
@@ -45,10 +46,16 @@ const getQueryOptions = (issueNumber: number | string) => ({
 })
 
 @Component({
-  asyncData({ apollo, route }) {
-    return apollo.query(getQueryOptions(route.params.number))
+  async asyncData({ apollo, route, translate, translator }) {
+    const { data: { repository: { issue } } } = await apollo.query<{
+      repository: {
+        issue: Issue
+      }
+    }>(getQueryOptions(route.params.number))
+    translate(issue.title, translator)
+    translate(issue.bodyHTML, translator, false)
   },
-  title: (vm: Article) => vm.$utils.translateTitle(vm.issue.title, vm),
+  title: (vm: Article) => vm.$tt(vm.issue.title, vm.$t),
   translator: {
     en: {
       add_comment: 'Add Comment',
@@ -60,9 +67,18 @@ const getQueryOptions = (issueNumber: number | string) => ({
 })
 export default class Article extends Vue {
   get issue(): Issue {
-    return this.$apollo.readQuery<{ repository: { issue: Issue } }>(
-      getQueryOptions(this.$route.params.number),
-    ).repository.issue
+    return this.$apollo.readQuery<{
+      repository: {
+        issue: Issue
+      }
+    }>(getQueryOptions(this.$route.params.number)).repository.issue
+  }
+
+  toggleLocale() {
+    this.$t.toggleLocale()
+    this.$nextTick(() => {
+      this.$tt.cache.prefetch()
+    })
   }
 }
 </script>

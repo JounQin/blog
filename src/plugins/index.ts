@@ -1,6 +1,7 @@
 import './filters'
 import './http'
 import './title'
-import './translate'
+import './translator'
 
 export * from './apollo'
+export * from './translate'

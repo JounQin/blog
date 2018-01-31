@@ -6,13 +6,14 @@ import { Route } from 'vue-router'
 import { Translator } from 'vue-translator'
 import { Store } from 'vuex'
 
+import { Translate, TranslateCacheData } from 'plugins'
 import { Apollo, AsyncDataFn, RootState } from 'types'
-import { translateTitle } from 'utils'
 
 declare global {
   interface Window {
     __INITIAL_STATE__: RootState
     __APOLLO_STATE__: NormalizedCacheObject
+    __TRANSLATE_CACHE__: TranslateCacheData
   }
 
   // tslint:disable-next-line variable-name
@@ -31,9 +32,7 @@ declare module 'vue/types/vue' {
     $apollo: Apollo
     $http: AxiosInstance
     $t: Translator
-    $utils: {
-      translateTitle: typeof translateTitle
-    }
+    $tt: Translate
   }
 }
 

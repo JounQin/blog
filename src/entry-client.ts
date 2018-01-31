@@ -1,6 +1,8 @@
 import axios from 'axios'
+import Vue from 'vue'
 
 import createApp from 'app'
+import { translate } from 'plugins'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
 const { app, createApollo, router, store } = createApp()
@@ -9,6 +11,14 @@ const apollo = createApollo()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
+})
+
+app.$watch('$tt.loading', curr => {
+  if (curr) {
+    Vue.nextTick(() => {
+      translate.cache.prefetch()
+    })
+  }
 })
 
 store.replaceState(window.__INITIAL_STATE__)
@@ -36,9 +46,18 @@ router.onReady(() => {
       await Promise.all(
         activated.map(
           ({ options, asyncData = options && options.asyncData }: any) =>
-            asyncData && asyncData({ apollo, axios, route: to, store }),
+            asyncData &&
+            asyncData({
+              apollo,
+              axios,
+              route: to,
+              store,
+              translate,
+              translator: Vue.translator,
+            }),
         ),
       )
+      await translate.cache.prefetch()
     }
 
     next()

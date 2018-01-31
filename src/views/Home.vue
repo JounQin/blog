@@ -1,9 +1,10 @@
 <template lang="pug">
 main(v-if="issues.length", :class="$style.main")
+  div(hidden) {{ $tt.loading }}
   ul.list-unstyled
     li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
+        router-link.heading-link(:to="`/article/${number}`") {{ $tt(title, $t) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
         router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"
@@ -72,7 +73,27 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
 }
 
 @Component({
-  asyncData: params => params.apollo.query(getQueryOptions(params)),
+  async asyncData({ apollo, route, translate, translator }) {
+    const { data } = await apollo.query<
+      {
+        search: SearchResultItemConnection
+      } & {
+        repository: Repository
+      }
+    >(getQueryOptions({ apollo, route }))
+
+    let issues: Issues
+
+    if (data.search) {
+      issues = data.search as Issues
+    } else {
+      issues = data.repository.issues as Issues
+    }
+
+    issues.nodes.forEach(({ title }) => {
+      translate(title, translator)
+    })
+  },
   title: (vm: Home) => vm.$t('home'),
   translator: {
     en: {
