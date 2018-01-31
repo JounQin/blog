@@ -3,6 +3,7 @@ import * as LRU from 'lru-cache'
 import * as serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
+import { createTranslate } from 'plugins'
 import { Apollo, ServerContext } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
@@ -46,13 +47,18 @@ export default (context: ServerContext) =>
       cache.set(url, (apollo = createApollo()))
     }
 
+    const translate = createTranslate()
+
+    const translator = createTranslator({
+      locale: context.locale,
+      defaultLocale: DEFAULT_LOCALE,
+    })
+
     Object.assign(context, {
       apollo,
       axios,
-      translator: createTranslator({
-        locale: context.locale,
-        defaultLocale: DEFAULT_LOCALE,
-      }),
+      translate,
+      translator,
     })
 
     axios.interceptors.response.use(
@@ -104,9 +110,11 @@ export default (context: ServerContext) =>
         await Promise.all(
           matched.map(
             ({ options, asyncData = options && options.asyncData }: any) =>
-              asyncData && asyncData({ apollo, axios, route, store }),
+              asyncData &&
+              asyncData({ apollo, axios, route, store, translate, translator }),
           ),
         )
+        await translate.cache.prefetch()
       } catch (e) {
         return reject(e.response ? e.response.data : e)
       }
@@ -118,8 +126,11 @@ export default (context: ServerContext) =>
 
       context.script = `<script>window.__INITIAL_STATE__=${serialize(
         store.state,
-      )};window.__APOLLO_STATE__=${serialize(apollo.cache.extract()) +
-        SCRIPT_SUFFIX}</script>`
+      )};window.__APOLLO_STATE__=${serialize(
+        apollo.cache.extract(),
+      )};window.__TRANSLATE_CACHE__=${serialize(
+        translate.cache.extract(),
+      )}${SCRIPT_SUFFIX}</script>`
 
       resolve(app)
     }, reject)

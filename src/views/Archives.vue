@@ -1,5 +1,6 @@
 <template lang="pug">
 main
+  div(hidden) {{ $tt.loading }}
   .my-2.my-md-5(:class="$style.main")
     h6(:class="[$style.item, $style.title]") {{ $t('total_archives_count', [archives.length]) }}
     ol.list-unstyled
@@ -10,7 +11,7 @@ main
              :class="[$style.item, $style.article]"
              :key="id")
             small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
-            router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
+            router-link(:to="`/article/${number}`") {{ $tt(title, $t) }}
 </template>
 <script lang="ts">
 import { uniqBy } from 'lodash'
@@ -55,8 +56,11 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: async ({ apollo }) => {
+  asyncData: async ({ apollo, translate, translator }) => {
     const archives = uniqBy(await fetchArchieves(apollo), 'id')
+    archives.forEach(({ title }) => {
+      translate(title, translator)
+    })
     apollo.writeQuery({
       query: queries.allArchives,
       data: {

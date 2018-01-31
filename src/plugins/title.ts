@@ -24,6 +24,9 @@ Vue.mixin(
           '$t.locale'() {
             this._changeTitle()
           },
+          '$tt.loading'() {
+            this._changeTitle()
+          },
         },
         mounted() {
           this._changeTitle()
