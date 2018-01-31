@@ -1,4 +1,3 @@
-import axios from 'axios'
 import Vue from 'vue'
 import { Translations } from 'vue-translator'
 
@@ -109,7 +108,6 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
 
   const translations: Translations = {}
 
-  let firstLocale: string
   let firstTranslation: string
 
   indexes.forEach((item, index) => {
@@ -120,7 +118,6 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
         : main.substring(itemIndex, indexes[index + 1].index)
 
     if (!index) {
-      firstLocale = item.locale
       firstTranslation = translation
     }
 
@@ -133,24 +130,6 @@ const translateTemplate: TranslateTemplate = (template, vm, placehodler) => {
 
   if (body == null) {
     body = translationsCache[main]
-
-    if (!body) {
-      body = translationsCache[main] = ` ${vm.$t('translating')}... `
-
-      if (!__SERVER__) {
-        axios
-          .get('/translate', {
-            params: {
-              source: firstLocale,
-              sourceText: firstTranslation,
-            },
-          })
-          .then(({ data: { targetText, text } }) => {
-            translationsCache[main] = targetText || text
-            vm.$forceUpdate()
-          })
-      }
-    }
   }
 
   return start + (body || firstTranslation) + end

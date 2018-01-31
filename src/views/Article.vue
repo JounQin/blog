@@ -23,7 +23,7 @@ main(v-if="issue")
               img.rounded.mr-3.avatar-img(:src="author.avatarUrl + '&s=32'", :srcset="author.avatarUrl + '&s=64 2x'")
             .d-inline-block
               a.text-dark(:href="author.url") {{ author.login }}
-              a.small.text-secondary.d-block.d-md-inline-block.ml-0.ml-md-2(:href="url") {{ createdAt | timeAgo }}
+              a.small.text-secondary.d-block.d-md-inline-block.ml-0.ml-md-2(:href="url") {{ createdAt | timeAgo($t.locale) }}
           .card-body.markdown-body.comment-body(v-html="bodyHTML")
   .d-flex.justify-content-center
     a(:href="issue.url + '#new_comment_field'") {{ $t('add_comment') }}
