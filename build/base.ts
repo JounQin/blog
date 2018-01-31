@@ -1,7 +1,5 @@
 import * as ExtractTextPlugin from 'extract-text-webpack-plugin'
 import * as ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
-import * as glob from 'glob'
-import * as PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import * as webpack from 'webpack'
 
 import { __DEV__, publicPath, resolve } from './config'
@@ -140,12 +138,7 @@ const config: webpack.Configuration = {
     }),
     ...(__DEV__
       ? [new webpack.NamedChunksPlugin(), new webpack.NamedModulesPlugin()]
-      : [
-          new webpack.optimize.ModuleConcatenationPlugin(),
-          new PurgecssWebpackPlugin({
-            paths: glob.sync(resolve('src/views/*.vue')),
-          }),
-        ]),
+      : [new webpack.optimize.ModuleConcatenationPlugin()]),
   ],
 }
 
