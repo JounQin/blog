@@ -25,7 +25,6 @@ import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
-import { getDefaultLabels } from 'commons'
 import {
   AsyncDataFn,
   Issue,
@@ -33,7 +32,7 @@ import {
   Repository,
   SearchResultItemConnection,
 } from 'types'
-import { REPOSITORY } from 'utils'
+import { REPOSITORY, getDefaultLabels } from 'utils'
 
 import * as querires from 'queries.gql'
 

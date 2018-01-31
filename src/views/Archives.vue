@@ -16,9 +16,8 @@ main
 import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 
-import { getDefaultLabels } from 'commons'
 import { Apollo, Issue, Repository } from 'types'
-import { REPOSITORY } from 'utils'
+import { REPOSITORY, getDefaultLabels } from 'utils'
 
 import * as queries from 'queries.gql'
 

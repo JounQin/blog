@@ -30,5 +30,5 @@ html(lang="en")
     #skip
       a(href="#app") skip to content
     #app
-    if !__DEV__
+    if process.env.NODE_ENV !== 'development'
       script(src="https://cdn.polyfill.io/v2/polyfill.min.js")

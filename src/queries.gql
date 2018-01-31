@@ -35,18 +35,6 @@ query archives(
   }
 }
 
-query categories($name: String!, $owner: String!) {
-  repository(name: $name, owner: $owner) {
-    labels(first: 100) {
-      nodes {
-        color
-        id
-        name
-      }
-    }
-  }
-}
-
 query issue($name: String!, $owner: String!, $number: Int!) {
   repository(name: $name, owner: $owner) {
     issue(number: $number) {

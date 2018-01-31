@@ -3,9 +3,7 @@ import Vue from 'vue'
 import Vuex, { Action, Mutation } from 'vuex'
 
 import { Apollo, RootState, User } from 'types'
-import { REPOSITORY } from 'utils'
-
-import * as querires from 'queries.gql'
+import { categoriesQueryOptions } from 'utils'
 
 Vue.use(Vuex)
 
@@ -18,10 +16,7 @@ const actions: {
   ) {
     const [{ data: user }] = await Promise.all([
       axios.get<User>('/user'),
-      apollo.query({
-        query: querires.categories,
-        variables: REPOSITORY,
-      }),
+      apollo.query(categoriesQueryOptions),
     ])
     commit('SET_USER', user)
   },

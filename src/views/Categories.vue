@@ -12,8 +12,8 @@ main
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
-import { getDefaultLabels } from 'commons'
 import { Label } from 'types'
+import { getDefaultLabels } from 'utils'
 
 @Component({
   title: (vm: Categories) => vm.$t('categories'),
