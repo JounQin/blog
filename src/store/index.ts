@@ -16,7 +16,7 @@ const actions: {
   ) {
     const [{ data: user }] = await Promise.all([
       axios.get<User>('/user'),
-      apollo.query(categoriesQueryOptions),
+      apollo.query({ ...categoriesQueryOptions }),
     ])
     commit('SET_USER', user)
   },

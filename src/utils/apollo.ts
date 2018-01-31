@@ -25,7 +25,7 @@ export const getDefaultLabels = (apollo: Apollo) =>
   apollo
     .readQuery<{
       repository: Repository
-    }>(categoriesQueryOptions)
+    }>({ ...categoriesQueryOptions })
     .repository.labels.nodes.filter(
       label => !GITHUB_EXCLUDED_LABELS.includes(label.name),
     )
