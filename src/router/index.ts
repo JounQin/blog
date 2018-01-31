@@ -15,6 +15,10 @@ export default () =>
   new VueRouter({
     mode: 'history',
     fallback: false,
+    scrollBehavior: () => ({
+      x: 0,
+      y: 0,
+    }),
     routes: [
       {
         path: '/',

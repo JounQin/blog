@@ -50,10 +50,6 @@ router.onReady(() => {
     }, 500)
   })
 
-  router.afterEach(() => {
-    document.querySelector('.container-fluid').scrollTop = 0
-  })
-
   app.$mount('#app')
 })
 
