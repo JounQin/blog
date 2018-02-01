@@ -11,7 +11,7 @@ main(v-if="issue")
                                         :to="{ path: '/', query: { labels: name } }"
                                         :style="{ backgroundColor: '#' + color }")
       a.small(:style="{ color: $utils.invertColor('#' + color) }") {{ name }}
-  small.pull-right.text-primary.clickable(@click="toggleLocale") {{ $t('toggle_locale') }}
+  small.pull-right.text-primary.clickable(@click="$t.toggleLocale") {{ $t('toggle_locale') }}
   .markdown-body.comment-body.my-3.my-md-5(v-html="$tt(issue.bodyHTML, $t, false)")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
@@ -72,13 +72,6 @@ export default class Article extends Vue {
         issue: Issue
       }
     }>(getQueryOptions(this.$route.params.number)).repository.issue
-  }
-
-  toggleLocale() {
-    this.$t.toggleLocale()
-    this.$nextTick(() => {
-      this.$tt.cache.prefetch()
-    })
   }
 }
 </script>

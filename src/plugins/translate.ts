@@ -147,7 +147,7 @@ export const createTranslate = (): Translate => {
       if (!body) {
         body = translateCache.data[main] = ` ${translator('translating')}... `
 
-        translate.loading = true
+        instance.loading = true
 
         const storage = axios
           .get('/translate', {
