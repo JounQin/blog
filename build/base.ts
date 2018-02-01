@@ -67,6 +67,9 @@ const config: webpack.Configuration = {
         options: {
           cssModules: {
             camelCase: true,
+            localIdentName: __DEV__
+              ? '[name]__[local]___[hash:base64:5]'
+              : '_[hash:base64:5]',
           },
           loaders: {
             scss: ExtractTextPlugin.extract({

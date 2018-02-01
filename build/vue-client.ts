@@ -1,5 +1,7 @@
+import * as glob from 'glob'
 import * as GoogleFontsWebpackPlugin from 'google-fonts-webpack-plugin'
 import * as HtmlWebpackPlugin from 'html-webpack-plugin'
+import * as PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import * as SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
 import * as VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import * as webpack from 'webpack'
@@ -58,6 +60,10 @@ export default merge.smart(baseConfig, {
                 subsets: ['latin', 'latin-ext'],
               },
             ],
+          }),
+          new PurgecssWebpackPlugin({
+            paths: glob.sync(resolve('src/views/*.vue')),
+            whitelistPatterns: [/^_/],
           }),
           new SWPrecacheWebpackPlugin({
             cacheId: 'blog',

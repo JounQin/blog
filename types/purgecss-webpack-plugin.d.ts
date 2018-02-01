@@ -3,6 +3,8 @@ declare module 'purgecss-webpack-plugin' {
 
   interface PurgecssWebpackPluginOptions {
     paths: string[]
+    whitelist?: string[]
+    whitelistPatterns?: RegExp[]
   }
 
   namespace PurgecssWebpackPlugin {
