@@ -6,8 +6,8 @@ import Vue from 'vue'
 export const createApollo = () => {
   const cache = new InMemoryCache()
 
-  if (!__SERVER__ && window.__APOLLO_STATE__) {
-    cache.restore(window.__APOLLO_STATE__)
+  if (!__SERVER__ && window.__APOLLO_CACHE__) {
+    cache.restore(window.__APOLLO_CACHE__)
   }
 
   const apollo = new ApolloClient({

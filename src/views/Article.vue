@@ -1,7 +1,7 @@
 <template lang="pug">
 main(v-if="issue")
   h4
-    a.heading-link(:href="issue.url") {{ $tt(issue.title, $t) }}
+    a.heading-link(:href="issue.url") {{ $tt(issue.title) }}
   small.text-secondary {{ issue.createdAt | timeAgo($t.locale) }}
   ul.list-unstyled.d-inline-flex.mb-0
     router-link.d-inline-flex.ml-2.px-2(v-for="{ id, color, name } of issue.labels.nodes"
@@ -11,7 +11,7 @@ main(v-if="issue")
                                         :style="{ backgroundColor: '#' + color }")
       a.small(:style="{ color: $utils.invertColor('#' + color) }") {{ name }}
   small.pull-right.text-primary.clickable(@click="$t.toggleLocale") {{ $t('toggle_locale') }}
-  .markdown-body.comment-body.my-3.my-md-5(v-html="$tt(issue.bodyHTML, $t, false)")
+  .markdown-body.comment-body.my-3.my-md-5(v-html="$tt(issue.bodyHTML, false)")
   ul.list-unstyled
     li.media.my-4(v-for="({ author, createdAt, bodyHTML, url }, index) of issue.comments.nodes")
       a.d-none.d-md-block(:href="author.url")
@@ -45,16 +45,16 @@ const getQueryOptions = (issueNumber: number | string) => ({
 })
 
 @Component({
-  async asyncData({ apollo, route, translate, translator }) {
+  async asyncData({ apollo, route, translate }) {
     const { data: { repository: { issue } } } = await apollo.query<{
       repository: {
         issue: Issue
       }
     }>(getQueryOptions(route.params.number))
-    translate(issue.title, translator)
-    translate(issue.bodyHTML, translator, false)
+    translate(issue.title)
+    translate(issue.bodyHTML, false)
   },
-  title: (vm: Article) => vm.$tt(vm.issue.title, vm.$t),
+  title: (vm: Article) => vm.$tt(vm.issue.title),
   translator: {
     en: {
       add_comment: 'Add Comment',

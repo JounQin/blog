@@ -15,13 +15,11 @@ app.$watch('$t.locale', curr => {
 
 app.$watch('$tt.loading', curr => {
   if (curr) {
-    Vue.nextTick(() => {
-      translate.cache.prefetch()
-    })
+    Vue.nextTick(() => translate.cache.prefetch())
   }
 })
 
-store.replaceState(window.__INITIAL_STATE__)
+store.replaceState(window.__STORE_STATE__)
 
 const SET_PROGRESS = 'SET_PROGRESS'
 
@@ -53,7 +51,6 @@ router.onReady(() => {
               route: to,
               store,
               translate,
-              translator: Vue.translator,
             }),
         ),
       )

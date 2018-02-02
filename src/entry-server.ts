@@ -47,12 +47,12 @@ export default (context: ServerContext) =>
       cache.set(url, (apollo = createApollo()))
     }
 
-    const translate = createTranslate()
-
     const translator = createTranslator({
       locale: context.locale,
       defaultLocale: DEFAULT_LOCALE,
     })
+
+    const translate = createTranslate(translator)
 
     Object.assign(context, {
       apollo,
@@ -111,7 +111,7 @@ export default (context: ServerContext) =>
           matched.map(
             ({ options, asyncData = options && options.asyncData }: any) =>
               asyncData &&
-              asyncData({ apollo, axios, route, store, translate, translator }),
+              asyncData({ apollo, axios, route, store, translate }),
           ),
         )
         await translate.cache.prefetch()
@@ -124,10 +124,10 @@ export default (context: ServerContext) =>
         console.log(`data pre-fetch: ${Date.now() - (start as number)}ms`)
       }
 
-      context.script = `<script>window.__INITIAL_STATE__=${serialize(
-        store.state,
-      )};window.__APOLLO_STATE__=${serialize(
+      context.script = `<script>window.__APOLLO_CACHE__=${serialize(
         apollo.cache.extract(),
+      )};window.__STORE_STATE__=${serialize(
+        store.state,
       )};window.__TRANSLATE_CACHE__=${serialize(
         translate.cache.extract(),
       )}${SCRIPT_SUFFIX}</script>`

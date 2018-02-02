@@ -3,7 +3,7 @@ main(v-if="issues.length", :class="$style.main")
   ul.list-unstyled
     li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ $tt(title, $t) }}
+        router-link.heading-link(:to="`/article/${number}`") {{ $tt(title) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
         router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"
@@ -72,7 +72,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
 }
 
 @Component({
-  async asyncData({ apollo, route, translate, translator }) {
+  async asyncData({ apollo, route, translate }) {
     const { data } = await apollo.query<
       {
         search: SearchResultItemConnection
@@ -89,9 +89,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
       issues = data.repository.issues as Issues
     }
 
-    issues.nodes.forEach(({ title }) => {
-      translate(title, translator)
-    })
+    issues.nodes.forEach(({ title }) => translate(title))
   },
   title: (vm: Home) => vm.$t('home'),
   translator: {

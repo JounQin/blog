@@ -30,7 +30,7 @@ const endPlacehodlers = {
 }
 
 export interface Translate {
-  (template: string, translator: Translator, type?: boolean): string
+  (template: string, type?: boolean): string
   cache?: TranslateCache
   loading?: boolean
 }
@@ -40,10 +40,8 @@ export interface TranslateCacheData {
 }
 
 export interface TranslateCache {
-  data: TranslateCacheData
-  extract: (this: TranslateCache) => TranslateCacheData
-  storages: Array<Promise<void>>
-  prefetch: (this: TranslateCache) => Promise<void>
+  extract: () => TranslateCacheData
+  prefetch: () => Promise<void>
 }
 
 /**
@@ -68,8 +66,14 @@ export interface TranslateCache {
  * footer
  * ```
  */
-export const createTranslate = (): Translate => {
-  const instance: Translate = (template, translator, type = true) => {
+export const createTranslate = (
+  translator: Translator = Vue.translator,
+): Translate => {
+  const cacheData: TranslateCacheData =
+    (!__SERVER__ && window.__TRANSLATE_CACHE__) || {}
+  const storages: Array<Promise<void>> = []
+
+  const instance: Translate = (template, type = true) => {
     const placehodler = type ? Placehodler.TITLE : Placehodler.CONTENT
     const placehodlers = allPlacehodlers[placehodler]
 
@@ -142,10 +146,10 @@ export const createTranslate = (): Translate => {
     let body = translations[locale] || translations[DEFAULT_LOCALE]
 
     if (body == null) {
-      body = translateCache.data[main]
+      body = cacheData[main]
 
       if (!body) {
-        body = translateCache.data[main] = ` ${translator('translating')}... `
+        body = cacheData[main] = ` ${translator('translating')}... `
 
         instance.loading = true
 
@@ -157,10 +161,10 @@ export const createTranslate = (): Translate => {
             },
           })
           .then(({ data: { targetText, text } }) => {
-            translateCache.data[main] = targetText || text
+            cacheData[main] = targetText || text
           })
 
-        translateCache.storages.push(storage)
+        storages.push(storage)
       }
     }
 
@@ -168,17 +172,12 @@ export const createTranslate = (): Translate => {
   }
 
   const translateCache: TranslateCache = {
-    data: (!__SERVER__ && window.__TRANSLATE_CACHE__) || {},
-    extract() {
-      return this.data
-    },
-    storages: [],
-    prefetch() {
-      return Promise.all(this.storages).then(() => {
-        this.storages.length = 0
+    extract: () => cacheData,
+    prefetch: () =>
+      Promise.all(storages).then(() => {
+        storages.length = 0
         instance.loading = false
-      })
-    },
+      }),
   }
 
   instance.cache = translateCache

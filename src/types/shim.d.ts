@@ -11,8 +11,8 @@ import { Apollo, AsyncDataFn, RootState } from 'types'
 
 declare global {
   interface Window {
-    __INITIAL_STATE__: RootState
-    __APOLLO_STATE__: NormalizedCacheObject
+    __STORE_STATE__: RootState
+    __APOLLO_CACHE__: NormalizedCacheObject
     __TRANSLATE_CACHE__: TranslateCacheData
   }
 

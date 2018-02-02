@@ -10,7 +10,7 @@ main
              :class="[$style.item, $style.article]"
              :key="id")
             small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
-            router-link(:to="`/article/${number}`") {{ $tt(title, $t) }}
+            router-link(:to="`/article/${number}`") {{ $tt(title) }}
 </template>
 <script lang="ts">
 import { uniqBy } from 'lodash'
@@ -55,11 +55,9 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: async ({ apollo, translate, translator }) => {
+  asyncData: async ({ apollo, translate }) => {
     const archives = uniqBy(await fetchArchieves(apollo), 'id')
-    archives.forEach(({ title }) => {
-      translate(title, translator)
-    })
+    archives.forEach(({ title }) => translate(title))
     apollo.writeQuery({
       query: queries.allArchives,
       data: {
