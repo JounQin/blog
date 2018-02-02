@@ -17,7 +17,7 @@ export default () =>
     fallback: false,
     scrollBehavior: () => ({
       x: 0,
-      y: 0,
+      y: 1,
     }),
     routes: [
       {
