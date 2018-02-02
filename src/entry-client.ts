@@ -45,13 +45,7 @@ router.onReady(() => {
         activated.map(
           ({ options, asyncData = options && options.asyncData }: any) =>
             asyncData &&
-            asyncData({
-              apollo,
-              axios,
-              route: to,
-              store,
-              translate,
-            }),
+            asyncData({ apollo, axios, route: to, store, translate }),
         ),
       )
       await translate.cache.prefetch()

@@ -17,9 +17,11 @@ Vue.use(VueTranslator, {
   translations: {
     en: {
       translating: 'Translating',
+      ellipsis: '...',
     },
     zh: {
       translating: '翻译中',
+      ellipsis: '……',
     },
   },
 })

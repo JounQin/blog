@@ -149,7 +149,8 @@ export const createTranslate = (
       body = cacheData[main]
 
       if (!body) {
-        body = cacheData[main] = ` ${translator('translating')}... `
+        body = cacheData[main] =
+          translator('translating') + translator('ellipsis')
 
         instance.loading = true
 
@@ -171,7 +172,7 @@ export const createTranslate = (
     return start + (body || firstTranslation) + end
   }
 
-  const translateCache: TranslateCache = {
+  instance.cache = {
     extract: () => cacheData,
     prefetch: () =>
       Promise.all(storages).then(() => {
@@ -179,8 +180,6 @@ export const createTranslate = (
         instance.loading = false
       }),
   }
-
-  instance.cache = translateCache
 
   Vue.util.defineReactive(instance, 'loading', false)
 
