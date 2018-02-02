@@ -41,6 +41,10 @@ export default merge.smart(baseConfig, {
     new HtmlWebpackPlugin({
       template: 'src/index.pug',
       filename: '__non_ssr_page__.html',
+      minify: !__DEV__ && {
+        minifyCSS: true,
+        minifyJS: true,
+      },
     }),
     ...(__DEV__
       ? []
