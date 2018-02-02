@@ -24,8 +24,11 @@ Vue.mixin(
           '$t.locale'() {
             this._changeTitle()
           },
-          '$tt.loading'() {
+          '$tt.loading'(loading) {
             this._changeTitle()
+            if (!loading) {
+              this.$forceUpdate()
+            }
           },
         },
         mounted() {

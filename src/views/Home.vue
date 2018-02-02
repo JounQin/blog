@@ -1,6 +1,5 @@
 <template lang="pug">
 main(v-if="issues.length", :class="$style.main")
-  div(hidden) {{ $tt.loading }}
   ul.list-unstyled
     li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
       h5

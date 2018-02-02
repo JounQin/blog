@@ -1,6 +1,5 @@
 <template lang="pug">
 main
-  div(hidden) {{ $tt.loading }}
   .my-2.my-md-5(:class="$style.main")
     h6(:class="[$style.item, $style.title]") {{ $t('total_archives_count', [archives.length]) }}
     ol.list-unstyled

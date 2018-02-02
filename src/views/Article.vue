@@ -1,6 +1,5 @@
 <template lang="pug">
 main(v-if="issue")
-  div(hidden) {{ $tt.loading }}
   h4
     a.heading-link(:href="issue.url") {{ $tt(issue.title, $t) }}
   small.text-secondary {{ issue.createdAt | timeAgo($t.locale) }}
