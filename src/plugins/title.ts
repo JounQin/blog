@@ -25,8 +25,8 @@ Vue.mixin(
             this._changeTitle()
           },
           '$tt.loading'(loading) {
-            this._changeTitle()
             if (!loading) {
+              this._changeTitle()
               this.$forceUpdate()
             }
           },
