@@ -2,12 +2,10 @@ import axios from 'axios'
 import Vue from 'vue'
 
 import createApp from 'app'
-import { translate } from 'plugins'
+import { apollo, translate } from 'plugins'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
-const { app, createApollo, router, store } = createApp()
-
-const apollo = createApollo()
+const { app, router, store } = createApp()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
@@ -19,7 +17,14 @@ app.$watch('$tt.loading', curr => {
   }
 })
 
+apollo.cache.restore(window.__APOLLO_CACHE__)
 store.replaceState(window.__STORE_STATE__)
+
+if (!__DEV__) {
+  delete window.__APOLLO_CACHE__
+  delete window.__STORE_STATE__
+  delete window.__TRANSLATE_CACHE__
+}
 
 const SET_PROGRESS = 'SET_PROGRESS'
 
