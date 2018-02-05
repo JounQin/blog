@@ -1,7 +1,7 @@
 {
   "name": "blog",
   "version": "0.0.1",
-  "description": "Blog system built on GitHub API with Vue SSR",
+  "description": "a Blog system built on GitHub API with Vue SSR",
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
   "license": "MIT",

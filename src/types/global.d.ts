@@ -6,7 +6,6 @@ interface NodeModule {
 
 declare var __DEV__: boolean
 declare var __SERVER__: boolean
-declare var API_PREFIX: string
 declare var SERVER_PREFIX: string
 
 declare module '*.gql' {

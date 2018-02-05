@@ -186,7 +186,7 @@ export const createTranslate = (
   return instance
 }
 
-export const translate = createTranslate()
+export const translate = __SERVER__ ? null : createTranslate()
 
 Object.defineProperty(
   Vue.prototype,

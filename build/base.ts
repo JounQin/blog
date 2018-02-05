@@ -128,7 +128,6 @@ const config: webpack.Configuration = {
         {} as { [key: string]: string },
       ),
       __DEV__,
-      API_PREFIX: JSON.stringify('/api'),
     }),
     new ExtractTextPlugin({
       filename: 'app.[contenthash].css',
