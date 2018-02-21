@@ -1,8 +1,8 @@
 import axios from 'axios'
-import * as crypto from 'crypto'
-import * as googleTranslateAPI from 'google-translate-api'
+import crypto from 'crypto'
+import googleTranslateAPI from 'google-translate-api'
 import { Middleware } from 'koa'
-import * as qs from 'qs'
+import qs from 'qs'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from 'utils'
 

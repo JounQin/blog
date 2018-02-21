@@ -1,7 +1,7 @@
-import * as _debug from 'debug'
-import * as koaWebpack from 'koa-webpack'
-import * as MFS from 'memory-fs'
-import * as webpack from 'webpack'
+import _debug from 'debug'
+import koaWebpack from 'koa-webpack'
+import MFS from 'memory-fs'
+import webpack from 'webpack'
 
 import { resolve } from '../build/config'
 

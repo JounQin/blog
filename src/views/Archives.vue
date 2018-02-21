@@ -13,13 +13,12 @@ main
             router-link(:to="`/article/${number}`") {{ $tt(title) }}
 </template>
 <script lang="ts">
-import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 
 import { Apollo, Issue, Repository } from 'types'
 import { REPOSITORY, getDefaultLabels } from 'utils'
 
-import * as queries from 'queries.gql'
+import queries from 'queries.gql'
 
 const fetchArchieves = async (
   apollo: Apollo,
@@ -56,7 +55,7 @@ type ArchivesList = Array<{
 
 @Component({
   asyncData: async ({ apollo, translate }) => {
-    const archives = uniqBy(await fetchArchieves(apollo), 'id')
+    const archives = await fetchArchieves(apollo)
     archives.forEach(({ title }) => translate(title))
     apollo.writeQuery({
       query: queries.allArchives,

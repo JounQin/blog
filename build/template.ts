@@ -1,8 +1,8 @@
-import * as fs from 'fs'
-import * as path from 'path'
+import fs from 'fs'
+import path from 'path'
 
 import { minify } from 'html-minifier'
-import * as pug from 'pug'
+import pug from 'pug'
 
 const result = minify(pug.renderFile('server/template.pug'), {
   collapseWhitespace: true,

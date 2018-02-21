@@ -1,6 +1,6 @@
-import * as ExtractTextPlugin from 'extract-text-webpack-plugin'
-import * as ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
-import * as webpack from 'webpack'
+import ExtractTextPlugin from 'extract-text-webpack-plugin'
+import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
+import webpack from 'webpack'
 
 import { __DEV__, publicPath, resolve } from './config'
 

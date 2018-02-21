@@ -34,7 +34,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Issue } from 'types'
 import { REPOSITORY } from 'utils'
 
-import * as querires from 'queries.gql'
+import querires from 'queries.gql'
 
 const getQueryOptions = (issueNumber: number | string) => ({
   query: querires.issue,

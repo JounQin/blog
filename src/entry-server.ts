@@ -1,6 +1,6 @@
 import _axios from 'axios'
-import * as LRU from 'lru-cache'
-import * as serialize from 'serialize-javascript'
+import LRU from 'lru-cache'
+import serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
 import { createTranslate } from 'plugins'

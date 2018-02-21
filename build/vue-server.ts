@@ -1,7 +1,7 @@
-import * as VueSSRServerPlugin from 'vue-server-renderer/server-plugin'
-import * as webpack from 'webpack'
-import * as merge from 'webpack-merge'
-import * as nodeExternals from 'webpack-node-externals'
+import VueSSRServerPlugin from 'vue-server-renderer/server-plugin'
+import webpack from 'webpack'
+import merge from 'webpack-merge'
+import nodeExternals from 'webpack-node-externals'
 
 import { innerServer } from './config'
 

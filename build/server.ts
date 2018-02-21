@@ -1,5 +1,5 @@
-import * as webpack from 'webpack'
-import * as nodeExternals from 'webpack-node-externals'
+import webpack from 'webpack'
+import nodeExternals from 'webpack-node-externals'
 
 import { resolve } from './config'
 

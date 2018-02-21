@@ -21,7 +21,6 @@ main(v-if="issues.length", :class="$style.main")
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
-import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
@@ -34,7 +33,7 @@ import {
 } from 'types'
 import { REPOSITORY, getDefaultLabels } from 'utils'
 
-import * as querires from 'queries.gql'
+import querires from 'queries.gql'
 
 interface Issues {
   nodes: Issue[]
@@ -137,7 +136,7 @@ export default class Home extends Vue {
       issues = data.repository.issues as Issues
     }
 
-    this.issues = uniqBy(issues.nodes, 'id')
+    this.issues = issues.nodes
     this.pageInfo = issues.pageInfo
   }
 
