@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "alwaysStrict": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
