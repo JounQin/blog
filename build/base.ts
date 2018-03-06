@@ -131,6 +131,7 @@ const config: Configuration = {
     }),
     new ExtractTextPlugin({
       filename: 'app.[contenthash].css',
+      allChunks: true,
       disable: __DEV__,
     }),
     new ForkTsCheckerWebpackPlugin({
