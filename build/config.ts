@@ -1,6 +1,11 @@
 import path from 'path'
 
-export const NODE_ENV = process.env.NODE_ENV || 'development'
+const DEV = 'development'
+const PROD = 'production'
+
+type NodeEnv = typeof DEV | typeof PROD
+
+export const NODE_ENV: NodeEnv = (process.env.NODE_ENV || DEV) as NodeEnv
 
 export const __DEV__ = NODE_ENV === 'development'
 

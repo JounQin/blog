@@ -17,11 +17,6 @@ const config: webpack.Configuration = {
   externals: nodeExternals({
     whitelist: [/\.css/],
   }),
-  plugins: [
-    new webpack.optimize.UglifyJsPlugin({
-      comments: false,
-    }),
-  ],
 }
 
 export default config

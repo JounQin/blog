@@ -1,13 +1,14 @@
 import ExtractTextPlugin from 'extract-text-webpack-plugin'
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
-import webpack from 'webpack'
+import webpack, { Configuration } from 'webpack'
 
-import { __DEV__, publicPath, resolve } from './config'
+import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
 
 const sourceMap = __DEV__
 const minimize = !sourceMap
 
-const config: webpack.Configuration = {
+const config: Configuration = {
+  mode: NODE_ENV,
   output: {
     publicPath,
     path: resolve('dist/static'),
@@ -48,7 +49,7 @@ const config: webpack.Configuration = {
       },
       {
         test: /\.pug$/,
-        use: ['apply-loader', 'pug-loader'],
+        use: ['html-loader', 'pug-html-loader'],
       },
       {
         test: /\.ts$/,
@@ -86,14 +87,13 @@ const config: webpack.Configuration = {
                   loader: 'postcss-loader',
                   options: {
                     sourceMap,
-                    minimize,
                   },
                 },
+                'resolve-url-loader',
                 {
                   loader: 'sass-loader',
                   options: {
-                    sourceMap,
-                    minimize,
+                    sourceMap: true,
                     includePaths: [resolve('node_modules/bootstrap/scss')],
                   },
                 },
@@ -138,9 +138,6 @@ const config: webpack.Configuration = {
       tslint: true,
       vue: true,
     }),
-    ...(__DEV__
-      ? [new webpack.NamedChunksPlugin(), new webpack.NamedModulesPlugin()]
-      : [new webpack.optimize.ModuleConcatenationPlugin()]),
   ],
 }
 
