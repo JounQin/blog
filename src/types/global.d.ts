@@ -1,9 +1,3 @@
-interface NodeModule {
-  hot?: {
-    accept?(): void
-  }
-}
-
 declare var __DEV__: boolean
 declare var __SERVER__: boolean
 declare var SERVER_PREFIX: string

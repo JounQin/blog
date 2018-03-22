@@ -15,9 +15,6 @@ declare global {
     __STORE_STATE__: RootState
     __TRANSLATE_CACHE__: TranslateCacheData
   }
-
-  // tslint:disable-next-line variable-name
-  const __non_webpack_require__: NodeRequire
 }
 
 declare module 'vue/types/options' {
