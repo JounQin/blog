@@ -146,7 +146,7 @@
     "prettier": "^1.11.1",
     "pug": "^2.0.3",
     "pug-html-loader": "^1.1.5",
-    "purgecss-webpack-plugin": "^0.20.1",
+    "purgecss-webpack-plugin": "^0.22.0",
     "resolve-url-loader": "^2.3.0",
     "rimraf": "^2.6.2",
     "sass-loader": "^6.0.7",
