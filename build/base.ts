@@ -120,7 +120,7 @@ const config: Configuration = {
     new webpack.DefinePlugin({
       ...Object.entries(process.env).reduce(
         (result, [key, value]) => {
-          if (['GITHUB_TOKEN', 'VUE_ENV'].includes(key)) {
+          if (!['GITHUB_TOKEN', 'VUE_ENV'].includes(key)) {
             result[`process.env.${key}`] = JSON.stringify(value)
           }
           return result
