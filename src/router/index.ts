@@ -33,6 +33,10 @@ export default () =>
         component: () => import('views/Categories.vue'),
       },
       {
+        path: '/pulse',
+        component: () => import('views/Pulse.vue'),
+      },
+      {
         path: '/about',
         component: () => import('views/About.vue'),
       },

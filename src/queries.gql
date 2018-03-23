@@ -145,3 +145,36 @@ query search(
     }
   }
 }
+
+query pullRequests($login: String!, $after: String) {
+  user(login: $login) {
+    pullRequests(
+      after: $after
+      first: 100
+      states: [MERGED, OPEN]
+      orderBy: { direction: DESC, field: CREATED_AT }
+    ) {
+      nodes {
+        ... on PullRequest {
+          createdAt
+          id
+          mergedAt
+          state
+          title
+          url
+          repository {
+            name
+            url
+            owner {
+              login
+            }
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}

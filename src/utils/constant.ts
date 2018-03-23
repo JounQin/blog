@@ -1,8 +1,12 @@
 export const GITHUB_REPOSITORY_NAME = process.env.GITHUB_REPOSITORY_NAME
 export const GITHUB_REPOSITORY_OWNER = process.env.GITHUB_REPOSITORY_OWNER
 
-// prettier-ignore
-export const GITHUB_EXCLUDED_LABELS = process.env.GITHUB_EXCLUDED_LABELS.split(',')
+export const GITHUB_EXCLUDED_LABELS = (
+  process.env.GITHUB_EXCLUDED_LABELS || ''
+).split(',')
+export const GITHUB_EXCLUDED_REPOSITORY_OWNERS = (
+  process.env.GITHUB_EXCLUDED_REPOSITORY_OWNERS || ''
+).split(',')
 
 export enum OwnerType {
   user = 'user',

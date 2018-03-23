@@ -14,7 +14,7 @@
                         @transitionend="transitionEnd")
         ul.navbar-nav.justify-content-end.flex-1.pr-md-4
           router-link.nav-item.d-block.d-lg-block(v-for="{ icon, link, text } of routes"
-                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': !link && $t.locale === 'en' }"
+                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': (!link || link === 'pulse') && $t.locale === 'en' }"
                                                   :to="'/' + link"
                                                   :key="link"
                                                   tag="li"
@@ -66,6 +66,7 @@ const COLLAPSE_HEIGHT = '187.5px'
     en: {
       home: 'Home',
       categories: 'Categories',
+      pulse: 'Pulse',
       about: 'About',
       archives: 'Archives',
       search_all_articles: 'Search All Articles',
@@ -102,6 +103,10 @@ export default class App extends Vue {
     {
       icon: 'th',
       link: 'categories',
+    },
+    {
+      icon: 'heartbeat',
+      link: 'pulse',
     },
     {
       icon: 'user',
