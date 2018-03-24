@@ -190,6 +190,7 @@ query issues($login: String!, $after: String) {
     ) {
       nodes {
         ... on Issue {
+          closedAt
           createdAt
           id
           state

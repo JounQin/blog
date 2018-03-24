@@ -8,7 +8,7 @@ main
                                :class="{ active: type === activeType }"
                                @click="activeType = type") {{ type }}
       ol.list-unstyled(:class="$style.list")
-        li.d-flex.align-items-center.my-4(v-for="{ createdAt, isPr, mergedAt, repository, state, title, url } of pulses")
+        li.d-flex.align-items-center.my-4(v-for="{ closedAt, createdAt, isPr, mergedAt, repository, state, title, url } of pulses")
           .px-3
             i.fa(:class="[isPr ? 'fa-code-fork' : 'fa-bug', state.toLowerCase()]")
           div
@@ -16,6 +16,7 @@ main
               a.heading-link(:href="url") {{ title }}
               small.text-muted.ml-2 {{ $t('created_at') }}: {{ createdAt | dateFormat }}
               small.text-muted.ml-2(v-if="mergedAt") {{ $t('merged_at') }}: {{ mergedAt | dateFormat }}
+              small.text-muted.ml-2(v-if="closedAt") {{ $t('closed_at') }}: {{ closedAt | dateFormat }}
             a(:href="repository.url") {{ repository.nameWithOwner }}
       .text-center(v-if="prPageInfo.hasNextPage || iPageInfo.hasNextPage")
         .d-inline-flex.align-items-center
@@ -55,11 +56,13 @@ enum Type {
     zh: {
       created_at: '创建于',
       merged_at: '合并于',
+      closed_at: '关闭于',
       load_more: '加载更多',
     },
     en: {
       created_at: 'Created At',
       merged_at: 'Merged At',
+      closed_at: 'Closed At',
       load_more: 'Load More',
     },
   },

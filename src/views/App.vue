@@ -59,7 +59,7 @@ import HiProgress from 'components/HiProgress.vue'
 
 import { RootState, User } from 'types'
 
-const COLLAPSE_HEIGHT = '187.5px'
+const COLLAPSE_HEIGHT = '222.5px'
 
 @Component({
   translator: {
