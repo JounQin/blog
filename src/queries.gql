@@ -164,7 +164,39 @@ query pullRequests($login: String!, $after: String) {
           title
           url
           repository {
-            name
+            nameWithOwner
+            url
+            owner {
+              login
+            }
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}
+
+query issues($login: String!, $after: String) {
+  user(login: $login) {
+    id
+    issues(
+      after: $after
+      first: 100
+      orderBy: { direction: DESC, field: CREATED_AT }
+    ) {
+      nodes {
+        ... on Issue {
+          createdAt
+          id
+          state
+          title
+          url
+          repository {
+            nameWithOwner
             url
             owner {
               login

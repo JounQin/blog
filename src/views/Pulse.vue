@@ -3,32 +3,38 @@ main
   .row
     .col-md
       ol.list-unstyled(:class="$style.list")
-        li.d-flex.align-items-center.my-4(v-for="{ createdAt, mergedAt, repository, state, title, url } of pullRequests")
+        li.d-flex.align-items-center.my-4(v-for="{ createdAt, isPr, mergedAt, repository, state, title, url } of pulses")
           .px-3
-            i.fa.fa-code-fork(:class="state.toLowerCase()")
+            i.fa(:class="[isPr ? 'fa-code-fork' : 'fa-bug', state.toLowerCase()]")
           div
             h5.font-weight-bold
               a.heading-link(:href="url") {{ title }}
               small.text-muted.ml-2 {{ $t('created_at') }}: {{ createdAt | dateFormat }}
               small.text-muted.ml-2(v-if="mergedAt") {{ $t('merged_at') }}: {{ mergedAt | dateFormat }}
-            a(:href="repository.url") {{ repository.owner.login }}/{{ repository.name }}
-      .text-center.text-muted.clickable(v-if="pageInfo.hasNextPage"
+            a(:href="repository.url") {{ repository.nameWithOwner }}
+      .text-center.text-muted.clickable(v-if="prPageInfo.hasNextPage || iPageInfo.hasNextPage"
                                         @click="fetchMore") {{ $t('load_more') }}
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
-import { PageInfo, PullRequest, RootState, User } from 'types'
+import { Issue, PageInfo, PullRequest, RootState, User } from 'types'
 
 import queries from 'queries.gql'
 
 @Component({
   asyncData: ({ apollo, store: { getters: { LOGIN } } }) =>
-    apollo.query({
-      query: queries.pullRequests,
-      variables: LOGIN,
-    }),
+    Promise.all([
+      apollo.query({
+        query: queries.pullRequests,
+        variables: LOGIN,
+      }),
+      apollo.query({
+        query: queries.issues,
+        variables: LOGIN,
+      }),
+    ]),
   title: (vm: Pulse) => vm.$t('pulse'),
   translator: {
     zh: {
@@ -45,49 +51,122 @@ import queries from 'queries.gql'
 })
 export default class Pulse extends Vue {
   pullRequests: PullRequest[] = null
-  pageInfo: PageInfo = null
+  prPageInfo: PageInfo = null
+
+  issues: Issue[] = null
+  iPageInfo: PageInfo = null
+
+  get pulses() {
+    return [...this.pullRequests, ...this.issues].sort(
+      (x, y) => (x.createdAt > y.createdAt ? -1 : 1),
+    )
+  }
 
   created() {
     this.setData(this.$store)
   }
 
-  setData(store: Store<RootState>, after?: string) {
-    const { pullRequests: prs } = this.$apollo.readQuery<{ user: User }>({
-      query: queries.pullRequests,
-      variables: {
-        ...store.getters.LOGIN,
-        after,
-      },
-    }).user
+  setData(
+    store: Store<RootState>,
+    {
+      prAfter,
+      prNext,
+      iAfter,
+      iNext,
+    }: {
+      prAfter?: string
+      prNext?: boolean
+      iAfter?: string
+      iNext?: boolean
+    } = {},
+  ) {
+    const { LOGIN } = store.getters
+    const excludedOwners = store.state.envs.GITHUB_EXCLUDED_REPOSITORY_OWNERS
 
-    const pullRequests = prs.nodes.filter(
-      ({ repository }) =>
-        !store.state.envs.GITHUB_EXCLUDED_REPOSITORY_OWNERS.includes(
-          repository.owner.login,
-        ),
-    )
+    if (prNext !== false) {
+      const { pullRequests: prs } = this.$apollo.readQuery<{ user: User }>({
+        query: queries.pullRequests,
+        variables: {
+          ...LOGIN,
+          after: prAfter,
+        },
+      }).user
 
-    if (this.pullRequests) {
-      this.pullRequests.push(...pullRequests)
-    } else {
-      this.pullRequests = pullRequests
+      const pullRequests = prs.nodes.filter(pr => {
+        Object.assign(pr, { isPr: true })
+        return !excludedOwners.includes(pr.repository.owner.login)
+      })
+
+      if (this.pullRequests) {
+        this.pullRequests.push(...pullRequests)
+      } else {
+        this.pullRequests = pullRequests
+      }
+
+      this.prPageInfo = prs.pageInfo
     }
 
-    this.pageInfo = prs.pageInfo
+    if (iNext !== false) {
+      const { issues: is } = this.$apollo.readQuery<{ user: User }>({
+        query: queries.issues,
+        variables: {
+          ...LOGIN,
+          after: iAfter,
+        },
+      }).user
+
+      const issues = is.nodes.filter(
+        issue => !excludedOwners.includes(issue.repository.owner.login),
+      )
+
+      if (this.issues) {
+        this.issues.push(...issues)
+      } else {
+        this.issues = issues
+      }
+
+      this.iPageInfo = is.pageInfo
+    }
   }
 
   async fetchMore() {
-    const after = this.pageInfo.endCursor
+    const { endCursor: prAfter, hasNextPage: prNext } = this.prPageInfo
+    const { endCursor: iAfter, hasNextPage: iNext } = this.iPageInfo
 
-    await this.$apollo.query({
-      query: queries.pullRequests,
-      variables: {
-        ...this.$store.getters.LOGIN,
-        after,
-      },
+    const promises: Array<Promise<any>> = []
+
+    if (prNext) {
+      promises.push(
+        this.$apollo.query({
+          query: queries.pullRequests,
+          variables: {
+            ...this.$store.getters.LOGIN,
+            after: prAfter,
+          },
+        }),
+      )
+    }
+
+    if (iNext) {
+      promises.push(
+        this.$apollo.query({
+          query: queries.issues,
+          variables: {
+            ...this.$store.getters.LOGIN,
+            after: iAfter,
+          },
+        }),
+      )
+    }
+
+    await Promise.all(promises)
+
+    this.setData(this.$store, {
+      prAfter,
+      prNext,
+      iAfter,
+      iNext,
     })
-
-    this.setData(this.$store, after)
   }
 }
 </script>
@@ -106,6 +185,10 @@ export default class Pulse extends Vue {
 
     &.merged {
       color: #6f42c1;
+    }
+
+    &.closed {
+      color: #cb2431;
     }
   }
 }
