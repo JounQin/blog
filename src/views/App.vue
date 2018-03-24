@@ -33,6 +33,7 @@
             img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
   div(:class="$style.main")
     router-view.container.py-4
+    button.text-muted(v-if="showScrollBtn", :class="$style.top", @click="scrollToTop") Top
   footer.row.py-4.bg-light
     .container.d-flex
       .flex-1
@@ -51,7 +52,7 @@
         i.fa.fa-heart.ml-2
 </template>
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue, Watch } from 'vue-property-decorator'
 import { Getter, State } from 'vuex-class'
 
 import HiProgress from 'components/HiProgress.vue'
@@ -135,8 +136,41 @@ export default class App extends Vue {
   collapseHeight: string = null
   timeoutId: number = null
 
+  showScrollBtn = false
+
+  @Watch('$route')
+  routeChange() {
+    this.$nextTick(this.onResize)
+  }
+
   created() {
     this.search = this.$route.query.search
+  }
+
+  mounted() {
+    this.onResize()
+    addEventListener('resize', this.onResize)
+  }
+
+  onResize() {
+    const docEl = document.documentElement
+    this.showScrollBtn = docEl.scrollHeight > docEl.clientHeight
+  }
+
+  scrollToTop() {
+    const { scrollTop } = document.documentElement
+    this.scroll(scrollTop / 60)
+  }
+
+  scroll(step: number) {
+    if (document.documentElement.scrollTop <= 0) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      document.documentElement.scrollTop -= step
+      this.scroll(step)
+    })
   }
 
   toggleShow() {
@@ -219,6 +253,7 @@ button:focus {
 
 .heading-link {
   display: inline-block;
+  word-break: break-word;
 
   @media (min-width: $grid-breakpoints-md + 1px) {
     &:hover:after {
@@ -386,6 +421,18 @@ button:focus {
     right: 0;
     padding: 0 14px;
     background-color: #f8f9fa;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
   }
+}
+
+.top {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+  border: 1px solid $border-color;
+  background-color: #fff;
 }
 </style>

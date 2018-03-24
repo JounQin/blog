@@ -2,6 +2,11 @@
 main
   .row
     .col-md
+      .text-center
+        .btn-group
+          button.btn.btn-light(v-for="type of types"
+                               :class="{ active: type === activeType }"
+                               @click="activeType = type") {{ type }}
       ol.list-unstyled(:class="$style.list")
         li.d-flex.align-items-center.my-4(v-for="{ createdAt, isPr, mergedAt, repository, state, title, url } of pulses")
           .px-3
@@ -12,16 +17,26 @@ main
               small.text-muted.ml-2 {{ $t('created_at') }}: {{ createdAt | dateFormat }}
               small.text-muted.ml-2(v-if="mergedAt") {{ $t('merged_at') }}: {{ mergedAt | dateFormat }}
             a(:href="repository.url") {{ repository.nameWithOwner }}
-      .text-center.text-muted.clickable(v-if="prPageInfo.hasNextPage || iPageInfo.hasNextPage"
-                                        @click="fetchMore") {{ $t('load_more') }}
+      .text-center(v-if="prPageInfo.hasNextPage || iPageInfo.hasNextPage")
+        .d-inline-flex.align-items-center
+          .text-muted.clickable(@click="fetchMore") {{ $t('load_more') }}
+          hi-loading.ml-2(v-if="loading")
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
+import HiLoading from 'components/HiLoading.vue'
+
 import { Issue, PageInfo, PullRequest, RootState, User } from 'types'
 
 import queries from 'queries.gql'
+
+enum Type {
+  ALL = 'All',
+  PRS = 'PRs',
+  ISSUES = 'Issues',
+}
 
 @Component({
   asyncData: ({ apollo, store: { getters: { LOGIN } } }) =>
@@ -48,18 +63,33 @@ import queries from 'queries.gql'
       load_more: 'Load More',
     },
   },
+  components: {
+    HiLoading,
+  },
 })
 export default class Pulse extends Vue {
+  types = [Type.ALL, Type.PRS, Type.ISSUES]
+  activeType = Type.ALL
+
   pullRequests: PullRequest[] = null
   prPageInfo: PageInfo = null
 
   issues: Issue[] = null
   iPageInfo: PageInfo = null
 
+  loading = false
+
   get pulses() {
-    return [...this.pullRequests, ...this.issues].sort(
-      (x, y) => (x.createdAt > y.createdAt ? -1 : 1),
-    )
+    switch (this.activeType) {
+      case Type.ALL:
+        return [...this.pullRequests, ...this.issues].sort(
+          (x, y) => (x.createdAt > y.createdAt ? -1 : 1),
+        )
+      case Type.PRS:
+        return this.pullRequests
+      case Type.ISSUES:
+        return this.issues
+    }
   }
 
   created() {
@@ -159,6 +189,8 @@ export default class Pulse extends Vue {
       )
     }
 
+    this.loading = true
+
     await Promise.all(promises)
 
     this.setData(this.$store, {
@@ -167,6 +199,8 @@ export default class Pulse extends Vue {
       iAfter,
       iNext,
     })
+
+    this.loading = false
   }
 }
 </script>
