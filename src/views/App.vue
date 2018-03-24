@@ -56,7 +56,7 @@ import { Getter, State } from 'vuex-class'
 
 import HiProgress from 'components/HiProgress.vue'
 
-import { User } from 'types'
+import { RootState, User } from 'types'
 
 const COLLAPSE_HEIGHT = '187.5px'
 
@@ -91,8 +91,19 @@ const COLLAPSE_HEIGHT = '187.5px'
   },
 })
 export default class App extends Vue {
-  @State('progress') progress: number
-  @State('user') user: User
+  @Getter
+  REPOSITORY: {
+    name: string
+    owner: string
+  }
+
+  @State((state: RootState) => state.envs.GITHUB_CLIENT_ID)
+  GITHUB_CLIENT_ID: string
+  @State((state: RootState) => state.envs.GITHUB_OAUTH_CALLBACK)
+  GITHUB_OAUTH_CALLBACK: string
+
+  @State progress: number
+  @State user: User
 
   routes = [
     {
@@ -116,14 +127,6 @@ export default class App extends Vue {
       link: 'archives',
     },
   ]
-
-  @Getter('REPOSITORY')
-  REPOSITORY: {
-    name: string
-    owner: string
-  }
-  @State('envs.GITHUB_CLIENT_ID') GITHUB_CLIENT_ID: string
-  @State('envs.GITHUB_OAUTH_CALLBACK') GITHUB_OAUTH_CALLBACK: string
 
   search: string = null
   show = false
