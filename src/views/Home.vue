@@ -1,7 +1,7 @@
 <template lang="pug">
-main(v-if="issues.length", :class="$style.main")
+main(v-if="articles.length", :class="$style.main")
   ul.list-unstyled
-    li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
+    li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of articles", :key="id")
       h5
         router-link.heading-link(:to="`/article/${number}`") {{ $tt(title) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
@@ -35,7 +35,7 @@ import { getDefaultLabels } from 'utils'
 
 import querires from 'queries.gql'
 
-interface Issues {
+interface Articles {
   nodes: Issue[]
   pageInfo: PageInfo
 }
@@ -67,7 +67,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
   }
 
   return {
-    query: search ? querires.search : querires.issues,
+    query: search ? querires.search : querires.articles,
     variables,
   }
 }
@@ -82,15 +82,15 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
       }
     >(getQueryOptions({ apollo, route, store }))
 
-    let issues: Issues
+    let articles: Articles
 
     if (data.search) {
-      issues = data.search as Issues
+      articles = data.search as Articles
     } else {
-      issues = data.repository.issues as Issues
+      articles = data.repository.issues as Articles
     }
 
-    issues.nodes.forEach(({ title }) => translate(title))
+    articles.nodes.forEach(({ title }) => translate(title))
   },
   title: (vm: Home) => vm.$t('home'),
   translator: {
@@ -113,7 +113,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
   },
 })
 export default class Home extends Vue {
-  issues: Issue[] = null
+  articles: Issue[] = null
   pageInfo: PageInfo = null
 
   setData() {
@@ -131,16 +131,16 @@ export default class Home extends Vue {
       }),
     )
 
-    let issues: Issues
+    let articles: Articles
 
     if (data.search) {
-      issues = data.search as Issues
+      articles = data.search as Articles
     } else {
-      issues = data.repository.issues as Issues
+      articles = data.repository.issues as Articles
     }
 
-    this.issues = issues.nodes
-    this.pageInfo = issues.pageInfo
+    this.articles = articles.nodes
+    this.pageInfo = articles.pageInfo
   }
 
   created() {

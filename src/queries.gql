@@ -35,7 +35,7 @@ query archives(
   }
 }
 
-query issue($name: String!, $owner: String!, $number: Int!) {
+query article($name: String!, $owner: String!, $number: Int!) {
   repository(name: $name, owner: $owner) {
     issue(number: $number) {
       bodyHTML
@@ -65,7 +65,7 @@ query issue($name: String!, $owner: String!, $number: Int!) {
   }
 }
 
-query issues(
+query articles(
   $name: String!
   $owner: String!
   $first: Int
