@@ -118,15 +118,6 @@ const config: Configuration = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      ...Object.entries(process.env).reduce(
-        (result, [key, value]) => {
-          if (!['GITHUB_TOKEN', 'VUE_ENV'].includes(key)) {
-            result[`process.env.${key}`] = JSON.stringify(value)
-          }
-          return result
-        },
-        {} as { [key: string]: string },
-      ),
       __DEV__,
     }),
     new ExtractTextPlugin({

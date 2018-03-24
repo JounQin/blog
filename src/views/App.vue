@@ -52,12 +52,11 @@
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
+import { Getter, State } from 'vuex-class'
 
 import HiProgress from 'components/HiProgress.vue'
 
 import { User } from 'types'
-import { REPOSITORY } from 'utils'
 
 const COLLAPSE_HEIGHT = '187.5px'
 
@@ -118,9 +117,13 @@ export default class App extends Vue {
     },
   ]
 
-  REPOSITORY = REPOSITORY
-  GITHUB_CLIENT_ID: string = process.env.GITHUB_CLIENT_ID
-  GITHUB_OAUTH_CALLBACK = process.env.GITHUB_OAUTH_CALLBACK
+  @Getter('REPOSITORY')
+  REPOSITORY: {
+    name: string
+    owner: string
+  }
+  @State('envs.GITHUB_CLIENT_ID') GITHUB_CLIENT_ID: string
+  @State('envs.GITHUB_OAUTH_CALLBACK') GITHUB_OAUTH_CALLBACK: string
 
   search: string = null
   show = false

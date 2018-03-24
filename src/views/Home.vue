@@ -31,7 +31,7 @@ import {
   Repository,
   SearchResultItemConnection,
 } from 'types'
-import { REPOSITORY, getDefaultLabels } from 'utils'
+import { getDefaultLabels } from 'utils'
 
 import querires from 'queries.gql'
 
@@ -40,13 +40,15 @@ interface Issues {
   pageInfo: PageInfo
 }
 
-const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
+const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
   const {
     before,
     after,
-    labels = getDefaultLabels(apollo).map(({ name }) => name),
+    labels = getDefaultLabels({ apollo, store }).map(({ name }) => name),
     search,
   } = route.query
+
+  const { REPOSITORY } = store.getters
 
   const searchText = search && search.trim()
 
@@ -71,14 +73,14 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
 }
 
 @Component({
-  async asyncData({ apollo, route, translate }) {
+  async asyncData({ apollo, route, store, translate }) {
     const { data } = await apollo.query<
       {
         search: SearchResultItemConnection
       } & {
         repository: Repository
       }
-    >(getQueryOptions({ apollo, route }))
+    >(getQueryOptions({ apollo, route, store }))
 
     let issues: Issues
 
@@ -125,6 +127,7 @@ export default class Home extends Vue {
       getQueryOptions({
         apollo: this.$apollo,
         route: this.$route,
+        store: this.$store,
       }),
     )
 

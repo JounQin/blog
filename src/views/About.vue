@@ -32,15 +32,19 @@ main
 <script lang="ts">
 import gql from 'graphql-tag'
 import { Component, Vue } from 'vue-property-decorator'
+import { Store } from 'vuex'
 
-import { Owner } from 'types'
-import { IS_USER, LOGIN, OWNER_TYPE } from 'utils'
+import { Owner, OwnerType, RootState } from 'types'
 
-const queryOptions = {
+const getQueryOptions = (store: Store<RootState>) => ({
   query: gql(`query pinnedRepositories($login: String!) {
-  ${OWNER_TYPE}(login: $login) {
+  ${store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE}(login: $login) {
     avatarUrl
-    ${IS_USER ? 'bio company' : 'description'}
+    ${
+      store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE === OwnerType.user
+        ? 'bio company'
+        : 'description'
+    }
     email
     id
     location
@@ -61,11 +65,11 @@ const queryOptions = {
     }
   }
 }`),
-  variables: LOGIN,
-}
+  variables: store.getters.LOGIN,
+})
 
 @Component({
-  asyncData: ({ apollo }) => apollo.query({ ...queryOptions }),
+  asyncData: ({ apollo, store }) => apollo.query({ ...getQueryOptions(store) }),
   title: (vm: About) => vm.$t('about'),
   translator: {
     en: {
@@ -80,10 +84,14 @@ export default class About extends Vue {
   get owner(): Owner {
     return this.$apollo.readQuery<{
       [ownerType: string]: Owner
-    }>(queryOptions)[OWNER_TYPE]
+    }>(getQueryOptions(this.$store))[
+      this.$store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE
+    ]
   }
 
-  login = LOGIN.login
+  get login() {
+    return this.$store.getters.LOGIN.login
+  }
 }
 </script>
 <style lang="scss" module>

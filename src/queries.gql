@@ -148,6 +148,7 @@ query search(
 
 query pullRequests($login: String!, $after: String) {
   user(login: $login) {
+    id
     pullRequests(
       after: $after
       first: 100

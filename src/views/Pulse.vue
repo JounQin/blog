@@ -17,14 +17,14 @@ main
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { Store } from 'vuex'
 
-import { PageInfo, PullRequest, User } from 'types'
-import { GITHUB_EXCLUDED_REPOSITORY_OWNERS, LOGIN } from 'utils'
+import { PageInfo, PullRequest, RootState, User } from 'types'
 
 import queries from 'queries.gql'
 
 @Component({
-  asyncData: ({ apollo }) =>
+  asyncData: ({ apollo, store: { getters: { LOGIN } } }) =>
     apollo.query({
       query: queries.pullRequests,
       variables: LOGIN,
@@ -48,21 +48,23 @@ export default class Pulse extends Vue {
   pageInfo: PageInfo = null
 
   created() {
-    this.setData()
+    this.setData(this.$store)
   }
 
-  setData(after?: string) {
+  setData(store: Store<RootState>, after?: string) {
     const { pullRequests: prs } = this.$apollo.readQuery<{ user: User }>({
       query: queries.pullRequests,
       variables: {
-        ...LOGIN,
+        ...store.getters.LOGIN,
         after,
       },
     }).user
 
     const pullRequests = prs.nodes.filter(
       ({ repository }) =>
-        !GITHUB_EXCLUDED_REPOSITORY_OWNERS.includes(repository.owner.login),
+        !store.state.envs.GITHUB_EXCLUDED_REPOSITORY_OWNERS.includes(
+          repository.owner.login,
+        ),
     )
 
     if (this.pullRequests) {
@@ -80,12 +82,12 @@ export default class Pulse extends Vue {
     await this.$apollo.query({
       query: queries.pullRequests,
       variables: {
-        ...LOGIN,
+        ...this.$store.getters.LOGIN,
         after,
       },
     })
 
-    this.setData(after)
+    this.setData(this.$store, after)
   }
 }
 </script>

@@ -2,7 +2,8 @@ import axios from 'axios'
 import Vue from 'vue'
 import { Translations, Translator } from 'vue-translator'
 
-import { DEFAULT_LOCALE, LOCALES, Locale } from 'utils'
+import { Locale } from 'types'
+import { DEFAULT_LOCALE, LOCALES } from 'utils'
 
 enum Placehodler {
   TITLE = 'title',

@@ -2,7 +2,7 @@ import { AxiosInstance } from 'axios'
 import { Context } from 'koa'
 import { Translator } from 'vue-translator'
 
-import { Locale } from 'utils'
+import { Locale } from 'types'
 
 export interface ServerContext {
   ctx: Context

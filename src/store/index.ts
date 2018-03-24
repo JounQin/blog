@@ -1,24 +1,40 @@
 import { AxiosInstance } from 'axios'
 import Vue from 'vue'
-import Vuex, { Action, Mutation } from 'vuex'
+import Vuex, { Action, Getter, Mutation } from 'vuex'
 
-import { Apollo, RootState, User } from 'types'
-import { categoriesQueryOptions } from 'utils'
+import { Apollo, Env, RootState, User } from 'types'
+import { getCategoriesQueryOptions } from 'utils'
 
 Vue.use(Vuex)
+
+const getters: {
+  [key: string]: Getter<RootState, RootState>
+} = {
+  REPOSITORY: state => ({
+    name: state.envs.GITHUB_REPOSITORY_NAME,
+    owner: state.envs.GITHUB_REPOSITORY_OWNER,
+  }),
+  LOGIN: state => ({
+    login: state.envs.GITHUB_REPOSITORY_OWNER,
+  }),
+}
 
 const actions: {
   [key: string]: Action<RootState, RootState>
 } = {
   async fetchInfo(
-    { commit },
+    store,
     { apollo, axios }: { apollo: Apollo; axios: AxiosInstance },
   ) {
-    const [{ data: user }] = await Promise.all([
-      axios.get<User>('/user'),
-      apollo.query({ ...categoriesQueryOptions }),
-    ])
-    commit('SET_USER', user)
+    const { data: { user, envs } } = await axios.get<{
+      user: User
+      envs: Env
+    }>('/fetchInfo')
+
+    store.commit('SET_USER', user)
+    store.commit('SET_ENVS', envs)
+
+    await apollo.query({ ...getCategoriesQueryOptions(store) })
   },
 }
 
@@ -31,6 +47,9 @@ const mutations: {
   SET_USER(state, user) {
     state.user = user
   },
+  SET_ENVS(state, envs) {
+    state.envs = envs
+  },
 }
 
 export default () =>
@@ -38,7 +57,9 @@ export default () =>
     state: {
       progress: 0,
       user: null,
+      envs: null,
     },
+    getters,
     actions,
     mutations,
   })

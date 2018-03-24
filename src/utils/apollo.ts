@@ -1,10 +1,11 @@
 import gql from 'graphql-tag'
+import { ActionContext, Store } from 'vuex'
 
-import { Apollo, Repository } from 'types'
+import { Apollo, Repository, RootState } from 'types'
 
-import { GITHUB_EXCLUDED_LABELS, REPOSITORY } from './constant'
-
-export const categoriesQueryOptions = {
+export const getCategoriesQueryOptions = (
+  store: Store<RootState> | ActionContext<RootState, RootState>,
+) => ({
   query: gql`
     query($name: String!, $owner: String!) {
       repository(name: $name, owner: $owner) {
@@ -18,14 +19,20 @@ export const categoriesQueryOptions = {
       }
     }
   `,
-  variables: REPOSITORY,
-}
+  variables: store.getters.REPOSITORY,
+})
 
-export const getDefaultLabels = (apollo: Apollo) =>
+export const getDefaultLabels = ({
+  apollo,
+  store,
+}: {
+  apollo: Apollo
+  store: Store<RootState>
+}) =>
   apollo
     .readQuery<{
       repository: Repository
-    }>({ ...categoriesQueryOptions })
+    }>(getCategoriesQueryOptions(store))
     .repository.labels.nodes.filter(
-      label => !GITHUB_EXCLUDED_LABELS.includes(label.name),
+      label => !store.state.envs.GITHUB_EXCLUDED_LABELS.includes(label.name),
     )

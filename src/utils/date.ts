@@ -1,7 +1,7 @@
 import { format, formatDistance } from 'date-fns'
 import { enUS, zhCN } from 'date-fns/locale'
 
-import { Locale } from './constant'
+import { Locale } from 'types'
 
 export type DateType = Date | string | number
 

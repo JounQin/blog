@@ -30,7 +30,10 @@ import { getDefaultLabels } from 'utils'
 })
 export default class Categories extends Vue {
   get labels(): Label[] {
-    return getDefaultLabels(this.$apollo)
+    return getDefaultLabels({
+      apollo: this.$apollo,
+      store: this.$store,
+    })
   }
 }
 </script>

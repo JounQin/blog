@@ -35,7 +35,7 @@ const debug = _debug(
 
 const app = new Koa()
 
-app.keys = APP_KEYS.split(',')
+app.keys = (APP_KEYS || '').split(',')
 
 let renderer: BundleRenderer
 let ready: Promise<any>

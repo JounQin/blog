@@ -14,31 +14,41 @@ main
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { Store } from 'vuex'
 
-import { Apollo, Issue, Repository } from 'types'
-import { REPOSITORY, getDefaultLabels } from 'utils'
+import { Apollo, Issue, Repository, RootState } from 'types'
+import { getDefaultLabels } from 'utils'
 
 import queries from 'queries.gql'
 
-const fetchArchieves = async (
-  apollo: Apollo,
-  after?: string,
-): Promise<Issue[]> => {
+const fetchArchieves = async ({
+  apollo,
+  store,
+  after,
+}: {
+  apollo: Apollo
+  store: Store<RootState>
+  after?: string
+}): Promise<Issue[]> => {
   const { data: { repository: { issues } } } = await apollo.query<{
     repository: Repository
   }>({
     query: queries.archives,
     variables: {
-      ...REPOSITORY,
+      ...store.getters.REPOSITORY,
       after,
-      labels: getDefaultLabels(apollo).map(({ name }) => name),
+      labels: getDefaultLabels({ apollo, store }).map(({ name }) => name),
     },
   })
 
   const { nodes, pageInfo } = issues
 
   const nextIssues = pageInfo.hasNextPage
-    ? await fetchArchieves(apollo, pageInfo.endCursor)
+    ? await fetchArchieves({
+        apollo,
+        store,
+        after: pageInfo.endCursor,
+      })
     : []
 
   return [...nodes, ...nextIssues]
@@ -54,8 +64,8 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: async ({ apollo, translate }) => {
-    const archives = await fetchArchieves(apollo)
+  asyncData: async ({ apollo, store, translate }) => {
+    const archives = await fetchArchieves({ apollo, store })
     archives.forEach(({ title }) => translate(title))
     apollo.writeQuery({
       query: queries.allArchives,
