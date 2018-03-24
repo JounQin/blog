@@ -27,15 +27,13 @@ acceptLanguage.languages(LOCALES)
 
 const ACCEPT_LANGUAGE = 'Accept-Language'
 
-const { APP_KEYS, GITHUB_TOKEN } = process.env
-
 const debug = _debug(
   `1stg:server${process.env.NODE_ENV === 'development' ? ':core' : ''}`,
 )
 
 const app = new Koa()
 
-app.keys = (APP_KEYS || '').split(',')
+app.keys = (process.env.APP_KEYS || '').split(',')
 
 let renderer: BundleRenderer
 let ready: Promise<any>
@@ -196,7 +194,8 @@ middlewares.push(
     filter: ctx => ctx.url === '/graphql',
     https: true,
     proxyReqOptDecorator(req, ctx) {
-      req.headers.Authorization = `bearer ${ctx.session.token || GITHUB_TOKEN}`
+      req.headers.Authorization = `bearer ${ctx.session.token ||
+        process.env.GITHUB_TOKEN}`
       return req
     },
   }),

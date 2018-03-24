@@ -4,22 +4,10 @@ import googleTranslateAPI from 'google-translate-api'
 import { Middleware } from 'koa'
 import qs from 'qs'
 
-import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from 'utils'
-
-const {
-  GOOGLE_TRANSLATE_ENABLED: googleTranslateEnabled,
-  TENCENT_TRANSLATE_API_SECRET_ID: SecretId,
-  TENCENT_TRANSLATE_API_SECRET_KEY: SecretKey,
-} = process.env
+import { Locale } from 'types'
+import { LOCALE_COOKIE, TOGGLE_LOCALE } from 'utils'
 
 const SIGNATURE_PREFIX = 'GETtmt.api.qcloud.com/v2/index.php?'
-
-const COMMON_PARAMS = {
-  Action: 'TextTranslate',
-  Region: 'ap-shanghai',
-  SecretId,
-  SignatureMethod: 'HmacSHA256',
-}
 
 interface TranslateParams {
   source: Locale
@@ -27,7 +15,10 @@ interface TranslateParams {
 }
 
 const getTranslatePrams = (params: TranslateParams) => ({
-  ...COMMON_PARAMS,
+  Action: 'TextTranslate',
+  Region: 'ap-shanghai',
+  SecretId: process.env.TENCENT_TRANSLATE_API_SECRET_ID,
+  SignatureMethod: 'HmacSHA256',
   Timestamp: Math.ceil(Date.now() / 1000),
   Nonce: Math.ceil(Math.random() * Number.MAX_SAFE_INTEGER),
   ...params,
@@ -50,7 +41,7 @@ const translate: Middleware = async (ctx, next) => {
     return
   }
 
-  if (googleTranslateEnabled) {
+  if (process.env.GOOGLE_TRANSLATE_ENABLED) {
     const translated = await googleTranslateAPI(sourceText, {
       from: GoogleTranslateLocales[source],
       to: TOGGLE_LOCALE[source as Locale],
@@ -67,7 +58,7 @@ const translate: Middleware = async (ctx, next) => {
   })
 
   const Signature = crypto
-    .createHmac('sha256', SecretKey)
+    .createHmac('sha256', process.env.TENCENT_TRANSLATE_API_SECRET_KEY)
     .update(
       SIGNATURE_PREFIX +
         qs.stringify(translateParams, {

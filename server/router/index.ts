@@ -20,8 +20,6 @@ import translate from './translate'
 
 global.fetch = fetch as any
 
-const { APP_KEYS, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } = process.env
-
 const debug = _debug('1stg:server:router')
 
 const router = new Router({
@@ -80,8 +78,8 @@ router
     const { data } = await axios.post(
       'https://github.com/login/oauth/access_token',
       {
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
         state,
       },
@@ -138,7 +136,7 @@ export default (app?: Koa) => {
 
   if (!app) {
     app = new Koa()
-    app.keys = app.keys = APP_KEYS.split(',')
+    app.keys = app.keys = (process.env.APP_KEYS || '').split(',')
     middlewares.unshift(session({}, app))
   }
 
