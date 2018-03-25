@@ -47,7 +47,10 @@ const translate: Middleware = async (ctx, next) => {
       to: TOGGLE_LOCALE[source as Locale],
     })
     ctx.body = Object.assign(translated, {
-      text: translated.text.replace(/<\/ ([^<>]+)>/g, '</$1>'),
+      text: translated.text
+        .replace(/<code>([^<>]+)<\/\w+> Code>/g, '<code>$1</code>')
+        .replace(/<\/g> -([^<>]+)>/g, '</g-$1>')
+        .replace(/<\/ ([^<>]+)>/g, '</$1>'),
     })
     return
   }
@@ -78,16 +81,16 @@ const translate: Middleware = async (ctx, next) => {
     ...data,
     targetText:
       targetText &&
-      targetText.replace(/\<([^<>]+)\>/g, (matched, $0: string) => {
-        $0 = $0
+      targetText.replace(/\<([^<>]+)\>/g, (matched, $1: string) => {
+        $1 = $1
           .toLowerCase()
           .replace(/ /g, '')
           .replace(/\/+/g, '/')
-        const index = $0.indexOf('/')
+        const index = $1.indexOf('/')
         if (index !== -1) {
-          $0 = $0.substr(index)
+          $1 = $1.substr(index)
         }
-        return '<' + $0 + '>'
+        return '<' + $1 + '>'
       }),
   }
 }

@@ -97,11 +97,11 @@ const config: Configuration = {
         test: /\.pug$/,
         oneOf: [
           {
-            use: ['html-loader', 'pug-plain-loader'],
-            exclude: /\.vue$/,
+            resourceQuery: /^\?vue/,
+            loader: 'pug-plain-loader',
           },
           {
-            loader: 'pug-plain-loader',
+            use: ['html-loader', 'pug-plain-loader'],
           },
         ],
       },

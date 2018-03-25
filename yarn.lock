@@ -9545,9 +9545,9 @@ vue-hot-reload-api@^2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/vue-hot-reload-api/-/vue-hot-reload-api-2.3.0.tgz#97976142405d13d8efae154749e88c4e358cf926"
 
-vue-loader@^15.0.0-beta.6:
-  version "15.0.0-beta.6"
-  resolved "https://registry.yarnpkg.com/vue-loader/-/vue-loader-15.0.0-beta.6.tgz#4ad72ffe90dc1fb66918731d0814173dbea8477f"
+vue-loader@^15.0.0-beta.7:
+  version "15.0.0-beta.7"
+  resolved "https://registry.yarnpkg.com/vue-loader/-/vue-loader-15.0.0-beta.7.tgz#2066ea26a940eed1fd97d2751c6abf5282f87b54"
   dependencies:
     "@vue/component-compiler-utils" "^1.0.0"
     hash-sum "^1.0.2"
