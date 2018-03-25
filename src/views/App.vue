@@ -162,18 +162,23 @@ export default class App extends Vue {
   }
 
   scrollToTop() {
-    const { scrollTop } = document.documentElement
-    this.scroll(scrollTop / 60)
+    let scrollEl = document.documentElement
+    let { scrollTop } = scrollEl
+    if (!scrollTop && document.body.scrollTop) {
+      scrollEl = document.body
+      scrollTop = scrollEl.scrollTop
+    }
+    this.scroll(scrollEl, scrollTop / 60)
   }
 
-  scroll(step: number) {
-    if (document.documentElement.scrollTop <= 0) {
+  scroll(scrollEl: HTMLElement, step: number) {
+    if (scrollEl.scrollTop <= 0) {
       return
     }
 
     requestAnimationFrame(() => {
-      document.documentElement.scrollTop -= step
-      this.scroll(step)
+      scrollEl.scrollTop -= step
+      this.scroll(scrollEl, step)
     })
   }
 
