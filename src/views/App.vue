@@ -140,6 +140,10 @@ export default class App extends Vue {
 
   @Watch('$route')
   routeChange() {
+    const { path, query: { search } } = this.$route
+    if (path !== '/' || !search) {
+      this.search = null
+    }
     this.$nextTick(this.onResize)
   }
 
@@ -434,5 +438,6 @@ button:focus {
   font-size: 12px;
   border: 1px solid $border-color;
   background-color: #fff;
+  z-index: 10001;
 }
 </style>

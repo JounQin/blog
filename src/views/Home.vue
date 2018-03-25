@@ -152,6 +152,7 @@ export default class Home extends Vue {
       getQueryOptions({
         apollo: this.$apollo,
         route: to,
+        store: this.$store,
       }),
     )
     next()
