@@ -1,11 +1,57 @@
 import ExtractTextPlugin from 'extract-text-webpack-plugin'
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
+import { VueLoaderPlugin } from 'vue-loader'
 import webpack, { Configuration } from 'webpack'
 
 import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
 
 const sourceMap = __DEV__
 const minimize = !sourceMap
+
+const scssLoaders = (modules?: boolean) =>
+  ExtractTextPlugin.extract({
+    fallback: 'vue-style-loader',
+    use: [
+      {
+        loader: 'css-loader',
+        options: {
+          sourceMap,
+          minimize,
+          modules,
+          camelCase: true,
+          localIdentName: __DEV__
+            ? '[name]__[local]___[hash:base64:5]'
+            : '_[hash:base64:5]',
+        },
+      },
+      {
+        loader: 'postcss-loader',
+        options: {
+          sourceMap,
+        },
+      },
+      'resolve-url-loader',
+      {
+        loader: 'sass-loader',
+        options: {
+          sourceMap: true,
+          includePaths: [resolve('node_modules/bootstrap/scss')],
+        },
+      },
+      {
+        loader: 'sass-resources-loader',
+        options: {
+          resources: [
+            'src/styles/_pre-variables.scss',
+            ...['functions', 'variables', 'mixins'].map(
+              item => `node_modules/bootstrap/scss/_${item}.scss`,
+            ),
+            'src/styles/_post-variables.scss',
+          ],
+        },
+      },
+    ],
+  })
 
 const config: Configuration = {
   mode: NODE_ENV,
@@ -50,6 +96,19 @@ const config: Configuration = {
       {
         test: /\.pug$/,
         use: ['html-loader', 'pug-html-loader'],
+        exclude: /\.vue$/,
+      },
+      {
+        test: /\.scss$/,
+        oneOf: [
+          {
+            resourceQuery: /module/,
+            use: scssLoaders(true),
+          } as any,
+          {
+            use: scssLoaders(),
+          },
+        ],
       },
       {
         test: /\.ts$/,
@@ -65,54 +124,6 @@ const config: Configuration = {
       {
         test: /\.vue$/,
         loader: 'vue-loader',
-        options: {
-          cssModules: {
-            camelCase: true,
-            localIdentName: __DEV__
-              ? '[name]__[local]___[hash:base64:5]'
-              : '_[hash:base64:5]',
-          },
-          loaders: {
-            scss: ExtractTextPlugin.extract({
-              fallback: 'vue-style-loader',
-              use: [
-                {
-                  loader: 'css-loader',
-                  options: {
-                    sourceMap,
-                    minimize,
-                  },
-                },
-                {
-                  loader: 'postcss-loader',
-                  options: {
-                    sourceMap,
-                  },
-                },
-                'resolve-url-loader',
-                {
-                  loader: 'sass-loader',
-                  options: {
-                    sourceMap: true,
-                    includePaths: [resolve('node_modules/bootstrap/scss')],
-                  },
-                },
-                {
-                  loader: 'sass-resources-loader',
-                  options: {
-                    resources: [
-                      'src/styles/_pre-variables.scss',
-                      ...['functions', 'variables', 'mixins'].map(
-                        item => `node_modules/bootstrap/scss/_${item}.scss`,
-                      ),
-                      'src/styles/_post-variables.scss',
-                    ],
-                  },
-                },
-              ],
-            }),
-          },
-        },
       },
     ],
   },
@@ -130,6 +141,7 @@ const config: Configuration = {
       tslint: true,
       vue: true,
     }),
+    new VueLoaderPlugin(),
   ],
 }
 
