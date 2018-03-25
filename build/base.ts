@@ -95,8 +95,15 @@ const config: Configuration = {
       },
       {
         test: /\.pug$/,
-        use: ['html-loader', 'pug-html-loader'],
-        exclude: /\.vue$/,
+        oneOf: [
+          {
+            use: ['html-loader', 'pug-plain-loader'],
+            exclude: /\.vue$/,
+          },
+          {
+            loader: 'pug-plain-loader',
+          },
+        ],
       },
       {
         test: /\.scss$/,

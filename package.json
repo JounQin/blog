@@ -145,7 +145,7 @@
     "postcss-pxtorem": "^4.0.1",
     "prettier": "^1.11.1",
     "pug": "^2.0.3",
-    "pug-html-loader": "^1.1.5",
+    "pug-plain-loader": "^1.0.0",
     "purgecss-webpack-plugin": "^0.22.0",
     "resolve-url-loader": "^2.3.0",
     "rimraf": "^2.6.2",
