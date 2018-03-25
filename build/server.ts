@@ -17,6 +17,11 @@ const config: webpack.Configuration = {
   externals: nodeExternals({
     whitelist: [/\.css/],
   }),
+  plugins: [
+    new webpack.DefinePlugin({
+      __SERVER__: true,
+    }),
+  ],
 }
 
 export default config
