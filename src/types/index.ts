@@ -1,3 +1,4 @@
+export * from './dom'
 export * from './enum'
 export * from './env'
 export * from './schema'

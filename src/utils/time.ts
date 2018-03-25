@@ -17,3 +17,8 @@ export const timeAgo = (date: DateType, locale: Locale = Locale.EN) =>
   formatDistance(date, Date.now(), {
     locale: locales[locale],
   })
+
+export const now =
+  typeof performance === 'undefined' || !performance.now
+    ? Date.now
+    : performance.now.bind(performance)

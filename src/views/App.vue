@@ -33,7 +33,7 @@
             img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
   div(:class="$style.main")
     router-view.container.py-4
-    button.text-muted(v-if="showScrollBtn", :class="$style.top", @click="scrollToTop") Top
+    button.text-muted(v-if="showScrollBtn", :class="$style.top", @click="scrollTo({y:0})") Top
   footer.row.py-4.bg-light
     .container.d-flex
       .flex-1
@@ -58,6 +58,7 @@ import { Getter, State } from 'vuex-class'
 import HiProgress from 'components/HiProgress.vue'
 
 import { RootState, User } from 'types'
+import { scrollTo } from 'utils'
 
 const COLLAPSE_HEIGHT = '222.5px'
 
@@ -138,6 +139,8 @@ export default class App extends Vue {
 
   showScrollBtn = false
 
+  scrollTo = scrollTo
+
   @Watch('$route')
   routeChange() {
     const { path, query: { search } } = this.$route
@@ -159,27 +162,6 @@ export default class App extends Vue {
   onResize() {
     const docEl = document.documentElement
     this.showScrollBtn = docEl.scrollHeight > docEl.clientHeight
-  }
-
-  scrollToTop() {
-    let scrollEl = document.documentElement
-    let { scrollTop } = scrollEl
-    if (!scrollTop && document.body.scrollTop) {
-      scrollEl = document.body
-      scrollTop = scrollEl.scrollTop
-    }
-    this.scroll(scrollEl, scrollTop / 60)
-  }
-
-  scroll(scrollEl: HTMLElement, step: number) {
-    if (scrollEl.scrollTop <= 0) {
-      return
-    }
-
-    requestAnimationFrame(() => {
-      scrollEl.scrollTop -= step
-      this.scroll(scrollEl, step)
-    })
   }
 
   toggleShow() {
