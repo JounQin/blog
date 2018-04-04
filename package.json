@@ -101,7 +101,7 @@
     "@types/debug": "^0.0.30",
     "@types/extract-text-webpack-plugin": "^3.0.2",
     "@types/glob": "^5.0.35",
-    "@types/graphql": "^0.12.6",
+    "@types/graphql": "^0.13.0",
     "@types/html-webpack-plugin": "^2.30.3",
     "@types/koa": "^2.0.44",
     "@types/koa-bodyparser": "^4.2.0",
