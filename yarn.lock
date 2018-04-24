@@ -3075,11 +3075,11 @@ entities@^1.1.1, entities@~1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/entities/-/entities-1.1.1.tgz#6e5c2d0a5621b5dadaecef80b90edfb5cd7772f0"
 
-env-cmd@^7.0.0:
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/env-cmd/-/env-cmd-7.0.0.tgz#d1fcfea6e0cbe6bf50b7130221d568907b6349bd"
+env-cmd@^8.0.1:
+  version "8.0.1"
+  resolved "https://registry.yarnpkg.com/env-cmd/-/env-cmd-8.0.1.tgz#0070518b29e78b1102f2e753551eaae3f971a335"
   dependencies:
-    cross-spawn "^5.0.1"
+    cross-spawn "^6.0.5"
 
 errno@^0.1.3, errno@~0.1.7:
   version "0.1.7"
