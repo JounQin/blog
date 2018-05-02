@@ -113,7 +113,7 @@
     "@types/koa-webpack": "^1.0.1",
     "@types/lodash": "^4.14.106",
     "@types/lru-cache": "^4.1.0",
-    "@types/node": "^9.6.0",
+    "@types/node": "^10.0.3",
     "@types/node-fetch": "^1.6.7",
     "@types/pug": "^2.0.4",
     "@types/qs": "^6.5.1",
