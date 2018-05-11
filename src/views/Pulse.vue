@@ -40,7 +40,12 @@ enum Type {
 }
 
 @Component({
-  asyncData: ({ apollo, store: { getters: { LOGIN } } }) =>
+  asyncData: ({
+    apollo,
+    store: {
+      getters: { LOGIN },
+    },
+  }) =>
     Promise.all([
       apollo.query({
         query: queries.pullRequests,

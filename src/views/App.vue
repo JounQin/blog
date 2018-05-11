@@ -143,7 +143,10 @@ export default class App extends Vue {
 
   @Watch('$route')
   routeChange() {
-    const { path, query: { search } } = this.$route
+    const {
+      path,
+      query: { search },
+    } = this.$route
     if (path !== '/' || !search) {
       this.search = null
     }
@@ -207,7 +210,7 @@ export default class App extends Vue {
 <style lang="scss">
 @import '~font-awesome/css/font-awesome.css';
 @import '~github-markdown-css';
-@import '~typeface-lato';
+@import '~typeface-lato/index.css';
 @import '~styles/bootstrap';
 
 html,

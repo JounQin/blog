@@ -3,7 +3,8 @@ import { ScrollContext } from 'types'
 import { now } from './time'
 
 const scrollSmoothNativeSupported =
-  !__SERVER__ && 'scrollBehavior' in document.documentElement.style
+  typeof document !== 'undefined' &&
+  'scrollBehavior' in document.documentElement.style
 
 const scroll = (context: ScrollContext, el: Window | Element) => {
   const { startX, startY, x = 0, y = 0 } = context

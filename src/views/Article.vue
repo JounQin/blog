@@ -49,7 +49,11 @@ const getQueryOptions = (
 
 @Component({
   async asyncData({ apollo, route, store, translate }) {
-    const { data: { repository: { issue: article } } } = await apollo.query<{
+    const {
+      data: {
+        repository: { issue: article },
+      },
+    } = await apollo.query<{
       repository: {
         issue: Issue
       }

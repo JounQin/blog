@@ -1,6 +1,4 @@
-import glob from 'glob'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
-import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import webpack from 'webpack'
@@ -48,10 +46,6 @@ export default merge.smart(baseConfig, {
     ...(__DEV__
       ? []
       : [
-          new PurgecssWebpackPlugin({
-            paths: glob.sync(resolve('src/views/*.vue')),
-            whitelistPatterns: [/^_/],
-          }),
           new SWPrecacheWebpackPlugin({
             cacheId: 'blog',
             minify: true,

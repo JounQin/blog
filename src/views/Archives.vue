@@ -30,7 +30,11 @@ const fetchArchieves = async ({
   store: Store<RootState>
   after?: string
 }): Promise<Issue[]> => {
-  const { data: { repository: { issues } } } = await apollo.query<{
+  const {
+    data: {
+      repository: { issues },
+    },
+  } = await apollo.query<{
     repository: Repository
   }>({
     query: queries.archives,

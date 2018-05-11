@@ -35,7 +35,9 @@ const GoogleTranslateLocales: {
 }
 
 const translate: Middleware = async (ctx, next) => {
-  const { query: { source, sourceText } } = ctx
+  const {
+    query: { source, sourceText },
+  } = ctx
 
   if (!sourceText) {
     return

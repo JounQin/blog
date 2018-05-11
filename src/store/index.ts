@@ -26,7 +26,9 @@ const actions: {
     store,
     { apollo, axios }: { apollo: Apollo; axios: AxiosInstance },
   ) {
-    const { data: { user, envs } } = await axios.get<{
+    const {
+      data: { user, envs },
+    } = await axios.get<{
       user: User
       envs: Env
     }>('/fetchInfo')
