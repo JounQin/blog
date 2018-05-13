@@ -4921,14 +4921,14 @@ koa-static-cache@^5.1.2:
     mime-types "^2.1.8"
     mz "^2.7.0"
 
-koa-webpack@^3.0.2:
-  version "3.0.2"
-  resolved "https://registry.yarnpkg.com/koa-webpack/-/koa-webpack-3.0.2.tgz#5a0604d476ec5ab3f12f02fd5bf8406a77b49ed2"
+koa-webpack@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/koa-webpack/-/koa-webpack-4.0.0.tgz#1d9b83c109db106d8ef65db376f910a45ba964c7"
   dependencies:
     app-root-path "^2.0.1"
     merge-options "^1.0.0"
     webpack-dev-middleware "^3.0.0"
-    webpack-hot-client "^2.0.0"
+    webpack-hot-client "^3.0.0"
     webpack-log "^1.1.1"
 
 koa@^2.5.1:
@@ -8740,12 +8740,13 @@ webpack-dev-middleware@^3.0.0:
     url-join "^4.0.0"
     webpack-log "^1.0.1"
 
-webpack-hot-client@^2.0.0:
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/webpack-hot-client/-/webpack-hot-client-2.2.2.tgz#4a97c513fc22d132573a0cb66ba7f525ff5fc036"
+webpack-hot-client@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/webpack-hot-client/-/webpack-hot-client-3.0.0.tgz#b714f257a264001275bc1491741685779cde12f2"
   dependencies:
     json-stringify-safe "^5.0.1"
     loglevelnext "^1.0.2"
+    strip-ansi "^4.0.0"
     uuid "^3.1.0"
     webpack-log "^1.1.1"
     ws "^4.0.0"
