@@ -19,7 +19,7 @@ const scssLoaders = (modules?: boolean) => [
       camelCase: true,
       localIdentName: __DEV__
         ? '[name]__[local]___[hash:base64:5]'
-        : '_[hash:base64:5]',
+        : '_[hash:base64:10]',
     },
   },
   {
