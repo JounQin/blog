@@ -207,10 +207,12 @@ export default class App extends Vue {
   }
 }
 </script>
-<style lang="scss">
+<style>
 @import '~font-awesome/css/font-awesome.css';
 @import '~github-markdown-css';
-@import '~typeface-lato/index.css';
+@import '~typeface-lato';
+</style>
+<style lang="scss">
 @import '~styles/bootstrap';
 
 html,

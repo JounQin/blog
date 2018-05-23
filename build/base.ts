@@ -8,7 +8,7 @@ import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
 const sourceMap = __DEV__
 const minimize = !sourceMap
 
-const scssLoaders = (modules?: boolean) => [
+const cssLoaders = (modules?: boolean) => [
   modules ? 'vue-style-loader' : MiniCssExtractPlugin.loader,
   {
     loader: 'css-loader',
@@ -28,6 +28,10 @@ const scssLoaders = (modules?: boolean) => [
       sourceMap,
     },
   },
+]
+
+const scssLoaders = (modules?: boolean) => [
+  ...cssLoaders(modules),
   'resolve-url-loader',
   {
     loader: 'sass-loader',
@@ -99,6 +103,18 @@ const config: Configuration = {
           },
           {
             use: ['html-loader', 'pug-plain-loader'],
+          },
+        ],
+      },
+      {
+        test: /\.css$/,
+        oneOf: [
+          {
+            resourceQuery: /module/,
+            use: cssLoaders(true),
+          },
+          {
+            use: cssLoaders(),
           },
         ],
       },
