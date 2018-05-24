@@ -59,7 +59,7 @@ const config: Configuration = {
   output: {
     publicPath,
     path: resolve('dist/static'),
-    filename: `[name].[${__DEV__ ? 'hash' : 'chunkhash'}].js`,
+    filename: `[name].[${__DEV__ ? 'hash' : 'contenthash'}].js`,
   },
   resolve: {
     alias: {
