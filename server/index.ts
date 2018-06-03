@@ -2,7 +2,7 @@ import fs from 'fs'
 
 import acceptLanguage from 'accept-language'
 import _debug from 'debug'
-import Koa from 'koa'
+import Koa, { Middleware } from 'koa'
 import proxy from 'koa-better-http-proxy'
 import compose from 'koa-compose'
 import compress from 'koa-compress'
@@ -139,7 +139,7 @@ const sessionMiddleware = session({}, app)
 
 if (process.env.NODE_ENV === 'development') {
   // tslint:disable-next-line:no-var-requires
-  const { readyPromise, webpackMiddleware } = require('./dev').default(
+  const { readyPromise, webpackMiddlewarePromise } = require('./dev').default(
     ({ bundle, clientManifest, fs: xfs }: any) => {
       mfs = xfs
       renderer = createRenderer(bundle, {
@@ -155,12 +155,15 @@ if (process.env.NODE_ENV === 'development') {
     0,
     publicStatic,
     sessionMiddleware,
-    webpackMiddleware,
     proxy(serverHost, {
       port: serverPort + 1,
       preserveReqSession: true,
       filter: ctx => /^\/api\//.test(ctx.url),
     }),
+  )
+
+  webpackMiddlewarePromise.then((webpackMiddleware: Middleware) =>
+    app.use(webpackMiddleware),
   )
 } else {
   mfs = fs
