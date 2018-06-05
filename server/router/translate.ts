@@ -34,7 +34,7 @@ const GoogleTranslateLocales: {
   en: 'en',
 }
 
-const translate: Middleware = async (ctx, next) => {
+const translate: Middleware = async ctx => {
   const {
     query: { source, sourceText },
   } = ctx
@@ -83,7 +83,7 @@ const translate: Middleware = async (ctx, next) => {
     ...data,
     targetText:
       targetText &&
-      targetText.replace(/\<([^<>]+)\>/g, (matched, $1: string) => {
+      targetText.replace(/\<([^<>]+)\>/g, (_matched, $1: string) => {
         $1 = $1
           .toLowerCase()
           .replace(/ /g, '')

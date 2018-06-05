@@ -147,7 +147,7 @@ export default class Home extends Vue {
     this.setData()
   }
 
-  async beforeRouteUpdate(to: Route, from: Route, next: () => void) {
+  async beforeRouteUpdate(to: Route, _from: Route, next: () => void) {
     await this.$apollo.query(
       getQueryOptions({
         apollo: this.$apollo,

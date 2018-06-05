@@ -1,5 +1,9 @@
 {
-  "extends": ["tslint:recommended", "tslint-plugin-prettier", "tslint-config-prettier"],
+  "extends": [
+    "tslint:recommended",
+    "tslint-plugin-prettier",
+    "tslint-config-prettier"
+  ],
   "rules": {
     "prettier": true,
     "interface-name": false,
@@ -12,9 +16,17 @@
     "ordered-imports": [
       true,
       {
-        "import-sources-order": "lowercase-last",
+        "grouped-imports": true,
+        "import-sources-order": "lowercase-first",
         "named-imports-order": "lowercase-last"
       }
+    ],
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "check-format",
+      "allow-leading-underscore",
+      "allow-pascal-case"
     ]
   }
 }

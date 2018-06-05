@@ -12,9 +12,9 @@ import session from 'koa-session'
 import fetch from 'node-fetch'
 import uuid from 'uuid'
 
-import { serverHost, serverPort } from '../../build/config'
-
 import { User } from 'types'
+
+import { serverHost, serverPort } from '../../build/config'
 
 import translate from './translate'
 
@@ -42,7 +42,7 @@ const STR_ARR_ENV_KEYS = [
 const ENV_KEYS = [...STR_ENV_KEYS, ...STR_ARR_ENV_KEYS]
 
 router
-  .get('/fetchInfo', (ctx, next) => {
+  .get('/fetchInfo', ctx => {
     const { user } = ctx.session
     let sessionID
 
@@ -68,7 +68,7 @@ router
       }, {}),
     }
   })
-  .get('/oauth', async (ctx, next) => {
+  .get('/oauth', async ctx => {
     const { code, path, state } = ctx.query
 
     if (!state || state !== ctx.session.uuid) {

@@ -1,7 +1,6 @@
-import fs from 'fs'
-
 import acceptLanguage from 'accept-language'
 import _debug from 'debug'
+import fs from 'fs'
 import Koa, { Middleware } from 'koa'
 import proxy from 'koa-better-http-proxy'
 import compose from 'koa-compose'
@@ -12,6 +11,8 @@ import staticCache from 'koa-static-cache'
 import LRU from 'lru-cache'
 import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
 
+import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
+
 import {
   resolve,
   runtimeRequire,
@@ -20,8 +21,6 @@ import {
 } from '../build/config'
 
 import startRouter from './router'
-
-import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
 
 acceptLanguage.languages(LOCALES)
 
@@ -36,9 +35,7 @@ const app = new Koa()
 app.keys = (process.env.APP_KEYS || '').split(',')
 
 let renderer: BundleRenderer
-let ready: Promise<any>
-// tslint:disable-next-line no-unused-variable
-let mfs: any
+let ready: Promise<void>
 
 const template =
   process.env.NODE_ENV === 'development'
@@ -140,8 +137,7 @@ const sessionMiddleware = session({}, app)
 if (process.env.NODE_ENV === 'development') {
   // tslint:disable-next-line:no-var-requires
   const { readyPromise, webpackMiddlewarePromise } = require('./dev').default(
-    ({ bundle, clientManifest, fs: xfs }: any) => {
-      mfs = xfs
+    ({ bundle, clientManifest }: any) => {
       renderer = createRenderer(bundle, {
         clientManifest,
       })
@@ -166,8 +162,6 @@ if (process.env.NODE_ENV === 'development') {
     app.use(webpackMiddleware),
   )
 } else {
-  mfs = fs
-
   renderer = createRenderer(
     runtimeRequire(resolve('dist/vue-ssr-server-bundle.json')),
     {
