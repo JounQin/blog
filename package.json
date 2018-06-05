@@ -117,7 +117,7 @@
     "@types/koa-logger": "^3.1.0",
     "@types/koa-router": "^7.0.28",
     "@types/koa-session": "^5.7.4",
-    "@types/koa-webpack": "^1.0.1",
+    "@types/koa-webpack": "^5.0.0",
     "@types/lodash": "^4.14.109",
     "@types/lru-cache": "^4.1.0",
     "@types/memory-fs": "^0.3.1",
