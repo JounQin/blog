@@ -104,7 +104,7 @@ const middlewares: Koa.Middleware[] = [
 
     const stream = renderer
       .renderToStream(context)
-      .on('error', (e: { status: number; url: string; stack: any }) => {
+      .on('error', (e: { status: number; url: string } & Error) => {
         switch ((ctx.status = e.status || 500)) {
           case 302:
             ctx.set({ Location: e.url })
@@ -171,7 +171,7 @@ if (process.env.NODE_ENV === 'development') {
     },
   )
 
-  const files: staticCache.StaticCacheFiles = {}
+  const files: staticCache.Files = {}
 
   middlewares.splice(
     1,
