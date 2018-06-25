@@ -100,7 +100,7 @@
     "vue-property-decorator": "^6.1.0",
     "vue-router": "^3.0.1",
     "vue-server-renderer": "^2.5.16",
-    "vue-translator": "^0.7.1",
+    "vue-translator": "^0.8.0",
     "vuex": "^3.0.1",
     "vuex-class": "^0.3.1"
   },
