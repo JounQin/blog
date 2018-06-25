@@ -7153,9 +7153,9 @@ vue-template-es2015-compiler@^1.6.0:
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/vue-template-es2015-compiler/-/vue-template-es2015-compiler-1.6.0.tgz#dc42697133302ce3017524356a6c61b7b69b4a18"
 
-vue-translator@^0.7.1:
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/vue-translator/-/vue-translator-0.7.1.tgz#6fecd42f4ff8aaffa66f1de9cfe835aca0061590"
+vue-translator@^0.8.0:
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/vue-translator/-/vue-translator-0.8.0.tgz#9838fbd76f60ce4a6798c9879935e9675af43b8f"
 
 vue@^2.5.16:
   version "2.5.16"
