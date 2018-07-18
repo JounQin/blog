@@ -6,7 +6,6 @@ import webpack, { Configuration } from 'webpack'
 import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
 
 const sourceMap = __DEV__
-const minimize = !sourceMap
 
 const cssLoaders = (modules?: boolean) => [
   modules ? 'vue-style-loader' : MiniCssExtractPlugin.loader,
@@ -14,7 +13,6 @@ const cssLoaders = (modules?: boolean) => [
     loader: 'css-loader',
     options: {
       sourceMap,
-      minimize,
       modules,
       camelCase: true,
       localIdentName: __DEV__

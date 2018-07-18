@@ -54,7 +54,7 @@ export default (cb: any) => {
 
   const mfs = new MFS()
   const serverCompiler = webpack(serverConfig)
-  serverCompiler.outputFileSystem = mfs
+  serverCompiler.outputFileSystem = mfs as any
 
   serverCompiler.watch({}, (err, stats) => {
     if (err) {
