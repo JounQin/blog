@@ -6,7 +6,7 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class HiLoading extends Vue {
-  @Prop() size: number
+  @Prop(Number) size: number
 }
 </script>
 
