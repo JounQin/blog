@@ -104,8 +104,11 @@ export default class App extends Vue {
   @State((state: RootState) => state.envs.GITHUB_OAUTH_CALLBACK)
   GITHUB_OAUTH_CALLBACK: string
 
-  @State progress: number
-  @State user: User
+  @State
+  progress: number
+
+  @State
+  user: User
 
   routes = [
     {

@@ -1,10 +1,7 @@
-import cssnano from 'cssnano'
 import glob from 'glob'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
-import OptimizeCssAssetsWebpackPlugin from 'optimize-css-assets-webpack-plugin'
 import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
-import UglifyJsWebpackPlugin from 'uglifyjs-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
@@ -20,25 +17,6 @@ export default merge.smart(baseConfig, {
   target: 'web',
   devtool: __DEV__ ? 'cheap-module-eval-source-map' : false,
   optimization: {
-    minimizer: [
-      new OptimizeCssAssetsWebpackPlugin({
-        cssProcessor: cssnano,
-        cssProcessorOptions: {
-          preset: [
-            'default',
-            {
-              discardComments: {
-                removeAll: true,
-              },
-            },
-          ],
-        },
-      }),
-      new UglifyJsWebpackPlugin({
-        cache: true,
-        parallel: true,
-      }),
-    ],
     runtimeChunk: {
       name: 'manifest',
     },
@@ -47,8 +25,8 @@ export default merge.smart(baseConfig, {
       name: 'vendors',
       cacheGroups: {
         vendors: {
-          test: ({ context, request }: { context: string; request: string }) =>
-            /node_modules/.test(context) && !/\.css$/.test(request),
+          test: ({ context }: { context: string }) =>
+            /node_modules/.test(context),
         },
       },
     },
@@ -67,6 +45,9 @@ export default merge.smart(baseConfig, {
         minifyJS: true,
       },
     }),
+    new VueSSRClientPlugin({
+      filename: '../vue-ssr-client-manifest.json',
+    }),
     ...(__DEV__
       ? []
       : [
@@ -74,7 +55,7 @@ export default merge.smart(baseConfig, {
             paths: glob.sync(resolve('src/**/*'), {
               nodir: true,
             }),
-            whitelistPatterns: [/^_/],
+            whitelistPatterns: [/^_/, /^highlight(\-|$)/],
           }),
           new SWPrecacheWebpackPlugin({
             cacheId: 'blog',
@@ -94,8 +75,5 @@ export default merge.smart(baseConfig, {
             ],
           }),
         ]),
-    new VueSSRClientPlugin({
-      filename: '../vue-ssr-client-manifest.json',
-    }),
   ],
 })

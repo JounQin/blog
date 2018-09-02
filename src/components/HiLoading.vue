@@ -6,10 +6,10 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class HiLoading extends Vue {
-  @Prop(Number) size: number
+  @Prop(Number)
+  size: number
 }
 </script>
-
 <style lang="scss" module>
 .loading {
   animation: loading 0.5s infinite linear;
