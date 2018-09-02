@@ -13,7 +13,7 @@ export const serverHost = '0.0.0.0'
 
 export const serverPort = +process.env.PORT || 7000
 
-export const publicPath = __DEV__ ? `http://${serverHost}:${serverPort}/` : '/'
+export const publicPath = '/'
 
 export const innerServer = `http://localhost:${serverPort}/`
 

@@ -9,7 +9,7 @@ main
           li.py-4(v-for="{ createdAt, id, number, title } of archives"
              :class="[$style.item, $style.article]"
              :key="id")
-            small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
+            small.text-muted.mr-2 {{ createdAt | dateFormat('MM-dd') }}
             router-link(:to="`/article/${number}`") {{ $tt(title) }}
 </template>
 <script lang="ts">

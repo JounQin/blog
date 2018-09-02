@@ -5,7 +5,7 @@ import { Locale } from 'types'
 
 export type DateType = Date | string | number
 
-export const dateFormat = (date: DateType, f: string = 'YYYY-MM-DD') =>
+export const dateFormat = (date: DateType, f: string = 'yyyy-MM-dd') =>
   format(date, f)
 
 const locales = {
