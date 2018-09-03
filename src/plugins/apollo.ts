@@ -24,5 +24,8 @@ Object.defineProperty(
           return this.$ssrContext.apollo
         },
       }
-    : { value: apollo, writable: __DEV__ },
+    : {
+        value: apollo,
+        writable: __DEV__,
+      },
 )

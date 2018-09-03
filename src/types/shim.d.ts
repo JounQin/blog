@@ -20,7 +20,7 @@ declare global {
 declare module 'vue/types/options' {
   interface ComponentOptions<V extends Vue> {
     asyncData?: AsyncDataFn
-    title?: string | ((vm: any) => string)
+    title?: string | ((vm: V) => string)
   }
 }
 

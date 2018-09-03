@@ -11,16 +11,7 @@ const config = {
 }
 
 if (process.env.NODE_ENV === 'production') {
-  config.plugins.cssnano = {
-    preset: [
-      'default',
-      {
-        discardComments: {
-          removeAll: true,
-        },
-      },
-    ],
-  }
+  config.plugins.cssnano = null
 }
 
 module.exports = config

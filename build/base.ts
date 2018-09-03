@@ -133,9 +133,6 @@ const config: Configuration = {
         loader: 'ts-loader',
         options: {
           appendTsSuffixTo: [/\.vue$/],
-          compilerOptions: {
-            module: 'esnext',
-          },
           transpileOnly: true,
         },
       },

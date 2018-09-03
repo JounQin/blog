@@ -1,5 +1,7 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin'
+import OptimizeCssAssetsWebpackPlugin from 'optimize-css-assets-webpack-plugin'
 import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
+import UglifyJsWebpackPlugin from 'uglifyjs-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
@@ -13,18 +15,23 @@ export default merge.smart(baseConfig, {
     app: ['./src/entry-client.ts'],
   },
   target: 'web',
-  devtool: __DEV__ ? 'cheap-module-eval-source-map' : false,
   optimization: {
+    minimizer: [
+      new OptimizeCssAssetsWebpackPlugin(),
+      new UglifyJsWebpackPlugin({
+        cache: true,
+        parallel: true,
+      }),
+    ],
     runtimeChunk: {
       name: 'manifest',
     },
     splitChunks: {
-      chunks: 'initial',
-      name: 'vendors',
       cacheGroups: {
         vendors: {
-          test: ({ context }: { context: string }) =>
-            /node_modules/.test(context),
+          chunks: 'initial',
+          name: 'vendors',
+          test: /node_modules/,
         },
       },
     },
@@ -46,26 +53,18 @@ export default merge.smart(baseConfig, {
     new VueSSRClientPlugin({
       filename: '../vue-ssr-client-manifest.json',
     }),
-    ...(__DEV__
-      ? []
-      : [
-          new SWPrecacheWebpackPlugin({
-            cacheId: 'blog',
-            minify: true,
-            dontCacheBustUrlsMatching: /./,
-            staticFileGlobsIgnorePatterns: [
-              /index\.html$/,
-              /\.map$/,
-              /\.json$/,
-            ],
-            stripPrefix: resolve('dist').replace(/\\/g, '/'),
-            runtimeCaching: [
-              {
-                urlPattern: /\//,
-                handler: 'networkFirst',
-              },
-            ],
-          }),
-        ]),
+    new SWPrecacheWebpackPlugin({
+      cacheId: 'blog',
+      minify: true,
+      dontCacheBustUrlsMatching: /./,
+      staticFileGlobsIgnorePatterns: [/index\.html$/, /\.map$/, /\.json$/],
+      stripPrefix: resolve('dist').replace(/\\/g, '/'),
+      runtimeCaching: [
+        {
+          urlPattern: /^https?\:\/\//,
+          handler: 'networkFirst',
+        },
+      ],
+    }),
   ],
 })

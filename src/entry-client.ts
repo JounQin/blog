@@ -73,7 +73,6 @@ if (module.hot) {
 }
 
 if (
-  process.env.NODE_ENV === 'production' &&
   (location.protocol === 'https:' ||
     ['127.0.0.1', 'localhost'].includes(location.hostname)) &&
   navigator.serviceWorker

@@ -24,7 +24,13 @@ const actions: {
 } = {
   async fetchInfo(
     store,
-    { apollo, axios }: { apollo: Apollo; axios: AxiosInstance },
+    {
+      apollo,
+      axios,
+    }: {
+      apollo: Apollo
+      axios: AxiosInstance
+    },
   ) {
     const {
       data: { user, envs },

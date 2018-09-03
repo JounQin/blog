@@ -199,5 +199,8 @@ Object.defineProperty(
           return this.$ssrContext.translate
         },
       }
-    : { value: translate, writable: __DEV__ },
+    : {
+        value: translate,
+        writable: __DEV__,
+      },
 )
