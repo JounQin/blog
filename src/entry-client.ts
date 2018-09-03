@@ -73,6 +73,7 @@ if (module.hot) {
 }
 
 if (
+  !__DEV__ &&
   (location.protocol === 'https:' ||
     ['127.0.0.1', 'localhost'].includes(location.hostname)) &&
   navigator.serviceWorker

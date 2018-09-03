@@ -1,5 +1,8 @@
+import glob from 'glob'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 import OptimizeCssAssetsWebpackPlugin from 'optimize-css-assets-webpack-plugin'
+import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
+import purgecssWhitelister from 'purgecss-whitelister'
 import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
 import UglifyJsWebpackPlugin from 'uglifyjs-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
@@ -10,7 +13,7 @@ import { __DEV__, resolve } from './config'
 
 import baseConfig from './base'
 
-export default merge.smart(baseConfig, {
+const config = merge.smart(baseConfig, {
   entry: {
     app: ['./src/entry-client.ts'],
   },
@@ -53,6 +56,17 @@ export default merge.smart(baseConfig, {
     new VueSSRClientPlugin({
       filename: '../vue-ssr-client-manifest.json',
     }),
+  ],
+})
+
+if (!__DEV__) {
+  config.plugins.push(
+    new PurgecssWebpackPlugin({
+      paths: glob.sync('src/**/*', {
+        nodir: true,
+      }),
+      whitelist: purgecssWhitelister('node_modules/github-markdown-css/*.css'),
+    }),
     new SWPrecacheWebpackPlugin({
       cacheId: 'blog',
       minify: true,
@@ -66,5 +80,7 @@ export default merge.smart(baseConfig, {
         },
       ],
     }),
-  ],
-})
+  )
+}
+
+export default config
