@@ -67,7 +67,7 @@
     "apollo-link-http": "^1.5.4",
     "axios": "^0.18.0",
     "date-fns": "^2.0.0-alpha.16",
-    "debug": "^3.1.0",
+    "debug": "^4.0.1",
     "env-cmd": "^8.0.2",
     "github-markdown-css": "^2.10.0",
     "google-translate-api": "^2.3.0",
