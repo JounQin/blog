@@ -145,13 +145,13 @@ const config: Configuration = {
     new webpack.DefinePlugin({
       __DEV__,
     }),
-    new MiniCssExtractPlugin({
-      filename: '[name].[contenthash].css',
-    }),
     new ForkTsCheckerWebpackPlugin({
       tsconfig: resolve('src/tsconfig.json'),
       tslint: true,
       vue: true,
+    }),
+    new MiniCssExtractPlugin({
+      filename: '[name].[contenthash].css',
     }),
     new VueLoaderPlugin(),
   ],
