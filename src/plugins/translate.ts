@@ -30,6 +30,16 @@ const endPlacehodlers = {
   [Placehodler.CONTENT]: contentPlaceholder('<em>end</em>').value,
 }
 
+const ERROR_TIPS: Record<string, string> = {
+  zh: '翻译出现错误',
+  en: 'Translation error occurs',
+}
+
+const getErrorTip = (locale: string, type: boolean) => {
+  const errorTip = ERROR_TIPS[locale] || ERROR_TIPS.en
+  return type ? errorTip + ': ' : `<p>${errorTip}</p>`
+}
+
 export interface Translate {
   (template: string, type?: boolean): string
   cache?: TranslateCache
@@ -158,12 +168,18 @@ export const createTranslate = (
         const storage = axios
           .get('/translate', {
             params: {
-              source: firstLocale,
-              sourceText: firstTranslation,
+              Source: firstLocale,
+              SourceText: firstTranslation,
             },
           })
-          .then(({ data: { targetText, text } }) => {
-            cacheData[main] = targetText || text
+          .then(({ data: { text } }) => {
+            cacheData[main] = text
+          })
+          .catch(() => {
+            cacheData[main] = `${getErrorTip(
+              firstLocale,
+              type,
+            )}${firstTranslation}`
           })
 
         storages.push(storage)
