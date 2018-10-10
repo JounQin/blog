@@ -126,11 +126,14 @@ export default (context: ServerContext) =>
 
       context.script = `<script>window.__APOLLO_CACHE__=${serialize(
         apollo.cache.extract(),
-      )};window.__STORE_STATE__=${serialize(
-        store.state,
-      )};window.__TRANSLATE_CACHE__=${serialize(
-        translate.cache.extract(),
-      )}${SCRIPT_SUFFIX}</script>`
+        {
+          isJSON: true,
+        },
+      )};window.__STORE_STATE__=${serialize(store.state, {
+        isJSON: true,
+      })};window.__TRANSLATE_CACHE__=${serialize(translate.cache.extract(), {
+        isJSON: true,
+      })}${SCRIPT_SUFFIX}</script>`
 
       resolve(app)
     }, reject)

@@ -100,13 +100,13 @@ const translate: Middleware = async ctx => {
 
   ctx.body = {
     text: TargetText.replace(/\<([^<>]+)\>/g, (_matched, $1: string) => {
-      $1 = $1
-        .toLowerCase()
-        .replace(/ /g, '')
-        .replace(/\/+/g, '/')
-      const index = $1.indexOf('/')
-      if (index !== -1) {
-        $1 = $1.substr(index)
+      $1 = $1.toLowerCase().trim()
+      if ($1.startsWith('/')) {
+        $1 = $1.replace(/ /g, '')
+      } else {
+        $1 = $1
+          .replace(/([a-z\-_]+)= ?\" ?([^<>"]+) ?\"?/g, '$1="$2"')
+          .replace(/\"+/g, '"')
       }
       return '<' + $1 + '>'
     }),
