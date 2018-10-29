@@ -148,7 +148,7 @@
     "imagemin": "^6.0.0",
     "img-loader": "^3.0.0",
     "koa-webpack": "^5.1.0",
-    "lint-staged": "^7.3.0",
+    "lint-staged": "^8.0.0",
     "mini-css-extract-plugin": "^0.4.3",
     "node-sass": "^4.9.3",
     "nodemon": "^1.18.4",
