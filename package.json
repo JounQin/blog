@@ -149,7 +149,7 @@
     "img-loader": "^3.0.0",
     "koa-webpack": "^5.1.0",
     "lint-staged": "^8.0.4",
-    "mini-css-extract-plugin": "^0.4.3",
+    "mini-css-extract-plugin": "^0.5.0",
     "node-sass": "^4.9.3",
     "nodemon": "^1.18.4",
     "npm-run-all": "^4.1.3",
