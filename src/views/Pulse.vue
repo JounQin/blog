@@ -90,8 +90,8 @@ export default class Pulse extends Vue {
   get pulses() {
     switch (this.activeType) {
       case Type.ALL:
-        return [...this.pullRequests, ...this.issues].sort(
-          (x, y) => (x.createdAt > y.createdAt ? -1 : 1),
+        return [...this.pullRequests, ...this.issues].sort((x, y) =>
+          x.createdAt > y.createdAt ? -1 : 1,
         )
       case Type.PRS:
         return this.pullRequests

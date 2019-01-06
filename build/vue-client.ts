@@ -1,17 +1,14 @@
 import glob from 'glob'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
-import OptimizeCssAssetsWebpackPlugin from 'optimize-css-assets-webpack-plugin'
 import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import purgecssWhitelister from 'purgecss-whitelister'
 import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
-import UglifyJsWebpackPlugin from 'uglifyjs-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
 
-import { __DEV__, resolve } from './config'
-
 import baseConfig from './base'
+import { __DEV__, resolve } from './config'
 
 const config = merge.smart(baseConfig, {
   entry: {
@@ -19,13 +16,6 @@ const config = merge.smart(baseConfig, {
   },
   target: 'web',
   optimization: {
-    minimizer: [
-      new OptimizeCssAssetsWebpackPlugin(),
-      new UglifyJsWebpackPlugin({
-        cache: true,
-        parallel: true,
-      }),
-    ],
     runtimeChunk: {
       name: 'manifest',
     },

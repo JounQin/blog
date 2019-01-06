@@ -17,7 +17,7 @@ const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
-const cache = LRU<string, Apollo>({
+const cache = new LRU<string, Apollo>({
   max: 1000,
   maxAge: 1000 * 60 * 15,
 })

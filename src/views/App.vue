@@ -157,7 +157,7 @@ export default class App extends Vue {
   }
 
   created() {
-    this.search = this.$route.query.search
+    this.search = this.$route.query.search as string
   }
 
   mounted() {

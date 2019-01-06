@@ -50,7 +50,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
 
   const { REPOSITORY } = store.getters
 
-  const searchText = search && search.trim()
+  const searchText = search && (search as string).trim()
 
   const variables = {
     ...REPOSITORY,

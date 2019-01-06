@@ -51,7 +51,7 @@ const createRenderer = (bundle: object, options: object) =>
     ...options,
     template,
     inject: false,
-    cache: LRU({
+    cache: new LRU({
       max: 1000,
       maxAge: 1000 * 60 * 15,
     }),

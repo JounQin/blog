@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
-
 import VueRouter from 'vue-router'
 
 Vue.use(VueRouter)
