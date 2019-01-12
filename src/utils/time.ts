@@ -1,4 +1,4 @@
-import { format, formatDistance } from 'date-fns'
+import { format, formatDistance, parseISO } from 'date-fns'
 import { enUS, zhCN } from 'date-fns/locale'
 
 import { Locale } from 'types'
@@ -6,7 +6,7 @@ import { Locale } from 'types'
 export type DateType = Date | string | number
 
 export const dateFormat = (date: DateType, f: string = 'yyyy-MM-dd') =>
-  format(date, f)
+  format(typeof date === 'string' ? parseISO(date) : date, f)
 
 const locales = {
   [Locale.EN]: enUS,
@@ -14,7 +14,7 @@ const locales = {
 }
 
 export const timeAgo = (date: DateType, locale: Locale = Locale.EN) =>
-  formatDistance(date, Date.now(), {
+  formatDistance(typeof date === 'string' ? parseISO(date) : date, Date.now(), {
     locale: locales[locale],
   })
 
