@@ -94,7 +94,7 @@
     "serialize-javascript": "^1.6.1",
     "uuid": "^3.3.2",
     "vue": "^2.6.4",
-    "vue-class-component": "^6.3.2",
+    "vue-class-component": "^7.0.1",
     "vue-property-decorator": "^7.3.0",
     "vue-router": "^3.0.2",
     "vue-server-renderer": "^2.5.22",
