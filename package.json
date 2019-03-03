@@ -116,7 +116,7 @@
     "@types/koa-static-cache": "^5.1.0",
     "@types/koa-webpack": "^5.0.1",
     "@types/lodash": "^4.14.119",
-    "@types/lru-cache": "^4.1.1",
+    "@types/lru-cache": "^5.1.0",
     "@types/memory-fs": "^0.3.2",
     "@types/mini-css-extract-plugin": "^0.2.0",
     "@types/node": "^11.10.4",
