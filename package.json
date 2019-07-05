@@ -73,7 +73,7 @@
     "date-fns": "^2.0.0-alpha.27",
     "debug": "^4.1.1",
     "env-cmd": "^8.0.2",
-    "github-markdown-css": "^2.10.0",
+    "github-markdown-css": "^3.0.1",
     "google-translate-api": "^2.3.0",
     "graphql": "^14.4.2",
     "graphql-tag": "^2.10.0",
