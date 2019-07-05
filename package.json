@@ -72,7 +72,7 @@
     "axios": "^0.18.1",
     "date-fns": "^2.0.0-alpha.27",
     "debug": "^4.1.1",
-    "env-cmd": "^8.0.2",
+    "env-cmd": "^9.0.3",
     "github-markdown-css": "^3.0.1",
     "google-translate-api": "^2.3.0",
     "graphql": "^14.4.2",
