@@ -118,7 +118,7 @@
     "@types/lodash": "^4.14.119",
     "@types/lru-cache": "^5.1.0",
     "@types/memory-fs": "^0.3.2",
-    "@types/mini-css-extract-plugin": "^0.2.0",
+    "@types/mini-css-extract-plugin": "^0.2.1",
     "@types/node": "^11.10.4",
     "@types/node-fetch": "^2.1.4",
     "@types/pug": "^2.0.4",
