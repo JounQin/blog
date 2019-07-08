@@ -178,10 +178,10 @@
   dependencies:
     "@types/koa" "*"
 
-"@types/koa-router@^7.0.38":
-  version "7.0.38"
-  resolved "https://registry.yarnpkg.com/@types/koa-router/-/koa-router-7.0.38.tgz#75016376b8fef17619e61089e02ea0074c803e4e"
-  integrity sha512-HIpCYSfhW2T/IXn+/3SwEAmu8UM4iT9CL00YHkY62c9/S6W2QochpaZOllBMKynCHHIhoHiJ3bMN0UWgB904rg==
+"@types/koa-router@^7.0.42":
+  version "7.0.42"
+  resolved "https://registry.yarnpkg.com/@types/koa-router/-/koa-router-7.0.42.tgz#0e5c01d4d0a2873d402d432114f08372d7c50eb1"
+  integrity sha512-mggrNY7Ywwjt7QjaMAlbb1ixE+v7AFskOeyKdmZT/NvPVEAo48gYUxIcF8ILlMc3eg1bo6SxNoUcbxhTv7edrA==
   dependencies:
     "@types/koa" "*"
 
