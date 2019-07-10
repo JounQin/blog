@@ -87,7 +87,7 @@
     "koa-router": "^7.4.0",
     "koa-session": "^5.10.1",
     "koa-static-cache": "^5.1.2",
-    "lodash-es": "^4.17.11",
+    "lodash-es": "^4.17.14",
     "lru-cache": "^5.1.1",
     "node-fetch": "^2.3.0",
     "qs": "^6.6.0",
