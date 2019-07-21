@@ -1,9 +1,8 @@
-import * as webpack from 'webpack'
-import * as nodeExternals from 'webpack-node-externals'
-
-import { resolve } from './config'
+import webpack from 'webpack'
+import nodeExternals from 'webpack-node-externals'
 
 import baseConfig from './base'
+import { resolve } from './config'
 
 const config: webpack.Configuration = {
   ...baseConfig,
@@ -18,8 +17,8 @@ const config: webpack.Configuration = {
     whitelist: [/\.css/],
   }),
   plugins: [
-    new webpack.optimize.UglifyJsPlugin({
-      comments: false,
+    new webpack.DefinePlugin({
+      __SERVER__: true,
     }),
   ],
 }

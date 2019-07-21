@@ -1,17 +1,30 @@
 import axios from 'axios'
+import Vue from 'vue'
 
 import createApp from 'app'
+import { apollo, translate } from 'plugins'
 import { LOCALE_COOKIE, setCookie } from 'utils'
 
-const { app, createApollo, router, store } = createApp()
-
-const apollo = createApollo()
+const { app, router, store } = createApp()
 
 app.$watch('$t.locale', curr => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
 })
 
-store.replaceState(window.__INITIAL_STATE__)
+app.$watch('$tt.loading', curr => {
+  if (curr) {
+    Vue.nextTick(() => translate.cache.prefetch())
+  }
+})
+
+apollo.cache.restore(window.__APOLLO_CACHE__)
+store.replaceState(window.__STORE_STATE__)
+
+if (!__DEV__) {
+  delete window.__APOLLO_CACHE__
+  delete window.__STORE_STATE__
+  delete window.__TRANSLATE_CACHE__
+}
 
 const SET_PROGRESS = 'SET_PROGRESS'
 
@@ -36,9 +49,11 @@ router.onReady(() => {
       await Promise.all(
         activated.map(
           ({ options, asyncData = options && options.asyncData }: any) =>
-            asyncData && asyncData({ apollo, axios, route: to, store }),
+            asyncData &&
+            asyncData({ apollo, axios, route: to, store, translate }),
         ),
       )
+      await translate.cache.prefetch()
     }
 
     next()
@@ -50,10 +65,6 @@ router.onReady(() => {
     }, 500)
   })
 
-  router.afterEach(() => {
-    document.querySelector('.container-fluid').scrollTop = 0
-  })
-
   app.$mount('#app')
 })
 
@@ -62,7 +73,7 @@ if (module.hot) {
 }
 
 if (
-  process.env.NODE_ENV === 'production' &&
+  !__DEV__ &&
   (location.protocol === 'https:' ||
     ['127.0.0.1', 'localhost'].includes(location.hostname)) &&
   navigator.serviceWorker

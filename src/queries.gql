@@ -35,19 +35,7 @@ query archives(
   }
 }
 
-query categories($name: String!, $owner: String!) {
-  repository(name: $name, owner: $owner) {
-    labels(first: 100) {
-      nodes {
-        color
-        id
-        name
-      }
-    }
-  }
-}
-
-query issue($name: String!, $owner: String!, $number: Int!) {
+query article($name: String!, $owner: String!, $number: Int!) {
   repository(name: $name, owner: $owner) {
     issue(number: $number) {
       bodyHTML
@@ -77,7 +65,7 @@ query issue($name: String!, $owner: String!, $number: Int!) {
   }
 }
 
-query issues(
+query articles(
   $name: String!
   $owner: String!
   $first: Int
@@ -154,6 +142,73 @@ query search(
       hasNextPage
       hasPreviousPage
       startCursor
+    }
+  }
+}
+
+query pullRequests($login: String!, $after: String) {
+  user(login: $login) {
+    id
+    pullRequests(
+      after: $after
+      first: 100
+      states: [MERGED, OPEN]
+      orderBy: { direction: DESC, field: CREATED_AT }
+    ) {
+      nodes {
+        ... on PullRequest {
+          createdAt
+          id
+          mergedAt
+          state
+          title
+          url
+          repository {
+            nameWithOwner
+            url
+            owner {
+              login
+            }
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}
+
+query issues($login: String!, $after: String) {
+  user(login: $login) {
+    id
+    issues(
+      after: $after
+      first: 100
+      orderBy: { direction: DESC, field: CREATED_AT }
+    ) {
+      nodes {
+        ... on Issue {
+          closedAt
+          createdAt
+          id
+          state
+          title
+          url
+          repository {
+            nameWithOwner
+            url
+            owner {
+              login
+            }
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
     }
   }
 }

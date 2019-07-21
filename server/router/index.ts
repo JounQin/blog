@@ -2,25 +2,23 @@ import { InMemoryCache } from 'apollo-cache-inmemory'
 import ApolloClient from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import axios from 'axios'
-import * as _debug from 'debug'
+import _debug from 'debug'
 import gql from 'graphql-tag'
-import * as Koa from 'koa'
-import * as bodyParser from 'koa-bodyparser'
-import * as compose from 'koa-compose'
-import * as Router from 'koa-router'
-import * as session from 'koa-session'
+import Koa from 'koa'
+import bodyParser from 'koa-bodyparser'
+import compose from 'koa-compose'
+import Router from 'koa-router'
+import session from 'koa-session'
 import fetch from 'node-fetch'
-import * as uuid from 'uuid'
-
-import { serverHost, serverPort } from '../../build/config'
+import uuid from 'uuid'
 
 import { User } from 'types'
+
+import { serverHost, serverPort } from '../../build/config'
 
 import translate from './translate'
 
 global.fetch = fetch as any
-
-const { APP_KEYS, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } = process.env
 
 const debug = _debug('1stg:server:router')
 
@@ -28,8 +26,23 @@ const router = new Router({
   prefix: '/api',
 })
 
+const STR_ENV_KEYS = [
+  'GITHUB_REPOSITORY_OWNER',
+  'GITHUB_REPOSITORY_OWNER_TYPE',
+  'GITHUB_REPOSITORY_NAME',
+  'GITHUB_CLIENT_ID',
+  'GITHUB_OAUTH_CALLBACK',
+]
+
+const STR_ARR_ENV_KEYS = [
+  'GITHUB_EXCLUDED_LABELS',
+  'GITHUB_EXCLUDED_REPOSITORY_OWNERS',
+]
+
+const ENV_KEYS = [...STR_ENV_KEYS, ...STR_ARR_ENV_KEYS]
+
 router
-  .get('/user', (ctx, next) => {
+  .get('/fetchInfo', ctx => {
     const { user } = ctx.session
     let sessionID
 
@@ -38,11 +51,24 @@ router
       ctx.session.uuid = sessionID
     }
 
-    ctx.body = user || {
-      uuid: sessionID,
+    ctx.body = {
+      user: user || {
+        uuid: sessionID,
+      },
+      envs: ENV_KEYS.reduce((envs, key) => {
+        let value: string | string[] = process.env[key]
+
+        if (STR_ARR_ENV_KEYS.includes(key)) {
+          value = value ? value.split(',') : []
+        }
+
+        return Object.assign(envs, {
+          [key]: process.env[key],
+        })
+      }, {}),
     }
   })
-  .get('/oauth', async (ctx, next) => {
+  .get('/oauth', async ctx => {
     const { code, path, state } = ctx.query
 
     if (!state || state !== ctx.session.uuid) {
@@ -52,8 +78,8 @@ router
     const { data } = await axios.post(
       'https://github.com/login/oauth/access_token',
       {
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
         state,
       },
@@ -110,7 +136,7 @@ export default (app?: Koa) => {
 
   if (!app) {
     app = new Koa()
-    app.keys = app.keys = APP_KEYS.split(',')
+    app.keys = app.keys = (process.env.APP_KEYS || '').split(',')
     middlewares.unshift(session({}, app))
   }
 

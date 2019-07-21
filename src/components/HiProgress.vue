@@ -6,7 +6,10 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class HiProgress extends Vue {
-  @Prop({ required: true })
+  @Prop({
+    required: true,
+    type: Number,
+  })
   progress: number
 }
 </script>

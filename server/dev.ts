@@ -1,7 +1,7 @@
-import * as _debug from 'debug'
-import * as koaWebpack from 'koa-webpack'
-import * as MFS from 'memory-fs'
-import * as webpack from 'webpack'
+import _debug from 'debug'
+import koaWebpack from 'koa-webpack'
+import MFS from 'memory-fs'
+import webpack from 'webpack'
 
 import { resolve } from '../build/config'
 
@@ -11,11 +11,10 @@ import serverConfig from '../build/vue-server'
 const debug = _debug('1stg:server:dev')
 
 export default (cb: any) => {
-  // tslint:disable-next-line:variable-name
   let _resolve: any
   let clientManifest: any
   let bundle: any
-  let fs: any
+  let fs: MFS
 
   const readyPromise = new Promise(r => {
     _resolve = r
@@ -28,7 +27,7 @@ export default (cb: any) => {
 
   const clientCompiler = webpack(clientConfig)
 
-  const webpackMiddleware = koaWebpack({
+  const webpackMiddlewarePromise = koaWebpack({
     compiler: clientCompiler,
   })
 
@@ -41,28 +40,28 @@ export default (cb: any) => {
       return
     }
 
-    fs = webpackMiddleware.dev.fileSystem
-    clientManifest = JSON.parse(
-      fs.readFileSync(resolve('dist/vue-ssr-client-manifest.json')),
-    )
+    webpackMiddlewarePromise.then(webpackMiddleware => {
+      fs = webpackMiddleware.devMiddleware.fileSystem
+      clientManifest = JSON.parse(
+        fs.readFileSync(resolve('dist/vue-ssr-client-manifest.json')),
+      )
 
-    if (bundle) {
-      ready({ bundle, clientManifest, fs })
-    }
+      if (bundle) {
+        ready({ bundle, clientManifest, fs })
+      }
+    })
   })
 
   const mfs = new MFS()
   const serverCompiler = webpack(serverConfig)
-  serverCompiler.outputFileSystem = mfs
+  serverCompiler.outputFileSystem = mfs as any
 
   serverCompiler.watch({}, (err, stats) => {
     if (err) {
       throw err
     }
 
-    stats = stats.toJson()
-
-    if ((stats as any).errors.length) {
+    if (stats.hasErrors()) {
       return
     }
 
@@ -75,5 +74,5 @@ export default (cb: any) => {
     }
   })
 
-  return { readyPromise, webpackMiddleware }
+  return { readyPromise, webpackMiddlewarePromise }
 }

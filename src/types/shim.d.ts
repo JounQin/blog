@@ -6,23 +6,21 @@ import { Route } from 'vue-router'
 import { Translator } from 'vue-translator'
 import { Store } from 'vuex'
 
+import { Translate, TranslateCacheData } from 'plugins'
 import { Apollo, AsyncDataFn, RootState } from 'types'
-import { translateTitle } from 'utils'
 
 declare global {
   interface Window {
-    __INITIAL_STATE__: RootState
-    __APOLLO_STATE__: NormalizedCacheObject
+    __APOLLO_CACHE__: NormalizedCacheObject
+    __STORE_STATE__: RootState
+    __TRANSLATE_CACHE__: TranslateCacheData
   }
-
-  // tslint:disable-next-line variable-name
-  const __non_webpack_require__: NodeRequire
 }
 
 declare module 'vue/types/options' {
   interface ComponentOptions<V extends Vue> {
     asyncData?: AsyncDataFn
-    title?: string | ((vm: any) => string)
+    title?: string | ((vm: V) => string)
   }
 }
 
@@ -31,9 +29,7 @@ declare module 'vue/types/vue' {
     $apollo: Apollo
     $http: AxiosInstance
     $t: Translator
-    $utils: {
-      translateTitle: typeof translateTitle
-    }
+    $tt: Translate
   }
 }
 

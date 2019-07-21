@@ -1,84 +1,76 @@
-import * as GoogleFontsWebpackPlugin from 'google-fonts-webpack-plugin'
-import * as HtmlWebpackPlugin from 'html-webpack-plugin'
-import * as SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
-import * as VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
-import * as webpack from 'webpack'
-import * as merge from 'webpack-merge'
-
-import { __DEV__, resolve } from './config'
+import glob from 'glob'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
+import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
+import purgecssWhitelister from 'purgecss-whitelister'
+import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
+import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
+import webpack from 'webpack'
+import merge from 'webpack-merge'
 
 import baseConfig from './base'
+import { __DEV__, resolve } from './config'
 
-export default merge.smart(baseConfig, {
+const config = merge.smart(baseConfig, {
   entry: {
     app: ['./src/entry-client.ts'],
   },
   target: 'web',
-  devtool: __DEV__ ? 'cheap-module-eval-source-map' : false,
+  optimization: {
+    runtimeChunk: {
+      name: 'manifest',
+    },
+    splitChunks: {
+      cacheGroups: {
+        vendors: {
+          chunks: 'initial',
+          name: 'vendors',
+          test: /node_modules/,
+        },
+      },
+    },
+  },
   plugins: [
     new webpack.DefinePlugin({
       'process.env.VUE_ENV': JSON.stringify('client'),
       SERVER_PREFIX: JSON.stringify('/'),
       __SERVER__: false,
     }),
-    // extract vendor chunks for better caching
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'vendors',
-      minChunks: module =>
-        // a module is extracted into the vendors chunk
-        // if it's inside node_modules
-        /node_modules/.test(module.context) &&
-        // and not a CSS file (due to extract-text-webpack-plugin limitation)
-        !/\.css$/.test(module.request),
-    }),
-    // extract webpack runtime & manifest to avoid vendor chunk hash changing
-    // on every build.
-    new webpack.optimize.CommonsChunkPlugin({
-      name: 'manifest',
-    }),
     new HtmlWebpackPlugin({
       template: 'src/index.pug',
       filename: '__non_ssr_page__.html',
+      minify: !__DEV__ && {
+        minifyCSS: true,
+        minifyJS: true,
+      },
     }),
-    ...(__DEV__
-      ? []
-      : [
-          new GoogleFontsWebpackPlugin({
-            fonts: [
-              {
-                family: 'Lato',
-                variants: [
-                  '300',
-                  '300italic',
-                  '400',
-                  '400italic',
-                  '700',
-                  '700italic',
-                ],
-                subsets: ['latin', 'latin-ext'],
-              },
-            ],
-          }),
-          new SWPrecacheWebpackPlugin({
-            cacheId: 'blog',
-            minify: true,
-            dontCacheBustUrlsMatching: /./,
-            staticFileGlobsIgnorePatterns: [
-              /index\.html$/,
-              /\.map$/,
-              /\.json$/,
-            ],
-            stripPrefix: resolve('dist').replace(/\\/g, '/'),
-            runtimeCaching: [
-              {
-                urlPattern: /\//,
-                handler: 'networkFirst',
-              },
-            ],
-          }),
-        ]),
     new VueSSRClientPlugin({
       filename: '../vue-ssr-client-manifest.json',
     }),
   ],
 })
+
+if (!__DEV__) {
+  config.plugins.push(
+    new PurgecssWebpackPlugin({
+      paths: glob.sync('src/**/*', {
+        nodir: true,
+      }),
+      whitelist: purgecssWhitelister('node_modules/github-markdown-css/*.css'),
+    }),
+    new SWPrecacheWebpackPlugin({
+      cacheId: 'blog',
+      minify: true,
+      dontCacheBustUrlsMatching: /./,
+      staticFileGlobsIgnorePatterns: [/index\.html$/, /\.map$/, /\.json$/],
+      stripPrefix: resolve('dist').replace(/\\/g, '/'),
+      runtimeCaching: [
+        {
+          urlPattern: /^https?\:\/\//,
+          handler: 'networkFirst',
+        },
+      ],
+    }),
+  )
+}
+
+export default config

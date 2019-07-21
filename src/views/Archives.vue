@@ -9,38 +9,50 @@ main
           li.py-4(v-for="{ createdAt, id, number, title } of archives"
              :class="[$style.item, $style.article]"
              :key="id")
-            small.text-muted.mr-2 {{ createdAt | dateFormat('MM-DD') }}
-            router-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
+            small.text-muted.mr-2 {{ createdAt | dateFormat('MM-dd') }}
+            router-link(:to="`/article/${number}`") {{ $tt(title) }}
 </template>
 <script lang="ts">
-import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
+import { Store } from 'vuex'
 
-import { getDefaultLabels } from 'commons'
-import { Apollo, Issue, Repository } from 'types'
-import { REPOSITORY } from 'utils'
+import { Apollo, Issue, Repository, RootState } from 'types'
+import { getDefaultLabels } from 'utils'
 
-import * as queries from 'queries.gql'
+import queries from 'queries.gql'
 
-const fetchArchieves = async (
-  apollo: Apollo,
-  after?: string,
-): Promise<Issue[]> => {
-  const { data: { repository: { issues } } } = await apollo.query<{
+const fetchArchieves = async ({
+  apollo,
+  store,
+  after,
+}: {
+  apollo: Apollo
+  store: Store<RootState>
+  after?: string
+}): Promise<Issue[]> => {
+  const {
+    data: {
+      repository: { issues },
+    },
+  } = await apollo.query<{
     repository: Repository
   }>({
     query: queries.archives,
     variables: {
-      ...REPOSITORY,
+      ...store.getters.REPOSITORY,
       after,
-      labels: getDefaultLabels(apollo).map(({ name }) => name),
+      labels: getDefaultLabels({ apollo, store }).map(({ name }) => name),
     },
   })
 
   const { nodes, pageInfo } = issues
 
   const nextIssues = pageInfo.hasNextPage
-    ? await fetchArchieves(apollo, pageInfo.endCursor)
+    ? await fetchArchieves({
+        apollo,
+        store,
+        after: pageInfo.endCursor,
+      })
     : []
 
   return [...nodes, ...nextIssues]
@@ -56,8 +68,9 @@ type ArchivesList = Array<{
 }>
 
 @Component({
-  asyncData: async ({ apollo }) => {
-    const archives = uniqBy(await fetchArchieves(apollo), 'id')
+  asyncData: async ({ apollo, store, translate }) => {
+    const archives = await fetchArchieves({ apollo, store })
+    archives.forEach(({ title }) => translate(title))
     apollo.writeQuery({
       query: queries.allArchives,
       data: {

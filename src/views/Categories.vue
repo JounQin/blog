@@ -12,8 +12,8 @@ main
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
-import { getDefaultLabels } from 'commons'
 import { Label } from 'types'
+import { getDefaultLabels } from 'utils'
 
 @Component({
   title: (vm: Categories) => vm.$t('categories'),
@@ -30,7 +30,10 @@ import { Label } from 'types'
 })
 export default class Categories extends Vue {
   get labels(): Label[] {
-    return getDefaultLabels(this.$apollo)
+    return getDefaultLabels({
+      apollo: this.$apollo,
+      store: this.$store,
+    })
   }
 }
 </script>

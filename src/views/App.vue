@@ -14,7 +14,7 @@
                         @transitionend="transitionEnd")
         ul.navbar-nav.justify-content-end.flex-1.pr-md-4
           router-link.nav-item.d-block.d-lg-block(v-for="{ icon, link, text } of routes"
-                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': !link && $t.locale === 'en' }"
+                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': (!link || link === 'pulse') && $t.locale === 'en' }"
                                                   :to="'/' + link"
                                                   :key="link"
                                                   tag="li"
@@ -33,6 +33,7 @@
             img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
   div(:class="$style.main")
     router-view.container.py-4
+    button.text-muted(v-if="showScrollBtn", :class="$style.top", @click="scrollTo({y:0})") Top
   footer.row.py-4.bg-light
     .container.d-flex
       .flex-1
@@ -51,21 +52,22 @@
         i.fa.fa-heart.ml-2
 </template>
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
-import { State } from 'vuex-class'
+import { Component, Vue, Watch } from 'vue-property-decorator'
+import { Getter, State } from 'vuex-class'
 
 import HiProgress from 'components/HiProgress.vue'
 
-import { User } from 'types'
-import { REPOSITORY } from 'utils'
+import { RootState, User } from 'types'
+import { scrollTo } from 'utils'
 
-const COLLAPSE_HEIGHT = '187.5px'
+const COLLAPSE_HEIGHT = '222.5px'
 
 @Component({
   translator: {
     en: {
       home: 'Home',
       categories: 'Categories',
+      pulse: 'Pulse',
       about: 'About',
       archives: 'Archives',
       search_all_articles: 'Search All Articles',
@@ -73,7 +75,6 @@ const COLLAPSE_HEIGHT = '187.5px'
       login: 'Login',
       toggle_navigation: 'Toggle Navigation',
       toggle_locale: '切换至中文',
-      translating: 'Translating',
     },
     zh: {
       home: '首页',
@@ -85,7 +86,6 @@ const COLLAPSE_HEIGHT = '187.5px'
       login: '登录',
       toggle_navigation: '切换导航',
       toggle_locale: 'Switch to English',
-      translating: '翻译中',
     },
   },
   components: {
@@ -93,8 +93,22 @@ const COLLAPSE_HEIGHT = '187.5px'
   },
 })
 export default class App extends Vue {
-  @State('progress') progress: number
-  @State('user') user: User
+  @Getter
+  REPOSITORY: {
+    name: string
+    owner: string
+  }
+
+  @State((state: RootState) => state.envs.GITHUB_CLIENT_ID)
+  GITHUB_CLIENT_ID: string
+  @State((state: RootState) => state.envs.GITHUB_OAUTH_CALLBACK)
+  GITHUB_OAUTH_CALLBACK: string
+
+  @State
+  progress: number
+
+  @State
+  user: User
 
   routes = [
     {
@@ -106,6 +120,10 @@ export default class App extends Vue {
       link: 'categories',
     },
     {
+      icon: 'heartbeat',
+      link: 'pulse',
+    },
+    {
       icon: 'user',
       link: 'about',
     },
@@ -115,10 +133,6 @@ export default class App extends Vue {
     },
   ]
 
-  REPOSITORY = REPOSITORY
-  GITHUB_CLIENT_ID: string = process.env.GITHUB_CLIENT_ID
-  GITHUB_OAUTH_CALLBACK = process.env.GITHUB_OAUTH_CALLBACK
-
   search: string = null
   show = false
   toShow = false
@@ -126,8 +140,34 @@ export default class App extends Vue {
   collapseHeight: string = null
   timeoutId: number = null
 
+  showScrollBtn = false
+
+  scrollTo = scrollTo
+
+  @Watch('$route')
+  routeChange() {
+    const {
+      path,
+      query: { search },
+    } = this.$route
+    if (path !== '/' || !search) {
+      this.search = null
+    }
+    this.$nextTick(this.onResize)
+  }
+
   created() {
-    this.search = this.$route.query.search
+    this.search = this.$route.query.search as string
+  }
+
+  mounted() {
+    this.onResize()
+    addEventListener('resize', this.onResize)
+  }
+
+  onResize() {
+    const docEl = document.documentElement
+    this.showScrollBtn = docEl.scrollHeight > docEl.clientHeight
   }
 
   toggleShow() {
@@ -170,9 +210,12 @@ export default class App extends Vue {
   }
 }
 </script>
-<style lang="scss">
+<style>
 @import '~font-awesome/css/font-awesome.css';
 @import '~github-markdown-css';
+@import '~typeface-lato';
+</style>
+<style lang="scss">
 @import '~styles/bootstrap';
 
 html,
@@ -209,6 +252,7 @@ button:focus {
 
 .heading-link {
   display: inline-block;
+  word-break: break-word;
 
   @media (min-width: $grid-breakpoints-md + 1px) {
     &:hover:after {
@@ -376,6 +420,19 @@ button:focus {
     right: 0;
     padding: 0 14px;
     background-color: #f8f9fa;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
   }
+}
+
+.top {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+  border: 1px solid $border-color;
+  background-color: #fff;
+  z-index: 10001;
 }
 </style>

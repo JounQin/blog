@@ -1,0 +1,9 @@
+export interface Env {
+  GITHUB_REPOSITORY_OWNER: string
+  GITHUB_REPOSITORY_OWNER_TYPE: 'user' | 'organization'
+  GITHUB_REPOSITORY_NAME: string
+  GITHUB_EXCLUDED_LABELS: string[]
+  GITHUB_CLIENT_ID: string
+  GITHUB_OAUTH_CALLBACK: string
+  GITHUB_EXCLUDED_REPOSITORY_OWNERS: string[]
+}

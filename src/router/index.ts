@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
-
 import VueRouter from 'vue-router'
 
 Vue.use(VueRouter)
@@ -15,6 +14,10 @@ export default () =>
   new VueRouter({
     mode: 'history',
     fallback: false,
+    scrollBehavior: () => ({
+      x: 0,
+      y: 0,
+    }),
     routes: [
       {
         path: '/',
@@ -27,6 +30,10 @@ export default () =>
       {
         path: '/categories',
         component: () => import('views/Categories.vue'),
+      },
+      {
+        path: '/pulse',
+        component: () => import('views/Pulse.vue'),
       },
       {
         path: '/about',

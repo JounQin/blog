@@ -2,10 +2,12 @@ import Vue from 'vue'
 
 import { TITLE } from 'utils'
 
-function getTitle(vm: Vue) {
-  const { title } = vm.$options
+const setTitle = (vm: Vue) => {
+  let { title } = vm.$options
+  title = typeof title === 'function' ? title.call(vm, vm) : title
   if (title) {
-    return typeof title === 'function' ? title.call(vm, vm) : title
+    const target = __SERVER__ ? vm.$ssrContext : document
+    target.title = `${TITLE} | ${title}`
   }
 }
 
@@ -13,28 +15,23 @@ Vue.mixin(
   __SERVER__
     ? {
         created() {
-          const title = getTitle(this)
-          if (title) {
-            this.$ssrContext.title = `${TITLE} | ${title}`
-          }
+          setTitle(this)
         },
       }
     : {
         watch: {
           '$t.locale'() {
-            this._changeTitle()
+            setTitle(this)
+          },
+          '$tt.loading'(loading) {
+            if (!loading) {
+              setTitle(this)
+              this.$forceUpdate()
+            }
           },
         },
         mounted() {
-          this._changeTitle()
-        },
-        methods: {
-          _changeTitle() {
-            const title = getTitle(this)
-            if (title) {
-              document.title = `${TITLE} | ${title}`
-            }
-          },
+          setTitle(this)
         },
       },
 )

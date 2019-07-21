@@ -1,16 +1,17 @@
-import * as fs from 'fs'
-
 import acceptLanguage from 'accept-language'
-import * as _debug from 'debug'
-import * as Koa from 'koa'
-import * as proxy from 'koa-better-http-proxy'
-import * as compose from 'koa-compose'
-import * as compress from 'koa-compress'
-import * as logger from 'koa-logger'
-import * as session from 'koa-session'
-import * as staticCache from 'koa-static-cache'
-import * as LRU from 'lru-cache'
+import _debug from 'debug'
+import fs from 'fs'
+import Koa, { Middleware } from 'koa'
+import proxy from 'koa-better-http-proxy'
+import compose from 'koa-compose'
+import compress from 'koa-compress'
+import logger from 'koa-logger'
+import session from 'koa-session'
+import staticCache from 'koa-static-cache'
+import LRU from 'lru-cache'
 import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
+
+import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
 
 import {
   resolve,
@@ -21,13 +22,9 @@ import {
 
 import startRouter from './router'
 
-import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
-
 acceptLanguage.languages(LOCALES)
 
 const ACCEPT_LANGUAGE = 'Accept-Language'
-
-const { APP_KEYS, GITHUB_TOKEN } = process.env
 
 const debug = _debug(
   `1stg:server${process.env.NODE_ENV === 'development' ? ':core' : ''}`,
@@ -35,12 +32,10 @@ const debug = _debug(
 
 const app = new Koa()
 
-app.keys = APP_KEYS.split(',')
+app.keys = (process.env.APP_KEYS || '').split(',')
 
 let renderer: BundleRenderer
-let ready: Promise<any>
-// tslint:disable-next-line no-unused-variable
-let mfs: any
+let ready: Promise<void>
 
 const template =
   process.env.NODE_ENV === 'development'
@@ -56,7 +51,7 @@ const createRenderer = (bundle: object, options: object) =>
     ...options,
     template,
     inject: false,
-    cache: LRU({
+    cache: new LRU({
       max: 1000,
       maxAge: 1000 * 60 * 15,
     }),
@@ -109,7 +104,7 @@ const middlewares: Koa.Middleware[] = [
 
     const stream = renderer
       .renderToStream(context)
-      .on('error', (e: { status: number; url: string; stack: any }) => {
+      .on('error', (e: { status: number; url: string } & Error) => {
         switch ((ctx.status = e.status || 500)) {
           case 302:
             ctx.set({ Location: e.url })
@@ -122,7 +117,6 @@ const middlewares: Koa.Middleware[] = [
           default:
             res.end('500 | Internal Server Error')
             debug(`error during render : ${url}`)
-            // tslint:disable-next-line:no-console
             console.error(e.stack)
         }
       })
@@ -141,9 +135,8 @@ const sessionMiddleware = session({}, app)
 
 if (process.env.NODE_ENV === 'development') {
   // tslint:disable-next-line:no-var-requires
-  const { readyPromise, webpackMiddleware } = require('./dev').default(
-    ({ bundle, clientManifest, fs: xfs }: any) => {
-      mfs = xfs
+  const { readyPromise, webpackMiddlewarePromise } = require('./dev').default(
+    ({ bundle, clientManifest }: any) => {
       renderer = createRenderer(bundle, {
         clientManifest,
       })
@@ -157,16 +150,17 @@ if (process.env.NODE_ENV === 'development') {
     0,
     publicStatic,
     sessionMiddleware,
-    webpackMiddleware,
     proxy(serverHost, {
       port: serverPort + 1,
       preserveReqSession: true,
       filter: ctx => /^\/api\//.test(ctx.url),
     }),
   )
-} else {
-  mfs = fs
 
+  webpackMiddlewarePromise.then((webpackMiddleware: Middleware) =>
+    app.use(webpackMiddleware),
+  )
+} else {
   renderer = createRenderer(
     runtimeRequire(resolve('dist/vue-ssr-server-bundle.json')),
     {
@@ -176,7 +170,7 @@ if (process.env.NODE_ENV === 'development') {
     },
   )
 
-  const files: staticCache.StaticCacheFiles = {}
+  const files: staticCache.Files = {}
 
   middlewares.splice(
     1,
@@ -196,7 +190,8 @@ middlewares.push(
     filter: ctx => ctx.url === '/graphql',
     https: true,
     proxyReqOptDecorator(req, ctx) {
-      req.headers.Authorization = `bearer ${ctx.session.token || GITHUB_TOKEN}`
+      req.headers.Authorization = `bearer ${ctx.session.token ||
+        process.env.GITHUB_TOKEN}`
       return req
     },
   }),

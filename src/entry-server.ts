@@ -1,8 +1,9 @@
 import _axios from 'axios'
-import * as LRU from 'lru-cache'
-import * as serialize from 'serialize-javascript'
+import LRU from 'lru-cache'
+import serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
+import { createTranslate } from 'plugins'
 import { Apollo, ServerContext } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
 
@@ -16,7 +17,7 @@ const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
-const cache = LRU<string, Apollo>({
+const cache = new LRU<string, Apollo>({
   max: 1000,
   maxAge: 1000 * 60 * 15,
 })
@@ -46,13 +47,18 @@ export default (context: ServerContext) =>
       cache.set(url, (apollo = createApollo()))
     }
 
+    const translator = createTranslator({
+      locale: context.locale,
+      defaultLocale: DEFAULT_LOCALE,
+    })
+
+    const translate = createTranslate(translator)
+
     Object.assign(context, {
       apollo,
       axios,
-      translator: createTranslator({
-        locale: context.locale,
-        defaultLocale: DEFAULT_LOCALE,
-      }),
+      translate,
+      translator,
     })
 
     axios.interceptors.response.use(
@@ -74,10 +80,9 @@ export default (context: ServerContext) =>
 
         return response
       },
-      e => {
-        const { data, headers } = e.response
-        ctx.set(headers)
-        reject(data)
+      ({ response }) => {
+        ctx.set(response.headers)
+        reject(response)
       },
     )
 
@@ -89,7 +94,6 @@ export default (context: ServerContext) =>
       const matched = router.getMatchedComponents()
 
       if (!matched.length) {
-        // tslint:disable-next-line:no-console
         console.error('no matched components')
         return reject({ status: 404 })
       }
@@ -104,22 +108,29 @@ export default (context: ServerContext) =>
         await Promise.all(
           matched.map(
             ({ options, asyncData = options && options.asyncData }: any) =>
-              asyncData && asyncData({ apollo, axios, route, store }),
+              asyncData &&
+              asyncData({ apollo, axios, route, store, translate }),
           ),
         )
+        await translate.cache.prefetch()
       } catch (e) {
         return reject(e.response ? e.response.data : e)
       }
 
       if (__DEV__) {
-        // tslint:disable-next-line:no-console
-        console.log(`data pre-fetch: ${Date.now() - (start as number)}ms`)
+        console.info(`data pre-fetch: ${Date.now() - (start as number)}ms`)
       }
 
-      context.script = `<script>window.__INITIAL_STATE__=${serialize(
-        store.state,
-      )};window.__APOLLO_STATE__=${serialize(apollo.cache.extract()) +
-        SCRIPT_SUFFIX}</script>`
+      context.script = `<script>window.__APOLLO_CACHE__=${serialize(
+        apollo.cache.extract(),
+        {
+          isJSON: true,
+        },
+      )};window.__STORE_STATE__=${serialize(store.state, {
+        isJSON: true,
+      })};window.__TRANSLATE_CACHE__=${serialize(translate.cache.extract(), {
+        isJSON: true,
+      })}${SCRIPT_SUFFIX}</script>`
 
       resolve(app)
     }, reject)

@@ -1,9 +1,9 @@
 <template lang="pug">
-main(v-if="issues.length", :class="$style.main")
+main(v-if="articles.length", :class="$style.main")
   ul.list-unstyled
-    li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of issues", :key="id")
+    li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of articles", :key="id")
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ $utils.translateTitle(title, _self) }}
+        router-link.heading-link(:to="`/article/${number}`") {{ $tt(title) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
         router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"
@@ -21,11 +21,9 @@ main(v-if="issues.length", :class="$style.main")
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
-import { uniqBy } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
-import { getDefaultLabels } from 'commons'
 import {
   AsyncDataFn,
   Issue,
@@ -33,24 +31,26 @@ import {
   Repository,
   SearchResultItemConnection,
 } from 'types'
-import { REPOSITORY } from 'utils'
+import { getDefaultLabels } from 'utils'
 
-import * as querires from 'queries.gql'
+import querires from 'queries.gql'
 
-interface Issues {
+interface Articles {
   nodes: Issue[]
   pageInfo: PageInfo
 }
 
-const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
+const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
   const {
     before,
     after,
-    labels = getDefaultLabels(apollo).map(({ name }) => name),
+    labels = getDefaultLabels({ apollo, store }).map(({ name }) => name),
     search,
   } = route.query
 
-  const searchText = search && search.trim()
+  const { REPOSITORY } = store.getters
+
+  const searchText = search && (search as string).trim()
 
   const variables = {
     ...REPOSITORY,
@@ -61,19 +61,35 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
     labels,
     search:
       searchText &&
-      `repo:${REPOSITORY.owner}/${
-        REPOSITORY.name
-      } is:issue is:open ${searchText}`,
+      `repo:${REPOSITORY.owner}/${REPOSITORY.name} is:issue is:open ${searchText}`,
   }
 
   return {
-    query: search ? querires.search : querires.issues,
+    query: search ? querires.search : querires.articles,
     variables,
   }
 }
 
 @Component({
-  asyncData: params => params.apollo.query(getQueryOptions(params)),
+  async asyncData({ apollo, route, store, translate }) {
+    const { data } = await apollo.query<
+      {
+        search: SearchResultItemConnection
+      } & {
+        repository: Repository
+      }
+    >(getQueryOptions({ apollo, route, store }))
+
+    let articles: Articles
+
+    if (data.search) {
+      articles = data.search as Articles
+    } else {
+      articles = data.repository.issues as Articles
+    }
+
+    articles.nodes.forEach(({ title }) => translate(title))
+  },
   title: (vm: Home) => vm.$t('home'),
   translator: {
     en: {
@@ -95,7 +111,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route }) => {
   },
 })
 export default class Home extends Vue {
-  issues: Issue[] = null
+  articles: Issue[] = null
   pageInfo: PageInfo = null
 
   setData() {
@@ -109,30 +125,32 @@ export default class Home extends Vue {
       getQueryOptions({
         apollo: this.$apollo,
         route: this.$route,
+        store: this.$store,
       }),
     )
 
-    let issues: Issues
+    let articles: Articles
 
     if (data.search) {
-      issues = data.search as Issues
+      articles = data.search as Articles
     } else {
-      issues = data.repository.issues as Issues
+      articles = data.repository.issues as Articles
     }
 
-    this.issues = uniqBy(issues.nodes, 'id')
-    this.pageInfo = issues.pageInfo
+    this.articles = articles.nodes
+    this.pageInfo = articles.pageInfo
   }
 
   created() {
     this.setData()
   }
 
-  async beforeRouteUpdate(to: Route, from: Route, next: () => void) {
+  async beforeRouteUpdate(to: Route, _from: Route, next: () => void) {
     await this.$apollo.query(
       getQueryOptions({
         apollo: this.$apollo,
         route: to,
+        store: this.$store,
       }),
     )
     next()
