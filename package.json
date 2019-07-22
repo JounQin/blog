@@ -1,6 +1,6 @@
 {
   "name": "blog",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a Blog system built on GitHub API with Vue SSR",
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
@@ -98,7 +98,7 @@
     "file-loader": "^4.1.0",
     "font-awesome": "^4.7.0",
     "fork-ts-checker-webpack-plugin": "^1.4.3",
-    "glob": "^7.1.3",
+    "glob": "^7.1.4",
     "google-fonts-webpack-plugin": "^0.4.4",
     "html-loader": "^0.5.5",
     "html-webpack-plugin": "^3.2.0",
