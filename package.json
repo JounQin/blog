@@ -1,6 +1,6 @@
 {
   "name": "blog",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "a Blog system built on GitHub API with Vue SSR",
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
@@ -121,7 +121,7 @@
     "purgecss-whitelister": "^2.4.0",
     "resolve-url-loader": "^3.1.0",
     "rimraf": "^2.6.3",
-    "sass": "^1.22.7",
+    "sass": "^1.22.9",
     "sass-loader": "webpack-contrib/sass-loader",
     "sass-resources-loader": "^2.0.1",
     "shelljs": "^0.8.3",
