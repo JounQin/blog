@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@packtracker/webpack-plugin": "^2.2.0",
-    "@types/debug": "^4.1.4",
+    "@types/debug": "^4.1.5",
     "@types/graphql": "^14.2.3",
     "@types/html-webpack-plugin": "^3.2.1",
     "@types/koa": "^2.0.49",
