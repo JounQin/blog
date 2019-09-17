@@ -4,6 +4,7 @@ import Vue from 'vue'
 import createApp from 'app'
 import { apollo, translate } from 'plugins'
 import { LOCALE_COOKIE, setCookie } from 'utils'
+import { AsyncDataFn } from 'types'
 
 const { app, router, store } = createApp()
 
@@ -13,7 +14,8 @@ app.$watch('$t.locale', curr => {
 
 app.$watch('$tt.loading', curr => {
   if (curr) {
-    Vue.nextTick(() => translate.cache.prefetch())
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    Vue.nextTick(translate.cache.prefetch)
   }
 })
 
@@ -43,12 +45,21 @@ router.onReady(() => {
       (comp, index) => diffed || (diffed = prevMatched[index] !== comp),
     )
 
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 70)
 
     if (activated.length) {
       await Promise.all(
         activated.map(
-          ({ options, asyncData = options && options.asyncData }: any) =>
+          ({
+            options,
+            asyncData = options && options.asyncData,
+          }: {
+            options?: {
+              asyncData?: AsyncDataFn
+            }
+            asyncData?: AsyncDataFn
+          }) =>
             asyncData &&
             asyncData({ apollo, axios, route: to, store, translate }),
         ),
@@ -58,6 +69,7 @@ router.onReady(() => {
 
     next()
 
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 100)
 
     setTimeout(() => {
@@ -78,5 +90,6 @@ if (
     ['127.0.0.1', 'localhost'].includes(location.hostname)) &&
   navigator.serviceWorker
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   navigator.serviceWorker.register('/service-worker.js')
 }

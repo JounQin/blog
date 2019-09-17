@@ -1,5 +1,6 @@
+.*cache
+*.log
 dist
 node_modules
 sync
-*.log
 .dev.env

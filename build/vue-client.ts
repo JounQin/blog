@@ -1,14 +1,14 @@
-import glob from 'glob'
-import HtmlWebpackPlugin from 'html-webpack-plugin'
 import PurgecssWebpackPlugin from 'purgecss-webpack-plugin'
 import purgecssWhitelister from 'purgecss-whitelister'
-import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
+import glob from 'glob'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
+import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
 
-import baseConfig from './base'
 import { __DEV__, resolve } from './config'
+import baseConfig from './base'
 
 const config = merge.smart(baseConfig, {
   entry: {
@@ -65,7 +65,7 @@ if (!__DEV__) {
       stripPrefix: resolve('dist').replace(/\\/g, '/'),
       runtimeCaching: [
         {
-          urlPattern: /^https?\:\/\//,
+          urlPattern: /^https?:\/\//,
           handler: 'networkFirst',
         },
       ],

@@ -1,6 +1,6 @@
-declare var __DEV__: boolean
-declare var __SERVER__: boolean
-declare var SERVER_PREFIX: string
+declare let __DEV__: boolean
+declare let __SERVER__: boolean
+declare let SERVER_PREFIX: string
 
 declare module '*.gql' {
   import { DocumentNode } from 'graphql'

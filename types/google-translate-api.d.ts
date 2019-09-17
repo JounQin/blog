@@ -1,7 +1,5 @@
 declare module 'google-translate-api' {
-  namespace GoggleTranslateAPI {
-
-  }
+  namespace GoggleTranslateAPI {}
 
   interface GoggleTranslateApiOptions {
     from?: string

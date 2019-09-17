@@ -1,0 +1,7 @@
+{
+  "root": true,
+  "extends": "@1stg",
+  "rules": {
+    "@typescript-eslint/no-unnecessary-condition": 0
+  }
+}

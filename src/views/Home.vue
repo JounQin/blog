@@ -21,6 +21,7 @@ main(v-if="articles.length", :class="$style.main")
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
 <script lang="ts">
+import { QueryOptions } from 'apollo-client'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
@@ -32,15 +33,18 @@ import {
   SearchResultItemConnection,
 } from 'types'
 import { getDefaultLabels } from 'utils'
-
-import querires from 'queries.gql'
+import queries from 'queries.gql'
 
 interface Articles {
   nodes: Issue[]
   pageInfo: PageInfo
 }
 
-const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
+const getQueryOptions: AsyncDataFn<QueryOptions> = ({
+  apollo,
+  route,
+  store,
+}) => {
   const {
     before,
     after,
@@ -54,7 +58,9 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
 
   const variables = {
     ...REPOSITORY,
+    // eslint-disable-next-line no-magic-numbers
     first: (!(before || after) || after) && 25,
+    // eslint-disable-next-line no-magic-numbers
     last: before && 25,
     before,
     after,
@@ -65,7 +71,7 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
   }
 
   return {
-    query: search ? querires.search : querires.articles,
+    query: search ? queries.search : queries.articles,
     variables,
   }
 }
@@ -73,16 +79,17 @@ const getQueryOptions: AsyncDataFn = ({ apollo, route, store }) => {
 @Component({
   async asyncData({ apollo, route, store, translate }) {
     const { data } = await apollo.query<
-      {
-        search: SearchResultItemConnection
-      } & {
-        repository: Repository
-      }
+      | {
+          search: SearchResultItemConnection
+        }
+      | {
+          repository: Repository
+        }
     >(getQueryOptions({ apollo, route, store }))
 
     let articles: Articles
 
-    if (data.search) {
+    if ('search' in data) {
       articles = data.search as Articles
     } else {
       articles = data.repository.issues as Articles
@@ -181,8 +188,10 @@ export default class Home extends Vue {
 <style lang="scss" module>
 @media (max-width: $grid-breakpoints-md) {
   .main {
-    padding-top: 7px !important;
-    padding-bottom: 7px !important;
+    padding: {
+      top: 7px !important;
+      bottom: 7px !important;
+    }
   }
 }
 </style>

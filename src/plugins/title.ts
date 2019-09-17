@@ -14,23 +14,23 @@ const setTitle = (vm: Vue) => {
 Vue.mixin(
   __SERVER__
     ? {
-        created() {
+        created(this: Vue) {
           setTitle(this)
         },
       }
     : {
         watch: {
-          '$t.locale'() {
+          '$t.locale'(this: Vue) {
             setTitle(this)
           },
-          '$tt.loading'(loading) {
+          '$tt.loading'(this: Vue, loading: boolean) {
             if (!loading) {
               setTitle(this)
               this.$forceUpdate()
             }
           },
         },
-        mounted() {
+        mounted(this: Vue) {
           setTitle(this)
         },
       },

@@ -1,7 +1,8 @@
-import axios from 'axios'
 import crypto from 'crypto'
-import _debug from 'debug'
+
+import axios from 'axios'
 import googleTranslateAPI from 'google-translate-api'
+import _debug from 'debug'
 import { Middleware } from 'koa'
 import qs from 'qs'
 
@@ -54,6 +55,7 @@ const translate: Middleware = async ctx => {
         from: GoogleTranslateLocales[Source],
         to: TOGGLE_LOCALE[Source as Locale],
       })
+      // eslint-disable-next-line require-atomic-updates
       ctx.body = {
         text: translated.text
           .replace(/<code>([^<>]+)<\/\w+> Code>/g, '<code>$1</code>')
@@ -98,15 +100,16 @@ const translate: Middleware = async ctx => {
     params: Object.assign(translateParams, { Signature }),
   })
 
+  // eslint-disable-next-line require-atomic-updates
   ctx.body = {
-    text: TargetText.replace(/\<([^<>]+)\>/g, (_matched, $1: string) => {
+    text: TargetText.replace(/<([^<>]+)>/g, (_matched, $1: string) => {
       $1 = $1.toLowerCase().trim()
       if ($1.startsWith('/')) {
         $1 = $1.replace(/ /g, '')
       } else {
         $1 = $1
-          .replace(/([a-z\-_]+)= ?\" ?([^<>"]+) ?\"?/g, '$1="$2"')
-          .replace(/\"+/g, '"')
+          .replace(/([a-z\-_]+)= ?" ?([^<>"]+) ?"?/g, '$1="$2"')
+          .replace(/"+/g, '"')
       }
       return '<' + $1 + '>'
     }),

@@ -18,7 +18,6 @@ import { Store } from 'vuex'
 
 import { Apollo, Issue, Repository, RootState } from 'types'
 import { getDefaultLabels } from 'utils'
-
 import queries from 'queries.gql'
 
 const fetchArchieves = async ({
@@ -62,6 +61,7 @@ interface ArchivesMap {
   [year: number]: Issue[]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 type ArchivesList = Array<{
   year: number
   archives: Issue[]
@@ -114,17 +114,14 @@ export default class Archives extends Vue {
 
     return Object.keys(archivesMap)
       .reverse()
-      .reduce(
-        (archivesList, year: number | string) => {
-          year = +year
-          archivesList.push({
-            year,
-            archives: archivesMap[year],
-          })
-          return archivesList
-        },
-        [] as ArchivesList,
-      )
+      .reduce((archivesList, year: number | string) => {
+        year = +year
+        archivesList.push({
+          year,
+          archives: archivesMap[year],
+        })
+        return archivesList
+      }, [] as ArchivesList)
   }
 }
 </script>
@@ -160,11 +157,13 @@ export default class Archives extends Vue {
     transform: translate3d(-50%, -50%, 0);
   }
 
-  &.title:before {
-    width: 10px;
-    height: 10px;
-    background-color: #555;
-    opacity: 0.5;
+  &.title {
+    &:before {
+      width: 10px;
+      height: 10px;
+      background-color: #555;
+      opacity: 0.5;
+    }
   }
 
   &.article {

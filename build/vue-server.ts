@@ -3,9 +3,8 @@ import webpack from 'webpack'
 import merge from 'webpack-merge'
 import nodeExternals from 'webpack-node-externals'
 
-import { innerServer } from './config'
-
 import baseConfig from './base'
+import { innerServer } from './config'
 
 export default merge.smart(baseConfig, {
   entry: './src/entry-server.ts',

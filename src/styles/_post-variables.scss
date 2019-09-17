@@ -1,1 +1,1 @@
-$grid-breakpoints-md: map-get($grid-breakpoints, 'md');
+$grid-breakpoints-md: map-get($grid-breakpoints, 'md') !default;

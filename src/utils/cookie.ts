@@ -1,13 +1,13 @@
-import { SetCookie } from 'types'
-
 import { INFINITY_DATE } from './constant'
+
+import { SetCookie } from 'types'
 
 export const getCookie = (name: string) =>
   decodeURIComponent(
     document.cookie.replace(
       new RegExp(
         '(?:(?:^|.*;)\\s*' +
-          encodeURIComponent(name).replace(/[\-\.\+\*]/g, '\\$&') +
+          encodeURIComponent(name).replace(/[-.+*]/g, '\\$&') +
           '\\s*\\=\\s*([^;]*).*$)|^.*$',
       ),
       '$1',
@@ -22,7 +22,7 @@ export const setCookie = (
   domain?: string,
   secure?: boolean,
 ) => {
-  if (!name || /^(?:expires|max\-age|path|domain|secure)$/i.test(name)) {
+  if (!name || /^(?:expires|max-age|path|domain|secure)$/i.test(name)) {
     return false
   }
   let sExpires = ''
@@ -30,10 +30,12 @@ export const setCookie = (
     switch (end.constructor) {
       case Number:
         sExpires =
-          end === Infinity ? `; expires=${INFINITY_DATE}` : '; max-age=' + end
+          end === Infinity
+            ? `; expires=${INFINITY_DATE}`
+            : '; max-age=' + (end as string)
         break
       case String:
-        sExpires = '; expires=' + end
+        sExpires = '; expires=' + (end as string)
         break
       case Date:
         sExpires = '; expires=' + (end as Date).toUTCString()
@@ -55,24 +57,22 @@ export const parseSetCookies = (setCookies: string | string[]) => {
   if (!Array.isArray(setCookies)) {
     setCookies = [setCookies]
   }
-  return setCookies.reduce(
-    (result, cookies) => {
-      if (!cookies) {
-        return result
-      }
-      const [item, ...rests] = cookies.split(/; */)
-      const cookie = item.split('=')
-      const setCookieItem = {
-        name: cookie[0],
-        value: cookie[1],
-      }
-      rests.forEach(rest => {
-        const [key, value] = rest.split('=')
-        ;(setCookieItem as any)[key] = value == null ? true : value
-      })
-      result.push(setCookieItem)
+  return setCookies.reduce((result, cookies) => {
+    if (!cookies) {
       return result
-    },
-    [] as SetCookie[],
-  )
+    }
+    const [item, ...rests] = cookies.split(/; */)
+    const cookie = item.split('=')
+    const setCookieItem = {
+      name: cookie[0],
+      value: cookie[1],
+    }
+    rests.forEach(rest => {
+      const [key, value] = rest.split('=')
+      setCookieItem[key as keyof typeof setCookieItem] =
+        value == null ? 'true' : value
+    })
+    result.push(setCookieItem)
+    return result
+  }, [] as SetCookie[])
 }

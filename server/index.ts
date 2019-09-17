@@ -1,17 +1,17 @@
-import acceptLanguage from 'accept-language'
-import _debug from 'debug'
+/* eslint-disable @typescript-eslint/no-magic-numbers */
 import fs from 'fs'
-import Koa, { Middleware } from 'koa'
+
+import acceptLanguage from 'accept-language'
 import proxy from 'koa-better-http-proxy'
+import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
+import _debug from 'debug'
+import Koa, { Middleware } from 'koa'
 import compose from 'koa-compose'
 import compress from 'koa-compress'
 import logger from 'koa-logger'
 import session from 'koa-session'
 import staticCache from 'koa-static-cache'
 import LRU from 'lru-cache'
-import { BundleRenderer, createBundleRenderer } from 'vue-server-renderer'
-
-import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
 
 import {
   resolve,
@@ -21,6 +21,8 @@ import {
 } from '../build/config'
 
 import startRouter from './router'
+
+import { INFINITY_DATE, LOCALES, LOCALE_COOKIE, TITLE } from 'utils'
 
 acceptLanguage.languages(LOCALES)
 
@@ -39,7 +41,7 @@ let ready: Promise<void>
 
 const template =
   process.env.NODE_ENV === 'development'
-    ? // tslint:disable-next-line:no-var-requires
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
       require('pug').renderFile(resolve('server/template.pug'), {
         pretty: true,
       })
@@ -53,6 +55,7 @@ const createRenderer = (bundle: object, options: object) =>
     inject: false,
     cache: new LRU({
       max: 1000,
+      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       maxAge: 1000 * 60 * 15,
     }),
     basedir: resolve('dist/static'),
@@ -94,7 +97,9 @@ const middlewares: Koa.Middleware[] = [
 
     const context = { ctx, locale, title: TITLE }
 
+    // eslint-disable-next-line require-atomic-updates
     ctx.respond = false
+    // eslint-disable-next-line require-atomic-updates
     ctx.status = 200
     ctx.set({
       'Content-Type': 'text/html',
@@ -134,9 +139,9 @@ const publicStatic = staticCache('public', { maxAge: MAX_AGE })
 const sessionMiddleware = session({}, app)
 
 if (process.env.NODE_ENV === 'development') {
-  // tslint:disable-next-line:no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { readyPromise, webpackMiddlewarePromise } = require('./dev').default(
-    ({ bundle, clientManifest }: any) => {
+    ({ bundle, clientManifest }: { bundle: {}; clientManifest: {} }) => {
       renderer = createRenderer(bundle, {
         clientManifest,
       })
@@ -153,7 +158,7 @@ if (process.env.NODE_ENV === 'development') {
     proxy(serverHost, {
       port: serverPort + 1,
       preserveReqSession: true,
-      filter: ctx => /^\/api\//.test(ctx.url),
+      filter: ctx => ctx.url.startsWith('/api/'),
     }),
   )
 

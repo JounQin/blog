@@ -2,23 +2,23 @@ import { InMemoryCache } from 'apollo-cache-inmemory'
 import ApolloClient from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import axios from 'axios'
-import _debug from 'debug'
 import gql from 'graphql-tag'
+import fetch from 'node-fetch'
+import _debug from 'debug'
 import Koa from 'koa'
 import bodyParser from 'koa-bodyparser'
 import compose from 'koa-compose'
 import Router from 'koa-router'
 import session from 'koa-session'
-import fetch from 'node-fetch'
 import uuid from 'uuid'
-
-import { User } from 'types'
 
 import { serverHost, serverPort } from '../../build/config'
 
 import translate from './translate'
 
-global.fetch = fetch as any
+import { User } from 'types'
+
+global.fetch = fetch
 
 const debug = _debug('1stg:server:router')
 
@@ -63,7 +63,7 @@ router
         }
 
         return Object.assign(envs, {
-          [key]: process.env[key],
+          [key]: value,
         })
       }, {}),
     }
@@ -96,6 +96,7 @@ router
 
     const token = data.access_token
 
+    // eslint-disable-next-line require-atomic-updates
     ctx.session.token = token
 
     const apollo = new ApolloClient({
@@ -123,6 +124,7 @@ router
       `,
     })
 
+    // eslint-disable-next-line require-atomic-updates
     ctx.session.user = user.viewer
 
     ctx.redirect(`${path.replace(/ /g, '%2B')}`)

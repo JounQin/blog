@@ -103,8 +103,10 @@ export default class About extends Vue {
 .repositories {
   display: flex;
   flex-wrap: wrap;
-  margin-right: -20px;
-  margin-bottom: 0;
+  margin: {
+    right: -20px;
+    bottom: 0;
+  }
 
   > li {
     display: flex;
@@ -115,7 +117,7 @@ export default class About extends Vue {
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: $grid-breakpoints-md) {
     margin-right: 0;
 
     > li {

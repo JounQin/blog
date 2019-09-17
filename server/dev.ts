@@ -3,25 +3,26 @@ import koaWebpack from 'koa-webpack'
 import MFS from 'memory-fs'
 import webpack from 'webpack'
 
-import { resolve } from '../build/config'
-
-import clientConfig from '../build/vue-client'
 import serverConfig from '../build/vue-server'
+import clientConfig from '../build/vue-client'
+import { resolve } from '../build/config'
 
 const debug = _debug('1stg:server:dev')
 
-export default (cb: any) => {
-  let _resolve: any
-  let clientManifest: any
-  let bundle: any
+export default (cb: (...args: unknown[]) => void) => {
+  let _resolve: () => void
+  let clientManifest: {}
+  let bundle: {}
   let fs: MFS
 
+  // eslint-disable-next-line promise/param-names
   const readyPromise = new Promise(r => {
     _resolve = r
   })
 
-  const ready = (...args: any[]) => {
+  const ready = (...args: unknown[]) => {
     _resolve()
+    // eslint-disable-next-line standard/no-callback-literal
     cb(...args)
   }
 
@@ -40,6 +41,7 @@ export default (cb: any) => {
       return
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     webpackMiddlewarePromise.then(webpackMiddleware => {
       fs = webpackMiddleware.devMiddleware.fileSystem
       clientManifest = JSON.parse(
@@ -54,7 +56,7 @@ export default (cb: any) => {
 
   const mfs = new MFS()
   const serverCompiler = webpack(serverConfig)
-  serverCompiler.outputFileSystem = mfs as any
+  serverCompiler.outputFileSystem = mfs
 
   serverCompiler.watch({}, (err, stats) => {
     if (err) {
