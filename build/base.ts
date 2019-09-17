@@ -1,10 +1,11 @@
 import PacktrackerWebpackPlugin from '@packtracker/webpack-plugin'
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
-import MiniCssExtractPlugin from 'mini-css-extract-plugin'
 import { VueLoaderPlugin } from 'vue-loader'
-import webpack, { Configuration } from 'webpack'
 
 import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
+
+import MiniCssExtractPlugin from 'mini-css-extract-plugin'
+import webpack, { Configuration } from 'webpack'
 
 const sourceMap = __DEV__
 
@@ -37,13 +38,16 @@ const scssLoaders = (modules?: boolean) => [
     loader: 'sass-loader',
     options: {
       sourceMap: true,
-      includePaths: [resolve('node_modules/bootstrap/scss')],
+      sassOptions: {
+        includePaths: ['src', 'node_modules/bootstrap/scss'],
+      },
+      webpackImporter: false,
     },
   },
   {
-    loader: 'sass-resources-loader',
+    loader: 'style-resources-loader',
     options: {
-      resources: [
+      patterns: [
         'src/styles/_pre-variables.scss',
         ...['functions', 'variables', 'mixins'].map(
           item => `node_modules/bootstrap/scss/_${item}.scss`,
@@ -66,7 +70,7 @@ const config: Configuration = {
       lodash$: 'lodash-es',
     },
     extensions: ['.ts', '.js'],
-    modules: [resolve('src'), 'node_modules'],
+    modules: ['src', 'node_modules'],
   },
   module: {
     rules: [
@@ -149,7 +153,6 @@ const config: Configuration = {
     }),
     new ForkTsCheckerWebpackPlugin({
       tsconfig: resolve('src/tsconfig.json'),
-      tslint: true,
       vue: true,
     }),
     new MiniCssExtractPlugin({
@@ -162,6 +165,7 @@ const config: Configuration = {
 if (process.env.CI === 'true') {
   config.plugins.push(
     new PacktrackerWebpackPlugin({
+      // eslint-disable-next-line @typescript-eslint/camelcase
       project_token: process.env.PT_PROJECT_TOKEN,
       branch: process.env.TRAVIS_BRANCH,
       upload: true,

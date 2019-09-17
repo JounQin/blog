@@ -14,7 +14,7 @@ export default class HiProgress extends Vue {
 }
 </script>
 <style lang="scss" module>
-$progress-color: #39b983;
+$progress-color: #39b983 !default;
 
 .progress {
   position: fixed;
@@ -24,6 +24,7 @@ $progress-color: #39b983;
   background-color: $progress-color;
   height: 2px;
   opacity: 0.8;
+  // stylelint-disable-next-line plugin/no-low-performance-animation-properties
   transition: width 0.5s;
 }
 </style>

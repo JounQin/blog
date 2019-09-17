@@ -56,7 +56,6 @@ import { Component, Vue, Watch } from 'vue-property-decorator'
 import { Getter, State } from 'vuex-class'
 
 import HiProgress from 'components/HiProgress.vue'
-
 import { RootState, User } from 'types'
 import { scrollTo } from 'utils'
 
@@ -101,6 +100,7 @@ export default class App extends Vue {
 
   @State((state: RootState) => state.envs.GITHUB_CLIENT_ID)
   GITHUB_CLIENT_ID: string
+
   @State((state: RootState) => state.envs.GITHUB_OAUTH_CALLBACK)
   GITHUB_OAUTH_CALLBACK: string
 
@@ -211,12 +211,12 @@ export default class App extends Vue {
 }
 </script>
 <style>
-@import '~font-awesome/css/font-awesome.css';
-@import '~github-markdown-css';
-@import '~typeface-lato';
+@import 'font-awesome/css/font-awesome.css';
+@import 'github-markdown-css';
+@import 'typeface-lato';
 </style>
 <style lang="scss">
-@import '~styles/bootstrap';
+@import 'styles/bootstrap';
 
 html,
 body,
@@ -232,8 +232,10 @@ body {
   font-family: Lato, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-button:focus {
-  outline: 0;
+button {
+  &:focus {
+    outline: 0;
+  }
 }
 
 .flex-1 {
@@ -241,8 +243,11 @@ button:focus {
 }
 
 .scroll-y {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: {
+    x: hidden;
+    y: auto;
+  }
+
   -webkit-overflow-scrolling: touch;
 }
 
@@ -254,20 +259,25 @@ button:focus {
   display: inline-block;
   word-break: break-word;
 
+  // stylelint-disable-next-line scss/media-feature-value-dollar-variable
   @media (min-width: $grid-breakpoints-md + 1px) {
-    &:hover:after {
-      width: 100%;
-    }
-
     &:after {
       content: '';
       display: block;
-      margin-left: auto;
-      margin-right: auto;
+      margin: {
+        left: auto;
+        right: auto;
+      }
+
       width: 0;
       height: 2px;
       background-color: $link-hover-color;
+      // stylelint-disable-next-line plugin/no-low-performance-animation-properties
       transition: width 0.5s ease;
+
+      &:hover {
+        width: 100%;
+      }
     }
   }
 }
@@ -296,6 +306,7 @@ button:focus {
   min-width: 0;
 }
 
+// stylelint-disable-next-line scss/selector-nest-combinators
 .markdown-body > *:last-child {
   margin-bottom: 0 !important;
 }
@@ -407,8 +418,10 @@ button:focus {
 .main {
   min-height: 100%;
   margin: 0 -15px -63px -15px;
-  padding-top: 53px;
-  padding-bottom: 63px;
+  padding: {
+    top: 53px;
+    bottom: 63px;
+  }
 }
 
 @media (max-width: $grid-breakpoints-md) {

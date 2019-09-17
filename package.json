@@ -1,14 +1,17 @@
 {
-  "name": "blog",
-  "version": "0.0.1",
+  "name": "@1stg/blog",
+  "version": "0.0.0",
   "description": "a Blog system built on GitHub API with Vue SSR",
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
   "license": "MIT",
+  "engines": {
+    "node": ">=10.0.0"
+  },
   "scripts": {
-    "server": "ts-node -r tsconfig-paths/register server",
+    "server": "ts-node -T -r tsconfig-paths/register server",
     "server:core": "env-cmd -f .prod.env env-cmd -f .dev.env yarn server",
-    "server:router": "ts-node -r tsconfig-paths/register server/router/dev",
+    "server:router": "ts-node -T -r tsconfig-paths/register server/router/dev",
     "watch": "nodemon --exec \"env-cmd -f .prod.env env-cmd -f .dev.env yarn server:router\"",
     "dev": "run-p server:core watch",
     "start": "env-cmd -f .dev.env env-cmd -f .prod.env node dist/server",
@@ -19,52 +22,66 @@
     "build": "rimraf dist && run-p build:vue:client build:vue:server build:server build:template",
     "sync:pull": "bash build/sync-pull.sh",
     "sync:push": "bash build/sync-push.sh",
-    "lint": "tslint -p . -t stylish",
+    "lint:style": "stylelint src/**/*.{scss,vue}",
+    "lint:es": "eslint . --ext js,md,ts,vue -f friendly",
+    "lint": "run-p lint:*",
     "pm2": "yarn sync:pull && pm2 start --name=blog npm -- start",
-    "prune": "yarn install --production --ignore-optional --ignore-scripts --prefer-offline --force"
+    "prune": "yarn --production --ignore-optional --ignore-scripts --prefer-offline --force"
   },
   "dependencies": {
     "accept-language": "^3.0.18",
-    "apollo-cache-inmemory": "^1.6.2",
-    "apollo-client": "^2.6.3",
-    "apollo-link-http": "^1.5.15",
+    "apollo-cache-inmemory": "^1.6.3",
+    "apollo-client": "^2.6.4",
+    "apollo-link-http": "^1.5.16",
     "axios": "^0.19.0",
-    "date-fns": "^2.0.0-beta.2",
+    "date-fns": "^2.2.1",
     "debug": "^4.1.1",
-    "env-cmd": "^9.0.3",
+    "env-cmd": "^10.0.1",
     "github-markdown-css": "^3.0.1",
     "google-translate-api": "^2.3.0",
-    "graphql": "^14.4.2",
+    "graphql": "^14.5.6",
     "graphql-tag": "^2.10.1",
     "invert-color": "^2.0.0",
-    "koa": "^2.7.0",
+    "koa": "^2.8.1",
     "koa-better-http-proxy": "^0.2.4",
     "koa-bodyparser": "^4.2.1",
     "koa-compose": "^4.1.0",
     "koa-compress": "^3.0.0",
     "koa-logger": "^3.2.1",
     "koa-router": "^7.4.0",
-    "koa-session": "^5.12.2",
+    "koa-session": "^5.12.3",
     "koa-static-cache": "^5.1.2",
     "lodash": "^4.17.15",
     "lru-cache": "^5.1.1",
+    "memory-fs": "^0.4.1",
     "node-fetch": "^2.6.0",
-    "qs": "^6.7.0",
-    "serialize-javascript": "^1.7.0",
-    "uuid": "^3.3.2",
+    "qs": "^6.8.0",
+    "serialize-javascript": "^2.1.0",
+    "uuid": "^3.3.3",
     "vue": "^2.6.10",
     "vue-class-component": "^7.1.0",
-    "vue-property-decorator": "^8.2.1",
-    "vue-router": "^3.0.7",
+    "vue-property-decorator": "^8.2.2",
+    "vue-router": "^3.1.3",
     "vue-server-renderer": "^2.6.10",
     "vue-translator": "^0.8.0",
     "vuex": "^3.1.1",
     "vuex-class": "^0.3.2"
   },
   "devDependencies": {
-    "@packtracker/webpack-plugin": "^2.1.2",
-    "@types/debug": "^4.1.4",
-    "@types/graphql": "^14.2.2",
+    "@1stg/browserslist-config": "^0.2.1",
+    "@1stg/eslint-config": "^0.11.1",
+    "@1stg/husky-config": "^0.3.0",
+    "@1stg/lint-staged": "^0.6.1",
+    "@1stg/postcss-config": "^0.2.1",
+    "@1stg/prettier-config": "^0.2.0",
+    "@1stg/remark-config": "^0.2.1",
+    "@1stg/stylelint-config": "^0.6.1",
+    "@1stg/tsconfig": "^0.5.1",
+    "@babel/core": "^7.6.0",
+    "@commitlint/cli": "^8.2.0",
+    "@commitlint/config-conventional": "^8.2.0",
+    "@packtracker/webpack-plugin": "^2.2.0",
+    "@types/debug": "^4.1.5",
     "@types/html-webpack-plugin": "^3.2.1",
     "@types/koa": "^2.0.49",
     "@types/koa-bodyparser": "^4.3.0",
@@ -75,102 +92,91 @@
     "@types/koa-session": "^5.10.1",
     "@types/koa-static-cache": "^5.1.0",
     "@types/koa-webpack": "^5.0.1",
-    "@types/lodash": "^4.14.136",
+    "@types/lodash": "^4.14.138",
     "@types/lru-cache": "^5.1.0",
     "@types/memory-fs": "^0.3.2",
-    "@types/mini-css-extract-plugin": "^0.2.1",
-    "@types/node": "^12.6.8",
-    "@types/node-fetch": "^2.3.7",
+    "@types/mini-css-extract-plugin": "^0.8.0",
+    "@types/node": "^12.7.5",
+    "@types/node-fetch": "^2.5.0",
     "@types/pug": "^2.0.4",
     "@types/qs": "^6.5.3",
     "@types/serialize-javascript": "^1.5.0",
     "@types/shelljs": "^0.8.5",
     "@types/sw-precache-webpack-plugin": "^0.11.0",
     "@types/uuid": "^3.4.5",
-    "@types/webpack": "^4.32.0",
+    "@types/webpack": "^4.39.1",
     "@types/webpack-env": "^1.14.0",
     "@types/webpack-merge": "^4.1.5",
     "@types/webpack-node-externals": "^1.6.3",
-    "autoprefixer": "^9.6.1",
     "bootstrap": "^4.3.1",
-    "css-loader": "^3.1.0",
-    "cssnano": "^4.1.10",
-    "file-loader": "^4.1.0",
+    "browserslist": "^4.7.0",
+    "css-loader": "^3.2.0",
+    "eslint": "^6.4.0",
+    "eslint-formatter-friendly": "^7.0.0",
+    "file-loader": "^4.2.0",
     "font-awesome": "^4.7.0",
-    "fork-ts-checker-webpack-plugin": "^1.4.3",
-    "glob": "^7.1.3",
+    "fork-ts-checker-webpack-plugin": "^1.5.0",
+    "glob": "^7.1.4",
     "google-fonts-webpack-plugin": "^0.4.4",
     "html-loader": "^0.5.5",
     "html-webpack-plugin": "^3.2.0",
-    "husky": "^3.0.1",
+    "husky": "^3.0.5",
     "imagemin": "^7.0.0",
     "img-loader": "^3.0.1",
     "koa-webpack": "^5.2.4",
-    "lint-staged": "^9.2.0",
+    "lint-staged": "^9.2.5",
     "lodash-es": "^4.17.15",
     "mini-css-extract-plugin": "^0.8.0",
-    "nodemon": "^1.19.1",
+    "nodemon": "^1.19.2",
     "npm-run-all": "^4.1.5",
+    "postcss": "^7.0.18",
     "postcss-loader": "^3.0.0",
     "postcss-pxtorem": "^4.0.1",
+    "postcss-url": "^8.0.0",
     "prettier": "^1.18.2",
-    "prettier-config-1stg": "^0.1.0",
     "pug": "^2.0.4",
     "pug-plain-loader": "^1.0.0",
-    "purgecss-webpack-plugin": "^1.5.0",
+    "purgecss-webpack-plugin": "^1.6.0",
     "purgecss-whitelister": "^2.4.0",
     "resolve-url-loader": "^3.1.0",
-    "rimraf": "^2.6.3",
-    "sass": "^1.22.7",
-    "sass-loader": "webpack-contrib/sass-loader",
-    "sass-resources-loader": "^2.0.1",
+    "rimraf": "^3.0.0",
+    "sass": "^1.22.12",
+    "sass-loader": "^8.0.0",
     "shelljs": "^0.8.3",
+    "style-resources-loader": "^1.2.1",
+    "stylelint": "^11.0.0",
     "sw-precache-webpack-plugin": "^0.11.5",
-    "ts-loader": "^6.0.4",
-    "ts-node": "^8.3.0",
-    "tsconfig-paths": "^3.8.0",
-    "tslint": "^5.18.0",
-    "tslint-config-prettier": "^1.18.0",
-    "tslint-language-service": "^0.9.9",
-    "tslint-plugin-prettier": "^2.0.1",
+    "ts-loader": "^6.1.0",
+    "ts-node": "^8.4.1",
+    "tsconfig-paths": "^3.9.0",
     "typeface-lato": "^0.0.75",
-    "typescript": "^3.5.3",
+    "typescript": "^3.6.3",
     "url-loader": "^2.1.0",
     "vue-loader": "^15.7.1",
     "vue-template-compiler": "^2.6.10",
-    "webpack": "^4.36.1",
-    "webpack-cli": "^3.3.6",
-    "webpack-merge": "^4.2.1",
+    "webpack": "^4.40.2",
+    "webpack-cli": "^3.3.8",
+    "webpack-merge": "^4.2.2",
     "webpack-node-externals": "^1.7.2"
   },
   "browserslist": [
-    "> 1% in CN"
+    "extends @1stg/browserslist-config/modern",
+    "not Android <=4.4",
+    "not Edge <=14",
+    "not OperaMini all",
+    "not OperaMobile <=46",
+    "not UCAndroid <=12.12",
+    "not QQAndroid <=1.2"
   ],
-  "cssnano": {
-    "preset": [
-      "default",
-      {
-        "discardComments": {
-          "removeAll": true
-        }
-      }
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
     ]
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{gql,js,json,md,vue,yml}": [
-      "prettier --write",
-      "git add"
-    ],
-    "*.ts": [
-      "tslint -p . -t stylish --fix",
-      "git add"
-    ]
-  },
+  "eslintIgnore": [
+    "dist",
+    "src/types/schema.ts"
+  ],
   "nodemonConfig": {
     "ext": "ts",
     "watch": [
@@ -178,10 +184,28 @@
       "server/router"
     ]
   },
-  "prettier": "prettier-config-1stg",
+  "prettier": "@1stg/prettier-config/vue",
+  "remarkConfig": {
+    "plugins": [
+      "@1stg/remark-config"
+    ]
+  },
+  "stylelint": {
+    "extends": "@1stg/stylelint-config/scss",
+    "rules": {
+      "selector-pseudo-class-no-unknown": [
+        true,
+        {
+          "ignorePseudoClasses": [
+            "global"
+          ]
+        }
+      ]
+    }
+  },
   "renovate": {
     "extends": [
-      "1stg"
+      "@1stg"
     ]
   }
 }

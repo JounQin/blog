@@ -1,8 +1,8 @@
-import webpack from 'webpack'
-import nodeExternals from 'webpack-node-externals'
-
 import baseConfig from './base'
 import { resolve } from './config'
+
+import webpack from 'webpack'
+import nodeExternals from 'webpack-node-externals'
 
 const config: webpack.Configuration = {
   ...baseConfig,

@@ -28,9 +28,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
 import HiLoading from 'components/HiLoading.vue'
-
 import { Issue, PageInfo, PullRequest, RootState, User } from 'types'
-
 import queries from 'queries.gql'
 
 enum Type {
@@ -97,6 +95,8 @@ export default class Pulse extends Vue {
         return this.pullRequests
       case Type.ISSUES:
         return this.issues
+      default:
+        return null
     }
   }
 
@@ -171,7 +171,7 @@ export default class Pulse extends Vue {
     const { endCursor: prAfter, hasNextPage: prNext } = this.prPageInfo
     const { endCursor: iAfter, hasNextPage: iNext } = this.iPageInfo
 
-    const promises: Array<Promise<any>> = []
+    const promises: Array<Promise<unknown>> = []
 
     if (prNext) {
       promises.push(
@@ -213,9 +213,12 @@ export default class Pulse extends Vue {
 }
 </script>
 <style lang="scss" module>
+// stylelint-disable-next-line scss/selector-nest-combinators
 .list > li :global {
-  h5 small {
-    font-size: 12px;
+  h5 {
+    small {
+      font-size: 12px;
+    }
   }
 
   .fa {

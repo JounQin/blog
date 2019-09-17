@@ -14,8 +14,11 @@ export default class HiLoading extends Vue {
 .loading {
   animation: loading 0.5s infinite linear;
   border: 2px solid rgb(204, 204, 204);
-  border-right-color: transparent;
-  border-radius: 50%;
+  border: {
+    right-color: transparent;
+    radius: 50%;
+  }
+
   width: 15px;
   height: 15px;
 }

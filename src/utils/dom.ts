@@ -1,6 +1,6 @@
-import { ScrollContext } from 'types'
-
 import { now } from './time'
+
+import { ScrollContext } from 'types'
 
 const scrollSmoothNativeSupported =
   typeof document !== 'undefined' &&

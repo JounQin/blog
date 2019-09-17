@@ -4,10 +4,11 @@ import { AxiosInstance } from 'axios'
 import { Route } from 'vue-router'
 import { Store } from 'vuex'
 
-import { Translate } from 'plugins'
-
 import { RootState } from './store'
 
+import { Translate } from 'plugins'
+
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 export type Apollo = ApolloClient<NormalizedCacheObject>
 
 export interface AsyncData {
@@ -18,4 +19,4 @@ export interface AsyncData {
   translate?: Translate
 }
 
-export type AsyncDataFn<T = any> = (params: AsyncData) => T
+export type AsyncDataFn<T = unknown> = (params: AsyncData) => T

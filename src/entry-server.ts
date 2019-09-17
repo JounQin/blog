@@ -1,12 +1,11 @@
 import _axios from 'axios'
-import LRU from 'lru-cache'
-import serialize from 'serialize-javascript'
 import { createTranslator } from 'vue-translator'
 
+import LRU from 'lru-cache'
+import serialize from 'serialize-javascript'
 import { createTranslate } from 'plugins'
-import { Apollo, ServerContext } from 'types'
+import { Apollo, ServerContext, AsyncDataFn } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
-
 import createApp from 'app'
 
 const SET_COOKIE = 'set-cookie'
@@ -23,6 +22,7 @@ const cache = new LRU<string, Apollo>({
 })
 
 export default (context: ServerContext) =>
+  // eslint-disable-next-line no-async-promise-executor, @typescript-eslint/no-misused-promises
   new Promise(async (resolve, reject) => {
     const start: boolean | number = __DEV__ && Date.now()
 
@@ -34,7 +34,7 @@ export default (context: ServerContext) =>
     const { fullPath } = router.resolve(url).route
 
     if (fullPath !== url) {
-      return reject({ status: 302, url: fullPath })
+      return reject(Object.assign(new Error(), { status: 302, url: fullPath }))
     }
 
     const axios = _axios.create({
@@ -88,6 +88,7 @@ export default (context: ServerContext) =>
 
     await store.dispatch('fetchInfo', { apollo, axios })
 
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     router.push(ctx.url)
 
     router.onReady(async () => {
@@ -95,19 +96,29 @@ export default (context: ServerContext) =>
 
       if (!matched.length) {
         console.error('no matched components')
-        return reject({ status: 404 })
+        return reject(Object.assign(new Error(), { status: 404 }))
       }
 
       const { currentRoute: route } = router
 
       if (route.fullPath !== url) {
-        return reject({ status: 302, url: route.fullPath })
+        return reject(
+          Object.assign(new Error(), { status: 302, url: route.fullPath }),
+        )
       }
 
       try {
         await Promise.all(
           matched.map(
-            ({ options, asyncData = options && options.asyncData }: any) =>
+            ({
+              options,
+              asyncData = options && options.asyncData,
+            }: {
+              options?: {
+                asyncData?: AsyncDataFn
+              }
+              asyncData?: AsyncDataFn
+            }) =>
               asyncData &&
               asyncData({ apollo, axios, route, store, translate }),
           ),
@@ -118,7 +129,7 @@ export default (context: ServerContext) =>
       }
 
       if (__DEV__) {
-        console.info(`data pre-fetch: ${Date.now() - (start as number)}ms`)
+        console.info(`data pre-fetch: ${Date.now() - start}ms`)
       }
 
       context.script = `<script>window.__APOLLO_CACHE__=${serialize(

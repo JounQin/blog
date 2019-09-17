@@ -33,7 +33,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
 import { Issue, RootState } from 'types'
-
 import querires from 'queries.gql'
 
 const getQueryOptions = (

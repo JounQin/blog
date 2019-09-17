@@ -1,10 +1,7 @@
 import { NormalizedCacheObject } from 'apollo-cache-inmemory'
-import ApolloClient from 'apollo-client'
 import { AxiosInstance } from 'axios'
 import Vue, { ComponentOptions } from 'vue'
-import { Route } from 'vue-router'
 import { Translator } from 'vue-translator'
-import { Store } from 'vuex'
 
 import { Translate, TranslateCacheData } from 'plugins'
 import { Apollo, AsyncDataFn, RootState } from 'types'

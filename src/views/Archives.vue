@@ -18,7 +18,6 @@ import { Store } from 'vuex'
 
 import { Apollo, Issue, Repository, RootState } from 'types'
 import { getDefaultLabels } from 'utils'
-
 import queries from 'queries.gql'
 
 const fetchArchieves = async ({
@@ -160,11 +159,13 @@ export default class Archives extends Vue {
     transform: translate3d(-50%, -50%, 0);
   }
 
-  &.title:before {
-    width: 10px;
-    height: 10px;
-    background-color: #555;
-    opacity: 0.5;
+  &.title {
+    &:before {
+      width: 10px;
+      height: 10px;
+      background-color: #555;
+      opacity: 0.5;
+    }
   }
 
   &.article {

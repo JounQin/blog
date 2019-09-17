@@ -41,9 +41,9 @@ const getErrorTip = (locale: string, type: boolean) => {
 }
 
 export interface Translate {
-  (template: string, type?: boolean): string
   cache?: TranslateCache
   loading?: boolean
+  (template: string, type?: boolean): string
 }
 
 export interface TranslateCacheData {
@@ -154,7 +154,7 @@ export const createTranslate = (
 
     const locale = translator.locale as Locale
 
-    let body = translations[locale] || translations[DEFAULT_LOCALE]
+    let body: string = translations[locale] || translations[DEFAULT_LOCALE]
 
     if (body == null) {
       body = cacheData[main]
