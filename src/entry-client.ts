@@ -45,6 +45,7 @@ router.onReady(() => {
       (comp, index) => diffed || (diffed = prevMatched[index] !== comp),
     )
 
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 70)
 
     if (activated.length) {
@@ -68,6 +69,7 @@ router.onReady(() => {
 
     next()
 
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 100)
 
     setTimeout(() => {

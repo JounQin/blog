@@ -33,7 +33,7 @@ import {
   SearchResultItemConnection,
 } from 'types'
 import { getDefaultLabels } from 'utils'
-import querires from 'queries.gql'
+import queries from 'queries.gql'
 
 interface Articles {
   nodes: Issue[]
@@ -58,7 +58,9 @@ const getQueryOptions: AsyncDataFn<QueryOptions> = ({
 
   const variables = {
     ...REPOSITORY,
+    // eslint-disable-next-line no-magic-numbers
     first: (!(before || after) || after) && 25,
+    // eslint-disable-next-line no-magic-numbers
     last: before && 25,
     before,
     after,
@@ -69,7 +71,7 @@ const getQueryOptions: AsyncDataFn<QueryOptions> = ({
   }
 
   return {
-    query: search ? querires.search : querires.articles,
+    query: search ? queries.search : queries.articles,
     variables,
   }
 }

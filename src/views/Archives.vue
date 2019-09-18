@@ -61,6 +61,7 @@ interface ArchivesMap {
   [year: number]: Issue[]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 type ArchivesList = Array<{
   year: number
   archives: Issue[]

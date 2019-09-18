@@ -18,6 +18,7 @@ const SCRIPT_SUFFIX = __DEV__
 
 const cache = new LRU<string, Apollo>({
   max: 1000,
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
   maxAge: 1000 * 60 * 15,
 })
 

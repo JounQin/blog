@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-magic-numbers */
 import fs from 'fs'
 
 import acceptLanguage from 'accept-language'
@@ -54,6 +55,7 @@ const createRenderer = (bundle: object, options: object) =>
     inject: false,
     cache: new LRU({
       max: 1000,
+      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       maxAge: 1000 * 60 * 15,
     }),
     basedir: resolve('dist/static'),

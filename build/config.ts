@@ -11,6 +11,7 @@ export const __DEV__ = NODE_ENV === 'development'
 
 export const serverHost = '0.0.0.0'
 
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 export const serverPort = +process.env.PORT || 7000
 
 export const publicPath = '/'

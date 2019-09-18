@@ -36,6 +36,7 @@ export const scrollTo = (
   context.startX = context.startX || window.pageXOffset
   context.startY = context.startY || window.pageYOffset
   context.startTime = context.startTime || now()
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
   context.duration = context.duration || 500
 
   scroll(context, el)

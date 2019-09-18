@@ -33,13 +33,13 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
 import { Issue, RootState } from 'types'
-import querires from 'queries.gql'
+import queries from 'queries.gql'
 
 const getQueryOptions = (
   store: Store<RootState>,
   issueNumber: number | string,
 ) => ({
-  query: querires.article,
+  query: queries.article,
   variables: {
     ...store.getters.REPOSITORY,
     number: +issueNumber,

@@ -1,7 +1,6 @@
 const config = require('@1stg/postcss-config')()
 
 config.plugins.push(
-  require('postcss-url'),
   require('postcss-pxtorem', {
     rootValue: 14,
     propList: ['*'],

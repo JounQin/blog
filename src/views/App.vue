@@ -171,6 +171,7 @@ export default class App extends Vue {
   }
 
   toggleShow() {
+    // eslint-disable-next-line no-magic-numbers
     if (document.documentElement.clientWidth >= 768) {
       return
     }
