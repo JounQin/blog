@@ -48,10 +48,13 @@
   resolved "https://registry.yarnpkg.com/@1stg/husky-config/-/husky-config-0.3.0.tgz#dcf89d1f791dfd04d8d1a3fc1b59ba97c57ed6be"
   integrity sha512-YKVLG5lc/qKPyY9by/mVPdZLMe3s1FuO1d0mCmCogYl6VTWW/98LW80B4pMcDTmHPBTjZfKUAwgVBIvaYVthBA==
 
-"@1stg/lint-staged@^0.6.1":
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/@1stg/lint-staged/-/lint-staged-0.6.1.tgz#2785e6f749a56d8a9a6c550abb7356a3aaf848c5"
-  integrity sha512-kFiLmW4xID+jB4zTgSBxUZADZznfJs+GdyUDTlAs9jTzmG6bvCldbSSpzR1nr68emfrBSZg6rhQxx+SpZWdkLw==
+"@1stg/lint-staged@^0.8.2":
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/@1stg/lint-staged/-/lint-staged-0.8.2.tgz#4a05350c9005acf91cf32e2dd1096732a9e27460"
+  integrity sha512-EPIbNUKTkYP8M0nIbDrpJ1MIQQbU4Y878N4yBnrePK/7tJcQaDBAo8C9FPWJTBo1Ib7TvP9mVpO6sXTn+Yuaig==
+  dependencies:
+    "@prettier/plugin-pug" "^1.0.3"
+    prettier-plugin-toml "^0.3.1"
 
 "@1stg/postcss-config@^0.3.0":
   version "0.3.0"
@@ -606,6 +609,14 @@
     tiny-json-http "^7.1.2"
     webpack-bundle-analyzer "^3.4.1"
 
+"@prettier/plugin-pug@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@prettier/plugin-pug/-/plugin-pug-1.0.3.tgz#9c4d08f39c2443d63d04cee1a6d000fc75cdf1a4"
+  integrity sha512-v1tV3mwQCpoImzQuqZsobLylTAHztaJB6iPgr5TZpEkmLeN121Pq9fxiff2bMSW6CPHZDta9ZcbYHzX/NqynCA==
+  dependencies:
+    prettier "~1.18.2"
+    pug-lexer "~4.1.0"
+
 "@samverschueren/stream-to-observable@^0.3.0":
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@samverschueren/stream-to-observable/-/stream-to-observable-0.3.0.tgz#ecdf48d532c58ea477acfcab80348424f8d0662f"
@@ -711,6 +722,21 @@
   dependencies:
     "@styled-system/core" "^5.1.2"
     "@styled-system/css" "^5.0.23"
+
+"@toml-tools/lexer@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@toml-tools/lexer/-/lexer-0.3.1.tgz#f5a4b04ee075b2862f08825972d24e73c6bea367"
+  integrity sha512-CCKHQb5OWpgFu47MQ2rcql4AnE9GaehNk/c1oJOyOBovED6XmdzQPXsvPSu+NJ9lToqJNoX+nLXQsB8WyQGdzQ==
+  dependencies:
+    chevrotain "4.1.1"
+
+"@toml-tools/parser@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@toml-tools/parser/-/parser-0.3.1.tgz#85484372c50d8caad10e01b24a59193c63f5dcff"
+  integrity sha512-vadwVx5TkgByt19dbp/rfIUKPkDdn5werANYvziiGK9wHlqPA0BWnvOloQw/dPDxF31+Ag0+zarXJpPDdRsPPg==
+  dependencies:
+    "@toml-tools/lexer" "^0.3.1"
+    chevrotain "4.1.1"
 
 "@types/accepts@*":
   version "1.3.5"
@@ -2428,6 +2454,13 @@ check-types@^8.0.3:
   version "8.0.3"
   resolved "https://registry.yarnpkg.com/check-types/-/check-types-8.0.3.tgz#3356cca19c889544f2d7a95ed49ce508a0ecf552"
   integrity sha512-YpeKZngUmG65rLudJ4taU7VLkOCTMhNl/u4ctNC56LQS/zJTyNH0Lrtwm1tfTsbLlwvlfsA2d1c8vCf/Kh2KwQ==
+
+chevrotain@4.1.1:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/chevrotain/-/chevrotain-4.1.1.tgz#e1e601bf099e96e6a3377671b7d5a40c631cf8ce"
+  integrity sha512-NQky1HQyiAzxsxpq4Ppt47SYO2U3JLtmfs85QPf3kYSzGBjjp5AA8kqjH8hCjGFRpaQ781QOk1ragQIOkBgUTA==
+  dependencies:
+    regexp-to-ast "0.3.5"
 
 "chokidar@>=2.0.0 <4.0.0":
   version "3.1.0"
@@ -8610,12 +8643,20 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
+prettier-plugin-toml@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-toml/-/prettier-plugin-toml-0.3.1.tgz#71b5291ef9c2a20865d2dfe1dbc24435bcb596b5"
+  integrity sha512-j47DEO/dN/acU1nSL/B7q4A4Z2SYJhpWPCLPkcmfAXIQC6A5GD6Ao/bi9HRHZ8ueIDOauqjuAQbnvRxLXMjazA==
+  dependencies:
+    "@toml-tools/parser" "^0.3.1"
+    prettier "^1.16.0"
+
 prettier@1.16.3:
   version "1.16.3"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.16.3.tgz#8c62168453badef702f34b45b6ee899574a6a65d"
   integrity sha512-kn/GU6SMRYPxUakNXhpP0EedT/KmaPzr0H5lIsDogrykbaxOpOfAFfk5XA7DZrJyMAv1wlMV3CPcZruGXVVUZw==
 
-prettier@^1.18.2:
+prettier@^1.16.0, prettier@^1.18.2, prettier@~1.18.2:
   version "1.18.2"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.18.2.tgz#6823e7c5900017b4bd3acf46fe9ac4b4d7bda9ea"
   integrity sha512-OeHeMc0JhFE9idD4ZdtNibzY0+TPHSpSSb9h8FqtP+YnoZZ1sl8Vc9b1sasjfymH3SonAF4QcA2+mzHPhMvIiw==
@@ -8750,7 +8791,7 @@ pug-filters@^3.1.1:
     resolve "^1.1.6"
     uglify-js "^2.6.1"
 
-pug-lexer@^4.1.0:
+pug-lexer@^4.1.0, pug-lexer@~4.1.0:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/pug-lexer/-/pug-lexer-4.1.0.tgz#531cde48c7c0b1fcbbc2b85485c8665e31489cfd"
   integrity sha512-i55yzEBtjm0mlplW4LoANq7k3S8gDdfC6+LThGEvsK4FuobcKfDAwt6V4jKPH9RtiE3a2Akfg5UpafZ1OksaPA==
@@ -9195,6 +9236,11 @@ regex-parser@2.2.10:
   version "2.2.10"
   resolved "https://registry.yarnpkg.com/regex-parser/-/regex-parser-2.2.10.tgz#9e66a8f73d89a107616e63b39d4deddfee912b37"
   integrity sha512-8t6074A68gHfU8Neftl0Le6KTDwfGAj7IyjPIMSfikI2wJUTHDMaIq42bUsfVnj8mhx0R+45rdUXHGpN164avA==
+
+regexp-to-ast@0.3.5:
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/regexp-to-ast/-/regexp-to-ast-0.3.5.tgz#dedadd11bbb5f849df76b4e84b0b5335831c0473"
+  integrity sha512-1CJygtdvsfNFwiyjaMLBWtg2tfEqx/jSZ8S6TV+GlNL8kiH8rb4cm5Pb7A/C2BpyM/fA8ZJEudlCwi/jvAY+Ow==
 
 regexpp@^2.0.1:
   version "2.0.1"
