@@ -76,7 +76,7 @@
     "@1stg/postcss-config": "^0.3.0",
     "@1stg/prettier-config": "^0.2.0",
     "@1stg/remark-config": "^0.2.1",
-    "@1stg/stylelint-config": "^0.6.3",
+    "@1stg/stylelint-config": "^0.8.1",
     "@1stg/tsconfig": "^0.5.1",
     "@babel/core": "^7.6.0",
     "@commitlint/cli": "^8.2.0",
