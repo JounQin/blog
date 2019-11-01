@@ -68,7 +68,7 @@
     "vuex-class": "^0.3.2"
   },
   "devDependencies": {
-    "@1stg/browserslist-config": "^0.2.1",
+    "@1stg/browserslist-config": "^0.2.3",
     "@1stg/commitlint-config": "^0.1.0",
     "@1stg/eslint-config": "^0.12.5",
     "@1stg/husky-config": "^0.3.0",
