@@ -101,7 +101,7 @@
     "@types/pug": "^2.0.4",
     "@types/qs": "^6.5.3",
     "@types/serialize-javascript": "^1.5.0",
-    "@types/shelljs": "^0.8.5",
+    "@types/shelljs": "^0.8.6",
     "@types/sw-precache-webpack-plugin": "^0.11.0",
     "@types/uuid": "^3.4.5",
     "@types/webpack": "^4.39.1",
