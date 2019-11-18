@@ -69,10 +69,16 @@
     postcss-preset-env "^6.7.0"
     postcss-url "^8.0.0"
 
-"@1stg/prettier-config@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@1stg/prettier-config/-/prettier-config-0.2.0.tgz#853c1142834f31d9287cd9e30f2b91d46e4961d6"
-  integrity sha512-wL0qdfsJyHQvOO0vG50StqTSIOX9kauhu6NbLHMgAXE+s3rQ4/N0slwAwYCrqHSwYRVqpeqN8EblYF6UIZiwZQ==
+"@1stg/prettier-config@^0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@1stg/prettier-config/-/prettier-config-0.6.3.tgz#eaf642d014f9cf655383c8a673f8416e67202242"
+  integrity sha512-405XFwnWmMz1mcGw2CZGVDN3qQkzGg1w/dD8cYQZ6/tzA2PYgtU/Srod193osAPK9Hc3/+mRhoJQja33sA+sww==
+  dependencies:
+    "@prettier/plugin-pug" "^1.0.10"
+    "@prettier/plugin-ruby" "^0.16.0"
+    prettier-plugin-pkg "^0.4.5"
+    prettier-plugin-sh "^0.2.3"
+    prettier-plugin-toml "^0.3.1"
 
 "@1stg/remark-config@^0.2.1":
   version "0.2.1"
@@ -609,6 +615,13 @@
     tiny-json-http "^7.1.2"
     webpack-bundle-analyzer "^3.4.1"
 
+"@prettier/plugin-pug@^1.0.10":
+  version "1.0.10"
+  resolved "https://registry.yarnpkg.com/@prettier/plugin-pug/-/plugin-pug-1.0.10.tgz#3ae2b8cf5f9ca423fbfbad989dc2528e141f37d8"
+  integrity sha512-1syMMM/Mz1J8hHxaH7Q9cRHHihQDm0gMYe+hlOcXnlrLepi3n5hs0MtvfG6K5Hnwj33Zi1r62r/Abq6HALH/Ng==
+  dependencies:
+    pug-lexer "~4.1.0"
+
 "@prettier/plugin-pug@^1.0.3":
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/@prettier/plugin-pug/-/plugin-pug-1.0.3.tgz#9c4d08f39c2443d63d04cee1a6d000fc75cdf1a4"
@@ -616,6 +629,13 @@
   dependencies:
     prettier "~1.18.2"
     pug-lexer "~4.1.0"
+
+"@prettier/plugin-ruby@^0.16.0":
+  version "0.16.0"
+  resolved "https://registry.yarnpkg.com/@prettier/plugin-ruby/-/plugin-ruby-0.16.0.tgz#386cf4af82e297b0d61ec1e1205b1823811ff908"
+  integrity sha512-3jHEPFL/vK34TPfNByCX0uDiJqHSHvo36LacWCxe7d+yoEUhfOE5oNi2Q1PRej08wKAopU5aApJVPnfz9LoCsw==
+  dependencies:
+    prettier ">=1.10"
 
 "@samverschueren/stream-to-observable@^0.3.0":
   version "0.3.0"
@@ -6971,6 +6991,11 @@ mute-stream@0.0.7:
   resolved "https://registry.yarnpkg.com/mute-stream/-/mute-stream-0.0.7.tgz#3075ce93bc21b8fab43e1bc4da7e8115ed1e7bab"
   integrity sha1-MHXOk7whuPq0PhvE2n6BFe0ee6s=
 
+mvdan-sh@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/mvdan-sh/-/mvdan-sh-0.4.0.tgz#e1e5ed870bc866ce0180ee79abab55c3bf1c2293"
+  integrity sha512-pJ8f58eHR5LgJ5VY3yUpIAkvnd6rpLQj9WV4zwxQPInVyRRmE+dzBSEL3gcShLTodeORtcA8UG+HNMOhdMthrA==
+
 mz@^2.7.0:
   version "2.7.0"
   resolved "https://registry.yarnpkg.com/mz/-/mz-2.7.0.tgz#95008057a56cafadc2bc63dde7f9ff6955948e32"
@@ -8643,6 +8668,18 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
+prettier-plugin-pkg@^0.4.5:
+  version "0.4.5"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-pkg/-/prettier-plugin-pkg-0.4.5.tgz#25cb34ab376820aec6a443570a90708b9a14d478"
+  integrity sha512-nCilDqbu84SnZ+2pOkCkWlt8157/zFodWI1F1BYqc4eHylfPIETNzDHK8idk1ZHtdoySDHWJ9Jxc4aWkKh8dfw==
+
+prettier-plugin-sh@^0.2.3:
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-sh/-/prettier-plugin-sh-0.2.3.tgz#6ab2557f42517bf9561054654de8f021ec3ac481"
+  integrity sha512-DCgWB9Ux5NfpYwZs5hPIWTHJ/Ee5ClCm4MXvlArWXQoXZ0JJh2DerklYANnKl5sUijpKZmFnQPvUaArXw8OJkw==
+  dependencies:
+    mvdan-sh "^0.4.0"
+
 prettier-plugin-toml@^0.3.1:
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/prettier-plugin-toml/-/prettier-plugin-toml-0.3.1.tgz#71b5291ef9c2a20865d2dfe1dbc24435bcb596b5"
@@ -8655,6 +8692,11 @@ prettier@1.16.3:
   version "1.16.3"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.16.3.tgz#8c62168453badef702f34b45b6ee899574a6a65d"
   integrity sha512-kn/GU6SMRYPxUakNXhpP0EedT/KmaPzr0H5lIsDogrykbaxOpOfAFfk5XA7DZrJyMAv1wlMV3CPcZruGXVVUZw==
+
+prettier@>=1.10:
+  version "1.19.1"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.19.1.tgz#f7d7f5ff8a9cd872a7be4ca142095956a60797cb"
+  integrity sha512-s7PoyDv/II1ObgQunCbB9PdLmUcBZcnWOcxDh7O0N/UwDEsHyqkW+Qh28jW+mVuCdx7gLB0BotYI1Y6uI9iyew==
 
 prettier@^1.16.0, prettier@^1.18.2, prettier@~1.18.2:
   version "1.18.2"
