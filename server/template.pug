@@ -1,18 +1,18 @@
 doctype html
-html(lang="{{ locale }}")
+html(lang='{{ locale }}')
   head
     title {{ title }}
-    meta(charset="UTF-8")
-    meta(http-equiv="X-UA-Compatible", content="IE=edge,chrome=1")
-    meta(name="mobile-web-app-capable" content="yes")
-    meta(name="viewport", content="width=device-width, initial-scale=1, shrink-to-fit=no")
-    meta(name="theme-color" content="#6c757d")
-    link(rel="apple-touch-icon" sizes="120x120" href="/logo-120.png")
-    link(rel="shortcut icon" sizes="48x48" href="/logo-48.png")
-    link(rel="manifest" href="/manifest.json")
+    meta(charset='UTF-8')
+    meta(http-equiv='X-UA-Compatible' content='IE=edge,chrome=1')
+    meta(name='mobile-web-app-capable' content='yes')
+    meta(name='viewport', content='width=device-width,initial-scale=1,shrink-to-fit=no')
+    meta(name='theme-color' content='#6c757d')
+    link(rel='apple-touch-icon' sizes='120x120' href='/logo-120.png')
+    link(rel='shortcut icon' sizes='48x48' href='/logo-48.png')
+    link(rel='manifest' href='/manifest.json')
     | {{{ renderResourceHints() }}}
     | {{{ renderStyles() }}}
-    base(target="_blank")
+    base(target='_blank')
     style.
       #skip a {
          position: absolute;
@@ -29,7 +29,7 @@ html(lang="{{ locale }}")
        }
   body
     #skip
-      a(href="#app") skip to content
+      a(href='#app') skip to content
     //vue-ssr-outlet
     script.
       document.addEventListener('gesturestart', function (e) {
@@ -37,5 +37,5 @@ html(lang="{{ locale }}")
       })
     | {{{ script }}}
     if process.env.NODE_ENV !== 'development'
-      script(src="https://cdn.polyfill.io/v2/polyfill.min.js")
+      script(src='https://cdn.polyfill.io/v2/polyfill.min.js')
     | {{{ renderScripts() }}}

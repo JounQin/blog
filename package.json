@@ -139,23 +139,13 @@
     "webpack-node-externals": "^1.7.2"
   },
   "browserslist": [
-    "extends @1stg/browserslist-config/modern",
-    "not Android <=4.4",
-    "not Edge <=14",
-    "not OperaMini all",
-    "not OperaMobile <=46",
-    "not UCAndroid <=12.12",
-    "not QQAndroid <=1.2"
+    "extends @1stg/browserslist-config/modern"
   ],
   "commitlint": {
     "extends": [
-      "@commitlint/config-conventional"
+      "@1stg"
     ]
   },
-  "eslintIgnore": [
-    "dist",
-    "src/types/schema.ts"
-  ],
   "nodemonConfig": {
     "ext": "ts",
     "watch": [
@@ -175,16 +165,9 @@
     ]
   },
   "stylelint": {
-    "extends": "@1stg/stylelint-config/scss",
-    "rules": {
-      "selector-pseudo-class-no-unknown": [
-        true,
-        {
-          "ignorePseudoClasses": [
-            "global"
-          ]
-        }
-      ]
-    }
+    "extends": [
+      "@1stg/stylelint-config/scss",
+      "@1stg/stylelint-config/modules"
+    ]
   }
 }
