@@ -85,7 +85,7 @@
     "@types/lru-cache": "^5.1.0",
     "@types/memory-fs": "^0.3.2",
     "@types/mini-css-extract-plugin": "^0.8.0",
-    "@types/node": "^12.12.12",
+    "@types/node": "^12.12.14",
     "@types/node-fetch": "^2.5.4",
     "@types/pug": "^2.0.4",
     "@types/qs": "^6.9.0",
