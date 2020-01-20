@@ -129,7 +129,7 @@
     "ts-node": "^8.5.4",
     "tsconfig-paths": "^3.9.0",
     "typeface-lato": "^0.0.75",
-    "typescript": "^3.7.4",
+    "typescript": "^3.7.5",
     "url-loader": "^2.3.0",
     "vue-loader": "^15.8.3",
     "vue-template-compiler": "^2.6.11",
