@@ -4,7 +4,7 @@ const { parse } = require('dotenv')
 
 const LOCAL_ENV = '.env.local'
 
-let localEnv
+let localEnv = {}
 
 if (fs.existsSync(LOCAL_ENV)) {
   localEnv = parse(fs.readFileSync(LOCAL_ENV))
@@ -30,4 +30,5 @@ module.exports = {
     'security',
   ].join(),
   ...localEnv,
+  NODE_ENV: process.env.NODE_ENV || localEnv.NODE_ENV,
 }

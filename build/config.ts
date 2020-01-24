@@ -7,12 +7,13 @@ type NodeEnv = typeof DEV | typeof PROD
 
 export const NODE_ENV: NodeEnv = (process.env.NODE_ENV || DEV) as NodeEnv
 
-export const __DEV__ = NODE_ENV === 'development'
+export const __DEV__ = NODE_ENV === DEV
 
-export const serverHost = '0.0.0.0'
+export const __PROD__ = NODE_ENV === PROD
 
-// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-export const serverPort = +process.env.PORT || 7000
+export const serverHost = process.env.HOST || '0.0.0.0'
+
+export const serverPort = +process.env.PORT || 7 * 1000
 
 export const publicPath = '/'
 

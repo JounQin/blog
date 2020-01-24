@@ -8,9 +8,10 @@
     "silent": true
   },
   "env": {
+    "APP_KEYS": "@blog_app_keys",
     "GITHUB_CLIENT_ID": "@blog_github_client_id",
     "GITHUB_CLIENT_SECRET": "@blog_github_client_secret",
-    "GITHUB_CLIENT_TOKEN": "@github_client_token",
+    "GITHUB_TOKEN": "@blog_github_token",
     "GITHUB_OAUTH_CALLBACK": "@blog_github_oauth_callback"
   }
 }

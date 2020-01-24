@@ -3,11 +3,11 @@ import purgecssWhitelister from 'purgecss-whitelister'
 import VueSSRClientPlugin from 'vue-server-renderer/client-plugin'
 import glob from 'glob'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
-import SWPrecacheWebpackPlugin from 'sw-precache-webpack-plugin'
+import { GenerateSW } from 'workbox-webpack-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
 
-import { __DEV__, resolve } from './config'
+import { __DEV__ } from './config'
 import baseConfig from './base'
 
 const config = merge.smart(baseConfig, {
@@ -57,16 +57,14 @@ if (!__DEV__) {
       }),
       whitelist: purgecssWhitelister('node_modules/github-markdown-css/*.css'),
     }),
-    new SWPrecacheWebpackPlugin({
+    new GenerateSW({
       cacheId: 'blog',
-      minify: true,
-      dontCacheBustUrlsMatching: /./,
-      staticFileGlobsIgnorePatterns: [/index\.html$/, /\.map$/, /\.json$/],
-      stripPrefix: resolve('dist').replace(/\\/g, '/'),
+      dontCacheBustUrlsMatching: /\./,
+      ignoreUrlParametersMatching: [/index\.html$/, /\.map$/, /\.json$/],
       runtimeCaching: [
         {
           urlPattern: /^https?:\/\//,
-          handler: 'networkFirst',
+          handler: 'NetworkFirst',
         },
       ],
     }),

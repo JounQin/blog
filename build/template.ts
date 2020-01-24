@@ -10,6 +10,4 @@ const result = minify(pug.renderFile('server/template.pug'), {
   minifyJS: true,
 })
 
-fs.mkdirSync('dist/static', { recursive: true })
-
 fs.writeFileSync(path.resolve('dist/template.html'), result)
