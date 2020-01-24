@@ -1,3 +1,4 @@
+// eslint-disable-next-line unicorn/filename-case
 declare module '@packtracker/webpack-plugin' {
   import { Plugin, Stats } from 'webpack'
 

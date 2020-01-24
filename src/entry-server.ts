@@ -95,7 +95,7 @@ export default (context: ServerContext) =>
     router.onReady(async () => {
       const matched = router.getMatchedComponents()
 
-      if (!matched.length) {
+      if (matched.length === 0) {
         console.error('no matched components')
         return reject(Object.assign(new Error(), { status: 404 }))
       }

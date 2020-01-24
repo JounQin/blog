@@ -9,7 +9,7 @@ import qs from 'qs'
 import { Locale } from 'types'
 import { LOCALE_COOKIE, TOGGLE_LOCALE } from 'utils'
 
-const debug = _debug('1stg:transalte')
+const debug = _debug('1stg:translate')
 
 const SIGNATURE_PREFIX = 'GETtmt.tencentcloudapi.com/?'
 
@@ -108,7 +108,7 @@ const translate: Middleware = async ctx => {
         $1 = $1.replace(/ /g, '')
       } else {
         $1 = $1
-          .replace(/([a-z\-_]+)= ?" ?([^<>"]+) ?"?/g, '$1="$2"')
+          .replace(/([-_a-z]+)= ?" ?([^"<>]+) ?"?/g, '$1="$2"')
           .replace(/"+/g, '"')
       }
       return '<' + $1 + '>'

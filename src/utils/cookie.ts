@@ -7,7 +7,7 @@ export const getCookie = (name: string) =>
     document.cookie.replace(
       new RegExp(
         '(?:(?:^|.*;)\\s*' +
-          encodeURIComponent(name).replace(/[-.+*]/g, '\\$&') +
+          encodeURIComponent(name).replace(/[*+-.]/g, '\\$&') +
           '\\s*\\=\\s*([^;]*).*$)|^.*$',
       ),
       '$1',

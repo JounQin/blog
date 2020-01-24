@@ -37,7 +37,7 @@ export default (cb: (...args: unknown[]) => void) => {
     stats.errors.forEach(debug)
     stats.warnings.forEach(debug)
 
-    if (stats.errors.length) {
+    if (stats.errors.length > 0) {
       return
     }
 

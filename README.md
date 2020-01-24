@@ -10,4 +10,4 @@
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![codechecks.io](https://raw.githubusercontent.com/codechecks/docs/master/images/badges/badge-default.svg?sanitize=true)](https://codechecks.io)
 
-a Blog system built on GitHub GraphQL API with Vue SSR
+a Blog system built on GitHub GraphQL GraphQL API with Vue SSR

@@ -5,7 +5,7 @@ import axios from 'axios'
 import gql from 'graphql-tag'
 import fetch from 'node-fetch'
 import _debug from 'debug'
-import Koa from 'koa'
+import Koa, { DefaultState, DefaultContext } from 'koa'
 import bodyParser from 'koa-bodyparser'
 import compose from 'koa-compose'
 import Router from 'koa-router'
@@ -22,7 +22,7 @@ global.fetch = fetch
 
 const debug = _debug('1stg:server:router')
 
-const router = new Router({
+const router = new Router<DefaultState, DefaultContext>({
   prefix: '/api',
 })
 
@@ -96,7 +96,6 @@ router
 
     const token = data.access_token
 
-    // eslint-disable-next-line require-atomic-updates
     ctx.session.token = token
 
     const apollo = new ApolloClient({
@@ -124,7 +123,6 @@ router
       `,
     })
 
-    // eslint-disable-next-line require-atomic-updates
     ctx.session.user = user.viewer
 
     ctx.redirect(`${path.replace(/ /g, '%2B')}`)

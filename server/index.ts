@@ -55,7 +55,6 @@ const createRenderer = (bundle: object, options: object) =>
     inject: false,
     cache: new LRU({
       max: 1000,
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       maxAge: 1000 * 60 * 15,
     }),
     basedir: resolve('dist/static'),
@@ -97,9 +96,7 @@ const middlewares: Koa.Middleware[] = [
 
     const context = { ctx, locale, title: TITLE }
 
-    // eslint-disable-next-line require-atomic-updates
     ctx.respond = false
-    // eslint-disable-next-line require-atomic-updates
     ctx.status = 200
     ctx.set({
       'Content-Type': 'text/html',

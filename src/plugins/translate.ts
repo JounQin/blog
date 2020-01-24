@@ -99,19 +99,19 @@ export const createTranslate = (
       return template
     }
 
-    const start = template.substring(0, startIndex)
+    const start = template.slice(0, Math.max(0, startIndex))
 
     const endIndex = template.indexOf(endPlaceholders[placeholder])
 
     const hasEnd = endIndex !== -1
 
     const end = hasEnd
-      ? template.substr(endIndex + endPlaceholders[placeholder].length)
+      ? template.slice(endIndex + endPlaceholders[placeholder].length)
       : ''
 
     const main = hasEnd
-      ? template.substring(startIndex, endIndex)
-      : template.substr(startIndex)
+      ? template.slice(startIndex, endIndex)
+      : template.slice(startIndex)
 
     const indexes: Array<{
       locale: Locale
@@ -141,8 +141,8 @@ export const createTranslate = (
       const itemIndex = item.index + item.placeholder.length
       const translation =
         index === indexes.length - 1
-          ? main.substr(itemIndex)
-          : main.substring(itemIndex, indexes[index + 1].index)
+          ? main.slice(itemIndex)
+          : main.slice(itemIndex, indexes[index + 1].index)
 
       if (!index) {
         firstLocale = item.locale

@@ -48,7 +48,7 @@ router.onReady(() => {
     // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 70)
 
-    if (activated.length) {
+    if (activated.length > 0) {
       await Promise.all(
         activated.map(
           ({
