@@ -39,12 +39,15 @@ app.keys = (process.env.APP_KEYS || '').split(',')
 let renderer: BundleRenderer
 let ready: Promise<void>
 
-const template =
+const template: string =
   process.env.NODE_ENV === 'development'
     ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('pug').renderFile(resolve('server/template.pug'), {
-        pretty: true,
-      })
+      (require('pug') as typeof import('pug')).renderFile(
+        resolve('server/template.pug'),
+        {
+          pretty: true,
+        },
+      )
     : fs.readFileSync(resolve('dist/template.html'), 'utf-8')
 
 // https://github.com/vuejs/vue/blob/dev/packages/vue-server-renderer/README.md#why-use-bundlerenderer
@@ -136,8 +139,14 @@ const publicStatic = staticCache('public', { maxAge: MAX_AGE })
 const sessionMiddleware = session({}, app)
 
 if (process.env.NODE_ENV === 'development') {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { readyPromise, webpackMiddlewarePromise } = require('./dev').default(
+  const {
+    readyPromise,
+    webpackMiddlewarePromise,
+  }: {
+    readyPromise: Promise<void>
+    webpackMiddlewarePromise: Promise<Middleware>
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+  } = require('./dev').default(
     ({ bundle, clientManifest }: { bundle: {}; clientManifest: {} }) => {
       renderer = createRenderer(bundle, {
         clientManifest,
@@ -159,9 +168,8 @@ if (process.env.NODE_ENV === 'development') {
     }),
   )
 
-  webpackMiddlewarePromise.then((webpackMiddleware: Middleware) =>
-    app.use(webpackMiddleware),
-  )
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  webpackMiddlewarePromise.then(webpackMiddleware => app.use(webpackMiddleware))
 } else {
   renderer = createRenderer(
     runtimeRequire(resolve('dist/vue-ssr-server-bundle.json')),

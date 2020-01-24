@@ -88,7 +88,7 @@ export const createTranslate = (
     const placeholder = type ? Placeholder.TITLE : Placeholder.CONTENT
     const placeholders = allPlaceholders[placeholder]
 
-    let startIndex
+    let startIndex: number
 
     placeholders.some(({ value }) => {
       startIndex = template.indexOf(value)
@@ -166,7 +166,7 @@ export const createTranslate = (
         instance.loading = true
 
         const storage = axios
-          .get('/translate', {
+          .get<{ text: string }>('/translate', {
             params: {
               Source: firstLocale,
               SourceText: firstTranslation,
@@ -211,7 +211,7 @@ Object.defineProperty(
   __SERVER__
     ? {
         configurable: __DEV__,
-        get() {
+        get(this: Vue) {
           return this.$ssrContext.translate
         },
       }

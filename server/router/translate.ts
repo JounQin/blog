@@ -41,9 +41,7 @@ const GoogleTranslateLocales: {
 }
 
 const translate: Middleware = async ctx => {
-  const {
-    query: { Source, SourceText },
-  } = ctx
+  const { Source, SourceText }: Record<string, string> = ctx.query
 
   if (!SourceText) {
     return
@@ -73,7 +71,7 @@ const translate: Middleware = async ctx => {
   }
 
   const translateParams = getTranslatePrams({
-    Source: Source || (ctx.cookies.get(LOCALE_COOKIE) as Locale),
+    Source: (Source || ctx.cookies.get(LOCALE_COOKIE)) as Locale,
     SourceText,
   })
 

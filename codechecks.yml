@@ -1,0 +1,12 @@
+checks:
+  - name: build-size-watcher
+    options:
+      files:
+        - path: 'dist/**/*.*'
+  - name: type-coverage-watcher
+    options:
+      ignoreCatch: true
+      ignoreFiles:
+        - 'src/types/schema.ts'
+        - '*.d.ts'
+      strict: true

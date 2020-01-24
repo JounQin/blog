@@ -1,0 +1,39 @@
+name: Node CI
+
+on: [push, pull_request]
+
+jobs:
+  default:
+    strategy:
+      matrix:
+        node: [12]
+        os: [macOS-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Setup yarn
+        run: |
+          curl -o- -L https://yarnpkg.com/install.sh | bash
+          export PATH="$HOME/.yarn/bin:$PATH"
+      - name: Install Dependencies
+        run: yarn --frozen-lockfile
+
+      - name: Build, Lint
+        run: |
+          yarn build
+          yarn lint
+        env:
+          EFF_NO_LINK_RULES: 'true'
+          PARSER_NO_WATCH: 'true'
+
+      - name: Code Checks
+        if: matrix.os == 'macOS-latest'
+        run: |
+          yarn global add @codechecks/client @codechecks/build-size-watcher @codechecks/type-coverage-watcher typescript
+          codechecks
+        env:
+          CI: 'true'
+          CC_SECRET: ${{ secrets.CC_SECRET }}

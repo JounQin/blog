@@ -1,0 +1,33 @@
+const fs = require('fs')
+
+const { parse } = require('dotenv')
+
+const LOCAL_ENV = '.env.local'
+
+let localEnv
+
+if (fs.existsSync(LOCAL_ENV)) {
+  localEnv = parse(fs.readFileSync(LOCAL_ENV))
+}
+
+module.exports = {
+  DEBUG: '1stg:*',
+  PARSER_NO_WATCH: true,
+  TS_NODE_FILES: true,
+  GITHUB_REPOSITORY_NAME: 'blog',
+  GITHUB_REPOSITORY_OWNER: 'JounQin',
+  GITHUB_REPOSITORY_OWNER_TYPE: 'user',
+  GITHUB_EXCLUDED_LABELS: [
+    'dependencies',
+    'feature',
+    'flag',
+    'greenkeeper',
+    'PR: draft',
+    'PR: merged',
+    'PR: reviewed-approved',
+    'PR: reviewed-changes-requested',
+    'PR: unreviewed',
+    'security',
+  ].join(),
+  ...localEnv,
+}

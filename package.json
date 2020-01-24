@@ -5,28 +5,24 @@
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
   "license": "MIT",
-  "engines": {
-    "node": ">=10.0.0"
-  },
   "scripts": {
-    "build": "rimraf dist && run-p build:vue:client build:vue:server build:server build:template",
-    "build:server": "env-cmd -f .dev.env env-cmd -f .prod.env webpack --config build/server.ts --colors --progress -p",
-    "build:template": "mkdir -p dist/static && ts-node build/template",
-    "build:vue:client": "env-cmd -f .dev.env env-cmd -f .prod.env webpack --config build/vue-client.ts --colors --progress -p",
-    "build:vue:server": "env-cmd -f .dev.env env-cmd -f .prod.env webpack --config build/vue-server.ts --colors --progress -p",
-    "dev": "run-p server:core watch",
+    "build": "rimraf dist && env-cmd run-p build:**",
+    "build:server": "webpack --config build/server.ts --colors --progress -p",
+    "build:template": "ts-node build/template",
+    "build:vue:client": "env-cmd webpack --config build/vue-client.ts --colors --progress -p",
+    "build:vue:server": "env-cmd webpack --config build/vue-server.ts --colors --progress -p",
+    "dev": "env-cmd run-p server watch",
     "lint": "run-p lint:*",
     "lint:es": "cross-env PARSER_NO_WATCH=true eslint . --cache --ext js,md,ts,vue -f friendly",
     "lint:style": "stylelint --cache 'src/**/*.{scss,vue}'",
     "lint:tsc": "tsc --noEmit",
     "pm2": "yarn sync:pull && pm2 start --name=blog npm -- start",
+    "postinstall": "cpy env.js . --rename=.env.js && yarn-deduplicate || exit 0",
     "prune": "yarn --production --ignore-optional --ignore-scripts --prefer-offline --force",
     "server": "ts-node -T -r tsconfig-paths/register server",
-    "server:core": "env-cmd -f .prod.env env-cmd -f .dev.env yarn server",
     "server:router": "ts-node -T -r tsconfig-paths/register server/router/dev",
-    "start": "env-cmd -f .dev.env env-cmd -f .prod.env node dist/server",
-    "sync:pull": "bash build/sync-pull.sh",
-    "sync:push": "bash build/sync-push.sh",
+    "start": "env-cmd node dist/server",
+    "type-coverage": "type-coverage --detail --ignore-files 'src/types/schema.ts' --ignore-files '*.d.ts' --skip-catch --strict",
     "watch": "nodemon"
   },
   "dependencies": {
@@ -37,6 +33,7 @@
     "axios": "^0.19.2",
     "date-fns": "^2.9.0",
     "debug": "^4.1.1",
+    "dotenv": "^8.2.0",
     "env-cmd": "^10.0.1",
     "github-markdown-css": "^3.0.1",
     "google-translate-api": "^2.3.0",
@@ -99,6 +96,7 @@
     "@types/webpack-merge": "^4.1.5",
     "@types/webpack-node-externals": "^1.7.0",
     "bootstrap": "^4.4.1",
+    "cpy-cli": "^3.0.0",
     "css-loader": "^3.4.2",
     "file-loader": "^5.0.2",
     "font-awesome": "^4.7.0",
@@ -129,6 +127,7 @@
     "ts-loader": "^6.2.1",
     "ts-node": "^8.6.2",
     "tsconfig-paths": "^3.9.0",
+    "type-coverage": "^2.4.0",
     "typeface-lato": "^0.0.75",
     "typescript": "^3.7.5",
     "url-loader": "^3.0.0",
@@ -137,7 +136,8 @@
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10",
     "webpack-merge": "^4.2.2",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "yarn-deduplicate": "^1.1.1"
   },
   "browserslist": [
     "extends @1stg/browserslist-config/modern"
@@ -148,10 +148,10 @@
     ]
   },
   "nodemonConfig": {
-    "exec": "env-cmd -f .prod.env env-cmd -f .dev.env yarn server:router",
+    "exec": "yarn server:router",
     "ext": "ts",
     "watch": [
-      ".dev.env",
+      ".env.local",
       "server/router"
     ]
   },
@@ -171,5 +171,8 @@
       "@1stg/stylelint-config/scss",
       "@1stg/stylelint-config/modules"
     ]
+  },
+  "type-coverage": {
+    "atLeast": 97
   }
 }

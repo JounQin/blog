@@ -1,7 +1,7 @@
 import _debug from 'debug'
 import koaWebpack from 'koa-webpack'
 import MFS from 'memory-fs'
-import webpack from 'webpack'
+import webpack, { Stats } from 'webpack'
 
 import serverConfig from '../build/vue-server'
 import clientConfig from '../build/vue-client'
@@ -32,12 +32,12 @@ export default (cb: (...args: unknown[]) => void) => {
     compiler: clientCompiler,
   })
 
-  clientCompiler.plugin('done', stats => {
-    stats = stats.toJson()
-    stats.errors.forEach(debug)
-    stats.warnings.forEach(debug)
+  clientCompiler.plugin('done', (stats: Stats) => {
+    const statsOutput = stats.toJson()
+    statsOutput.errors.forEach(debug)
+    statsOutput.warnings.forEach(debug)
 
-    if (stats.errors.length > 0) {
+    if (statsOutput.errors.length > 0) {
       return
     }
 

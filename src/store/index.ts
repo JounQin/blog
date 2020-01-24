@@ -49,13 +49,13 @@ const actions: {
 const mutations: {
   [key: string]: Mutation<RootState>
 } = {
-  SET_PROGRESS(state, progress) {
+  SET_PROGRESS(state, progress: number) {
     state.progress = progress
   },
-  SET_USER(state, user) {
+  SET_USER(state, user: User) {
     state.user = user
   },
-  SET_ENVS(state, envs) {
+  SET_ENVS(state, envs: Env) {
     state.envs = envs
   },
 }

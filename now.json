@@ -1,0 +1,16 @@
+{
+  "name": "blog",
+  "version": 1,
+  "alias": [
+    "blog.1stg.me"
+  ],
+  "github": {
+    "silent": true
+  },
+  "env": {
+    "GITHUB_CLIENT_ID": "@blog_github_client_id",
+    "GITHUB_CLIENT_SECRET": "@blog_github_client_secret",
+    "GITHUB_CLIENT_TOKEN": "@github_client_token",
+    "GITHUB_OAUTH_CALLBACK": "@blog_github_oauth_callback"
+  }
+}

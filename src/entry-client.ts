@@ -4,15 +4,15 @@ import Vue from 'vue'
 import createApp from 'app'
 import { apollo, translate } from 'plugins'
 import { LOCALE_COOKIE, setCookie } from 'utils'
-import { AsyncDataFn } from 'types'
+import { AsyncDataFn, Locale } from 'types'
 
 const { app, router, store } = createApp()
 
-app.$watch('$t.locale', curr => {
+app.$watch('$t.locale', (curr: Locale) => {
   setCookie(LOCALE_COOKIE, curr, Infinity, '/')
 })
 
-app.$watch('$tt.loading', curr => {
+app.$watch('$tt.loading', (curr: boolean) => {
   if (curr) {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     Vue.nextTick(translate.cache.prefetch)

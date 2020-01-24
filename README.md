@@ -1,6 +1,6 @@
 # blog
 
-[![Travis](https://img.shields.io/travis/com/JounQin/blog.svg)](https://travis-ci.com/JounQin/blog)
+[![GitHub Actions](https://github.com/JounQin/blog/workflows/Node%20CI/badge.svg)](https://github.com/JounQin/blog/actions?query=workflow%3A%22Node+CI%22)
 [![Codacy Grade](https://img.shields.io/codacy/grade/16adf18f305e454db18b5ddb3d63cf20)](https://www.codacy.com/app/JounQin/blog)
 [![David](https://img.shields.io/david/JounQin/blog.svg)](https://david-dm.org/JounQin/blog)
 [![David Dev](https://img.shields.io/david/dev/JounQin/blog.svg)](https://david-dm.org/JounQin/blog?type=dev)

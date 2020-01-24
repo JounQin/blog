@@ -3,4 +3,5 @@
 dist
 node_modules
 sync
-.dev.env
+.env.js
+.env.local

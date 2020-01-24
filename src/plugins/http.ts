@@ -9,7 +9,7 @@ Object.defineProperty(
   __SERVER__
     ? {
         configurable: __DEV__,
-        get() {
+        get(this: Vue) {
           return this.$ssrContext.axios
         },
       }

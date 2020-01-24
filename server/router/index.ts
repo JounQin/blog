@@ -69,13 +69,16 @@ router
     }
   })
   .get('/oauth', async ctx => {
-    const { code, path, state } = ctx.query
+    const { code, path, state }: Record<string, string> = ctx.query
 
     if (!state || state !== ctx.session.uuid) {
       return ctx.throw('invalid oauth redirect')
     }
 
-    const { data } = await axios.post(
+    const { data } = await axios.post<{
+      access_token?: string
+      error?: unknown
+    }>(
       'https://github.com/login/oauth/access_token',
       {
         client_id: process.env.GITHUB_CLIENT_ID,
