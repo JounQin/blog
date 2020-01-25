@@ -21,10 +21,10 @@ jobs:
       - name: Install Dependencies
         run: yarn --frozen-lockfile
 
-      - name: Build, Lint
+      - name: Lint, Build
         run: |
-          yarn build
           yarn lint
+          yarn build
         env:
           EFF_NO_LINK_RULES: 'true'
           PARSER_NO_WATCH: 'true'

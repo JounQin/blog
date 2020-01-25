@@ -11,24 +11,17 @@ import { LOCALE_COOKIE, TOGGLE_LOCALE } from 'utils'
 
 const debug = _debug('1stg:translate')
 
-const SIGNATURE_PREFIX = 'GETtmt.tencentcloudapi.com/?'
-
 interface TranslateParams {
-  Source: Locale
-  SourceText: string
+  source: Locale
+  text: string
 }
 
 const getTranslatePrams = (params: TranslateParams) => ({
-  Action: 'TextTranslate',
-  Region: 'ap-shanghai',
-  SecretId: process.env.TENCENT_TRANSLATE_API_SECRET_ID,
-  SignatureMethod: 'HmacSHA256',
-  Timestamp: Math.ceil(Date.now() / 1000),
-  Nonce: Math.ceil(Math.random() * Number.MAX_SAFE_INTEGER),
-  Version: '2018-03-21',
-  ProjectId: 0,
+  app_id: process.env.TENCENT_AI_API_APP_ID,
+  time_stamp: Math.ceil(Date.now() / 1000),
+  nonce_str: Math.ceil(Math.random() * Number.MAX_SAFE_INTEGER),
   ...params,
-  Target: TOGGLE_LOCALE[params.Source],
+  target: TOGGLE_LOCALE[params.source],
 })
 
 const alphabeticalSort = (a: string, b: string) => (a > b ? 1 : a < b ? -1 : 0)
@@ -65,42 +58,51 @@ const translate: Middleware = async ctx => {
       if (process.env.TRY_TENCENT_ON_GOOGLE_FAILED) {
         debug('Google translate failed, try Tencent translate service')
       } else {
-        ctx.throw(e)
+        return ctx.throw(e)
       }
     }
   }
 
   const translateParams = getTranslatePrams({
-    Source: (Source || ctx.cookies.get(LOCALE_COOKIE)) as Locale,
-    SourceText,
+    source: (Source || ctx.cookies.get(LOCALE_COOKIE)) as Locale,
+    text: SourceText,
   })
-
-  const Signature = crypto
-    .createHmac('sha256', process.env.TENCENT_TRANSLATE_API_SECRET_KEY)
-    .update(
-      SIGNATURE_PREFIX +
-        qs.stringify(translateParams, {
-          encode: false,
-          sort: alphabeticalSort,
-        }),
-    )
-    .digest('base64')
 
   const {
     data: {
-      Response: { TargetText },
+      data: { target_text },
+      msg,
+      ret,
     },
   } = await axios.get<{
-    Response: {
-      TargetText: string
+    data?: {
+      target_text: string
     }
-  }>('https://tmt.tencentcloudapi.com', {
-    params: Object.assign(translateParams, { Signature }),
+    msg?: string
+    ret: number
+  }>('https://api.ai.qq.com/fcgi-bin/nlp/nlp_texttranslate', {
+    params: Object.assign(translateParams, {
+      sign: crypto
+        .createHash('md5')
+        .update(
+          qs.stringify(translateParams, {
+            sort: alphabeticalSort,
+          }) +
+            '&app_key=' +
+            process.env.TENCENT_AI_API_APP_KEY,
+          'utf8',
+        )
+        .digest('hex')
+        .toUpperCase(),
+    }),
   })
 
-  // eslint-disable-next-line require-atomic-updates
+  if (ret !== 0) {
+    return ctx.throw(msg)
+  }
+
   ctx.body = {
-    text: TargetText.replace(/<([^<>]+)>/g, (_matched, $1: string) => {
+    text: target_text.replace(/<([^<>]+)>/g, (_matched, $1: string) => {
       $1 = $1.toLowerCase().trim()
       if ($1.startsWith('/')) {
         $1 = $1.replace(/ /g, '')

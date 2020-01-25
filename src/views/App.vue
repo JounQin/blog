@@ -41,7 +41,7 @@
         a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
           .sr-only {{ REPOSITORY.owner + '/' + REPOSITORY.name }}
           i.fa.fa-github(aria-hidden="true")
-        a.text-secondary.ml-2(href="javascript:;", :title="$t('toggle_locale')")
+        span.text-secondary.ml-2.pointer(:title="$t('toggle_locale')")
           .sr-only {{ $t('toggle_locale') }}
           i.fa.fa-globe(aria-hidden="true", @click="$t.toggleLocale")
       div
@@ -241,6 +241,10 @@ button {
 
 .flex-1 {
   flex: 1;
+}
+
+.pointer {
+  cursor: pointer;
 }
 
 .scroll-y {
