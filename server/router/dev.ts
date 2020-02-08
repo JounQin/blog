@@ -1,4 +1,4 @@
-import { exec } from 'shelljs'
+import { exec } from 'child_process'
 
 import { serverPort } from '../../build/config'
 

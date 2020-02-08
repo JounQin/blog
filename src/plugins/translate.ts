@@ -154,7 +154,7 @@ export const createTranslate = (
 
     const locale = translator.locale as Locale
 
-    let body: string = translations[locale] || translations[DEFAULT_LOCALE]
+    let body = (translations[locale] || translations[DEFAULT_LOCALE]) as string
 
     if (body == null) {
       body = cacheData[main]

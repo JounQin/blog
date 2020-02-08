@@ -30,7 +30,7 @@ declare module 'vue/types/vue' {
   }
 }
 
-declare module 'vue-translator/dist/esm/translator' {
+declare module 'vue-translator/lib/translator' {
   export interface Translator {
     toggleLocale?(): void
   }
