@@ -95,7 +95,7 @@
     "bootstrap": "^4.4.1",
     "cpy-cli": "^3.0.0",
     "css-loader": "^3.4.2",
-    "file-loader": "^5.0.2",
+    "file-loader": "^5.1.0",
     "font-awesome": "^4.7.0",
     "fork-ts-checker-webpack-plugin": "^4.0.3",
     "glob": "^7.1.6",
