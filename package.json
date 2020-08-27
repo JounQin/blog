@@ -64,7 +64,7 @@
     "vuex-class": "^0.3.2"
   },
   "devDependencies": {
-    "@1stg/app-config": "^0.3.2",
+    "@1stg/app-config": "^0.5.5",
     "@packtracker/webpack-plugin": "^2.2.0",
     "@types/debug": "^4.1.5",
     "@types/html-webpack-plugin": "^3.2.2",
