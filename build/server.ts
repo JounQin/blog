@@ -10,7 +10,7 @@ const config: webpack.Configuration = {
   target: 'node',
   output: {
     path: resolve('dist'),
-    filename: 'server.js',
+    filename: 'index.js',
     libraryTarget: 'commonjs2',
   },
   externals: nodeExternals({

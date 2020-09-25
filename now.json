@@ -1,6 +1,6 @@
 {
   "name": "blog",
-  "version": 1,
+  "version": 2,
   "alias": [
     "blog.1stg.me"
   ],
@@ -16,5 +16,11 @@
     "GOOGLE_TRANSLATE_ENABLED": "true",
     "TENCENT_AI_API_APP_ID": "@tencent_ai_api_app_id",
     "TENCENT_AI_API_APP_KEY": "@tencent_ai_api_app_key"
-  }
+  },
+  "builds": [
+    {
+      "src": "*/index.js",
+      "use": "@now/node-server"
+    }
+  ]
 }

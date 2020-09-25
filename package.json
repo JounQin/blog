@@ -19,7 +19,7 @@
     "postinstall": "cpy env.js . --rename=.env.js && yarn-deduplicate || exit 0",
     "server": "ts-node -T -r tsconfig-paths/register server",
     "server:router": "ts-node -T -r tsconfig-paths/register server/router/dev",
-    "start": "env-cmd node dist/server",
+    "start": "env-cmd node dist",
     "type-coverage": "type-coverage --detail --ignore-files 'src/types/schema.ts' --ignore-files '*.d.ts' --skip-catch --strict",
     "watch": "nodemon"
   },
