@@ -32,7 +32,6 @@ const config = merge.smart(baseConfig, {
   plugins: [
     new webpack.DefinePlugin({
       'process.env.VUE_ENV': JSON.stringify('client'),
-      SERVER_PREFIX: JSON.stringify('/'),
       __SERVER__: false,
     }),
     new HtmlWebpackPlugin({

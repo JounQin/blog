@@ -1,6 +1,6 @@
 declare let __DEV__: boolean
 declare let __SERVER__: boolean
-declare let SERVER_PREFIX: string
+declare let DEFAULT_PORT: number
 
 declare module '*.gql' {
   import { DocumentNode } from 'graphql'

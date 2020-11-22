@@ -4,7 +4,6 @@ import merge from 'webpack-merge'
 import nodeExternals from 'webpack-node-externals'
 
 import baseConfig from './base'
-import { innerServer } from './config'
 
 export default merge.smart(baseConfig, {
   entry: './src/entry-server.ts',
@@ -19,7 +18,6 @@ export default merge.smart(baseConfig, {
   plugins: [
     new webpack.DefinePlugin({
       'process.env.VUE_ENV': JSON.stringify('server'),
-      SERVER_PREFIX: JSON.stringify(innerServer),
       __SERVER__: true,
     }),
     new VueSSRServerPlugin({

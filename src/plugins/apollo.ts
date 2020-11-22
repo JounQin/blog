@@ -3,6 +3,8 @@ import ApolloClient from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import Vue from 'vue'
 
+import { SERVER_PREFIX } from './constants'
+
 export const createApollo = () =>
   new ApolloClient({
     link: createHttpLink({

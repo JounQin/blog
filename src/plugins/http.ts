@@ -1,6 +1,8 @@
 import axios from 'axios'
 import Vue from 'vue'
 
+import { SERVER_PREFIX } from './constants'
+
 axios.defaults.baseURL = SERVER_PREFIX + 'api'
 
 Object.defineProperty(

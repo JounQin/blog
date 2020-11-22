@@ -3,7 +3,7 @@ import { VueLoaderPlugin } from 'vue-loader'
 import MiniCssExtractPlugin from 'mini-css-extract-plugin'
 import webpack, { Configuration } from 'webpack'
 
-import { NODE_ENV, __DEV__, publicPath, resolve } from './config'
+import { DEFAULT_PORT, NODE_ENV, __DEV__, publicPath, resolve } from './config'
 
 const sourceMap = __DEV__
 
@@ -143,6 +143,7 @@ const config: Configuration = {
   plugins: [
     new webpack.DefinePlugin({
       __DEV__,
+      DEFAULT_PORT,
     }),
     new ForkTsCheckerWebpackPlugin({
       tsconfig: resolve('src/tsconfig.json'),
