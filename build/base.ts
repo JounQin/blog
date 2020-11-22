@@ -159,9 +159,11 @@ const config: Configuration = {
 if (process.env.CI === 'true') {
   config.plugins.push(
     new PacktrackerWebpackPlugin({
-      // eslint-disable-next-line @typescript-eslint/camelcase
+      fail_build: false,
       project_token: process.env.PT_PROJECT_TOKEN,
-      branch: process.env.TRAVIS_BRANCH,
+      branch: process.env.GITHUB_REF.split('/')
+        .slice(2)
+        .join('/'),
       upload: true,
     }),
   )

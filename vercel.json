@@ -10,7 +10,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "https://react-hacknews.herokuapp.com/$1"
+      "destination": "https://blog-1stg.herokuapp.com/$1"
     }
   ]
 }
