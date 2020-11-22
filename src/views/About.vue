@@ -17,7 +17,7 @@ main
       i.fa.fa-link.mr-2
       a(:href="owner.websiteUrl || owner.url") {{ owner.websiteUrl || owner.url }}
   ul.list-unstyled(:class="$style.repositories")
-    li.mt-3.mt-md-4(v-for="{ description, id, nameWithOwner, stargazers, url } of owner.pinnedRepositories.nodes", :key="id")
+    li.mt-3.mt-md-4(v-for="{ description, id, nameWithOwner, stargazers, url } of owner.pinnedItems.nodes", :key="id")
       .card.flex-1
         .card-body
           h5.card-title
@@ -37,7 +37,7 @@ import { Store } from 'vuex'
 import { Owner, OwnerType, RootState } from 'types'
 
 const getQueryOptions = (store: Store<RootState>) => ({
-  query: gql(`query pinnedRepositories($login: String!) {
+  query: gql`query pinnedRepositories($login: String!) {
   ${store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE}(login: $login) {
     avatarUrl
     ${
@@ -52,19 +52,21 @@ const getQueryOptions = (store: Store<RootState>) => ({
     resourcePath
     url
     websiteUrl
-    pinnedRepositories(first: 6) {
+    pinnedItems(first: 6) {
       nodes {
-        description
-        id
-        nameWithOwner
-        url
-        stargazers {
-          totalCount
+        ... on Repository {
+          description
+          id
+          nameWithOwner
+          url
+          stargazers {
+            totalCount
+          }
         }
       }
     }
   }
-}`),
+}`,
   variables: store.getters.LOGIN,
 })
 

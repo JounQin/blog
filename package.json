@@ -35,7 +35,7 @@
     "env-cmd": "^10.0.1",
     "github-markdown-css": "^3.0.1",
     "google-translate-api": "^2.3.0",
-    "graphql": "^14.6.0",
+    "graphql": "^15.4.0",
     "graphql-tag": "^2.10.3",
     "invert-color": "^2.0.0",
     "koa": "^2.11.0",

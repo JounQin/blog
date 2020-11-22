@@ -65,6 +65,7 @@ export default (context: ServerContext) =>
     axios.interceptors.response.use(
       response => {
         const { headers } = response
+
         const cookies = headers[SET_COOKIE] as string[]
 
         parseSetCookies(cookies).forEach(
@@ -81,9 +82,12 @@ export default (context: ServerContext) =>
 
         return response
       },
-      ({ response }) => {
-        ctx.set(response.headers)
-        reject(response)
+      e => {
+        console.error('error:', e)
+        if (e.response) {
+          ctx.set(e.response.headers)
+        }
+        reject(e.response || e)
       },
     )
 

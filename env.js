@@ -24,6 +24,7 @@ module.exports = {
     'greenkeeper',
     'PR: draft',
     'PR: merged',
+    'PR: partially-approved',
     'PR: reviewed-approved',
     'PR: reviewed-changes-requested',
     'PR: unreviewed',

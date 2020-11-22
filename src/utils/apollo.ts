@@ -7,7 +7,7 @@ export const getCategoriesQueryOptions = (
   store: Store<RootState> | ActionContext<RootState, RootState>,
 ) => ({
   query: gql`
-    query($name: String!, $owner: String!) {
+    query categories($name: String!, $owner: String!) {
       repository(name: $name, owner: $owner) {
         labels(first: 100) {
           nodes {

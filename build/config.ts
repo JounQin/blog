@@ -13,7 +13,9 @@ export const __PROD__ = NODE_ENV === PROD
 
 export const serverHost = process.env.HOST || '0.0.0.0'
 
-export const serverPort = +process.env.PORT || 7 * 1000
+const DEFAULT_PORT = 3000
+
+export const serverPort = +process.env.PORT || DEFAULT_PORT
 
 export const publicPath = '/'
 

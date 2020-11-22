@@ -20,7 +20,7 @@ import { Apollo, Issue, Repository, RootState } from 'types'
 import { getDefaultLabels } from 'utils'
 import queries from 'queries.gql'
 
-const fetchArchieves = async ({
+const fetchArchives = async ({
   apollo,
   store,
   after,
@@ -47,7 +47,7 @@ const fetchArchieves = async ({
   const { nodes, pageInfo } = issues
 
   const nextIssues = pageInfo.hasNextPage
-    ? await fetchArchieves({
+    ? await fetchArchives({
         apollo,
         store,
         after: pageInfo.endCursor,
@@ -69,7 +69,7 @@ type ArchivesList = Array<{
 
 @Component({
   asyncData: async ({ apollo, store, translate }) => {
-    const archives = await fetchArchieves({ apollo, store })
+    const archives = await fetchArchives({ apollo, store })
     archives.forEach(({ title }) => translate(title))
     apollo.writeQuery({
       query: queries.allArchives,
