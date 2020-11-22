@@ -1,0 +1,16 @@
+{
+  "name": "blog",
+  "version": 2,
+  "alias": [
+    "blog.1stg.me"
+  ],
+  "github": {
+    "silent": true
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "https://react-hacknews.herokuapp.com/$1"
+    }
+  ]
+}
