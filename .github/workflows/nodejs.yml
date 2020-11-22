@@ -45,7 +45,6 @@ jobs:
           CI: 'true'
           EFF_NO_LINK_RULES: 'true'
           PARSER_NO_WATCH: 'true'
-          PT_PROJECT_TOKEN: ${{ secrets.PT_PROJECT_TOKEN }}
 
       - name: Code Checks
         if: matrix.os == 'macOS-latest' && github.event_name == 'push'

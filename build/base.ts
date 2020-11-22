@@ -1,4 +1,3 @@
-import PacktrackerWebpackPlugin from '@packtracker/webpack-plugin'
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
 import { VueLoaderPlugin } from 'vue-loader'
 import MiniCssExtractPlugin from 'mini-css-extract-plugin'
@@ -154,19 +153,6 @@ const config: Configuration = {
     }),
     new VueLoaderPlugin(),
   ],
-}
-
-if (process.env.CI === 'true') {
-  config.plugins.push(
-    new PacktrackerWebpackPlugin({
-      fail_build: false,
-      project_token: process.env.PT_PROJECT_TOKEN,
-      branch: process.env.GITHUB_REF.split('/')
-        .slice(2)
-        .join('/'),
-      upload: true,
-    }),
-  )
 }
 
 export default config
