@@ -1,5 +1,5 @@
 {
-  "extends": "@1stg/tsconfig/app",
+  "extends": "@1stg/tsconfig/app.json",
   "compilerOptions": {
     "baseUrl": ".",
     "module": "commonjs",

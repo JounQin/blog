@@ -3,8 +3,9 @@ checks:
     options:
       files:
         - path: 'dist/**/*.*'
-  - name: type-coverage-watcher
+  - name: typecov
     options:
+      atLeast: 97
       ignoreCatch: true
       ignoreFiles:
         - 'src/types/schema.ts'
