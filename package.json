@@ -73,7 +73,7 @@
     "@types/koa-compress": "^2.0.9",
     "@types/koa-logger": "^3.1.1",
     "@types/koa-router": "^7.4.2",
-    "@types/koa-session": "^5.10.1",
+    "@types/koa-session": "^5.10.3",
     "@types/koa-static-cache": "^5.1.0",
     "@types/koa-webpack": "^5.0.1",
     "@types/lodash": "^4.14.149",
