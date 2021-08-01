@@ -87,7 +87,7 @@
     "@types/serialize-javascript": "^1.5.0",
     "@types/uuid": "^3.4.7",
     "@types/webpack": "^4.41.5",
-    "@types/webpack-env": "^1.15.1",
+    "@types/webpack-env": "^1.16.2",
     "@types/webpack-merge": "^4.1.5",
     "@types/webpack-node-externals": "^1.7.1",
     "@types/workbox-webpack-plugin": "^4.1.0",
