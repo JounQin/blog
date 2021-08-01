@@ -29,7 +29,7 @@
     "apollo-client": "^2.6.8",
     "apollo-link-http": "^1.5.16",
     "axios": "^0.21.0",
-    "date-fns": "^2.9.0",
+    "date-fns": "^2.23.0",
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "env-cmd": "^10.0.1",
