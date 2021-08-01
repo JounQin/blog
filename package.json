@@ -93,7 +93,7 @@
     "@types/workbox-webpack-plugin": "^4.1.0",
     "bootstrap": "^4.4.1",
     "cpy-cli": "^3.0.0",
-    "css-loader": "^3.4.2",
+    "css-loader": "^3.6.0",
     "file-loader": "^5.0.2",
     "font-awesome": "^4.7.0",
     "fork-ts-checker-webpack-plugin": "^4.0.3",
