@@ -91,7 +91,7 @@
     "@types/webpack-merge": "^4.1.5",
     "@types/webpack-node-externals": "^1.7.1",
     "@types/workbox-webpack-plugin": "^4.1.0",
-    "bootstrap": "^4.4.1",
+    "bootstrap": "^4.6.0",
     "cpy-cli": "^3.0.0",
     "css-loader": "^3.4.2",
     "file-loader": "^5.0.2",
