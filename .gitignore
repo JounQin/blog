@@ -7,3 +7,4 @@ sync
 .env.local
 .yarn/*
 !.yarn/plugins
+!.yarn/releases
