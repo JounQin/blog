@@ -1,5 +1,8 @@
 <template lang="pug">
-.d-inline-block(:class="$style.loading", :style="size && { width: size + 'px', height: size + 'px' }")
+.d-inline-block(
+  :class='$style.loading',
+  :style='size && { width: size + "px", height: size + "px" }'
+)
 </template>
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
@@ -13,7 +16,7 @@ export default class HiLoading extends Vue {
 <style lang="scss" module>
 .loading {
   animation: loading 0.5s infinite linear;
-  border: 2px solid rgb(204, 204, 204);
+  border: 2px solid rgb(204 204 204);
   border: {
     right-color: transparent;
     radius: 50%;
@@ -27,6 +30,7 @@ export default class HiLoading extends Vue {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(1turn);
   }

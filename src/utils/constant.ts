@@ -13,6 +13,6 @@ export const TOGGLE_LOCALE = {
   [ZH]: EN,
 }
 
-export const DEFAULT_LOCALE = Locale.EN
+export const DEFAULT_LOCALE = EN
 
-export const LOCALES = [Locale.EN, Locale.ZH]
+export const LOCALES = [EN, ZH]

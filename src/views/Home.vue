@@ -1,22 +1,35 @@
 <template lang="pug">
-main(v-if="articles.length", :class="$style.main")
+main(v-if='articles.length', :class='$style.main')
   ul.list-unstyled
-    li.border-b.my-4(v-for="{ createdAt, id, number, title, labels: { nodes: labels } } of articles", :key="id")
+    li.border-b.my-4(
+      v-for='{ createdAt, id, number, title, labels: { nodes: labels } } of articles',
+      :key='id'
+    )
       h5
-        router-link.heading-link(:to="`/article/${number}`") {{ $tt(title) }}
+        router-link.heading-link(:to='`/article/${number}`') {{ $tt(title) }}
       small.d-inline-flex.text-muted {{ createdAt | dateFormat }}
       ul.list-unstyled.d-inline-flex
-        router-link.d-inline-flex.ml-2(v-for="{ id, color, name } of labels"
-                                       tag="li"
-                                       :key="id"
-                                       :to="{ path: '/', query: { labels: name } }"
-                                       :style="{ backgroundColor: '#' + color }")
-          a.px-2.small(:style="{ color: $utils.invertColor(color) }") {{ name }}
-  nav(v-if="pageInfo.hasPreviousPage || pageInfo.hasNextPage")
+        router-link.d-inline-flex.ml-2(
+          v-for='{ id, color, name } of labels',
+          tag='li',
+          :key='id',
+          :to='{ path: "/", query: { labels: name } }',
+          :style='{ backgroundColor: "#" + color }'
+        )
+          a.px-2.small(:style='{ color: $utils.invertColor(color) }') {{ name }}
+  nav(v-if='pageInfo.hasPreviousPage || pageInfo.hasNextPage')
     ul.pagination.justify-content-end
-      router-link.page-item(:to="prevRoute", :class="{ disabled: !pageInfo.hasPreviousPage }", tag="li")
+      router-link.page-item(
+        :to='prevRoute',
+        :class='{ disabled: !pageInfo.hasPreviousPage }',
+        tag='li'
+      )
         a.page-link {{ $t('previous_page') }}
-      router-link.page-item(:to="nextRoute", :class="{ disabled: !pageInfo.hasNextPage }", tag="li")
+      router-link.page-item(
+        :to='nextRoute',
+        :class='{ disabled: !pageInfo.hasNextPage }',
+        tag='li'
+      )
         a.page-link {{ $t('next_page') }}
 main.py-5.text-center.text-muted(v-else) {{ $t('no_content', [$route.query.labels ? $t('in_categories') : $route.query.search == null ? '' : $t('in_search')]) }}
 </template>
@@ -25,6 +38,7 @@ import { QueryOptions } from 'apollo-client'
 import { Component, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 
+import queries from 'queries.gql'
 import {
   AsyncDataFn,
   Issue,
@@ -33,7 +47,6 @@ import {
   SearchResultItemConnection,
 } from 'types'
 import { getDefaultLabels } from 'utils'
-import queries from 'queries.gql'
 
 interface Articles {
   nodes: Issue[]
@@ -80,22 +93,19 @@ const getQueryOptions: AsyncDataFn<QueryOptions> = ({
   async asyncData({ apollo, route, store, translate }) {
     const { data } = await apollo.query<
       | {
-          search: SearchResultItemConnection
+          repository: Repository
         }
       | {
-          repository: Repository
+          search: SearchResultItemConnection
         }
     >(getQueryOptions({ apollo, route, store }))
 
-    let articles: Articles
+    const articles =
+      'search' in data
+        ? (data.search as Articles)
+        : (data.repository.issues as Articles)
 
-    if ('search' in data) {
-      articles = data.search as Articles
-    } else {
-      articles = data.repository.issues as Articles
-    }
-
-    articles.nodes.forEach(({ title }) => translate(title))
+    for (const { title } of articles.nodes) translate(title)
   },
   title: (vm: Home) => vm.$t('home'),
   translator: {
@@ -121,12 +131,32 @@ export default class Home extends Vue {
   articles: Issue[] = null
   pageInfo: PageInfo = null
 
+  get prevRoute() {
+    return {
+      path: '/',
+      query: {
+        before: this.pageInfo.startCursor,
+        search: this.$route.query.search,
+      },
+    }
+  }
+
+  get nextRoute() {
+    return {
+      path: '/',
+      query: {
+        after: this.pageInfo.endCursor,
+        search: this.$route.query.search,
+      },
+    }
+  }
+
   setData() {
     const data = this.$apollo.readQuery<
       {
-        search: SearchResultItemConnection
-      } & {
         repository: Repository
+      } & {
+        search: SearchResultItemConnection
       }
     >(
       getQueryOptions({
@@ -136,13 +166,9 @@ export default class Home extends Vue {
       }),
     )
 
-    let articles: Articles
-
-    if (data.search) {
-      articles = data.search as Articles
-    } else {
-      articles = data.repository.issues as Articles
-    }
+    const articles = data.search
+      ? (data.search as Articles)
+      : (data.repository.issues as Articles)
 
     this.articles = articles.nodes
     this.pageInfo = articles.pageInfo
@@ -162,26 +188,6 @@ export default class Home extends Vue {
     )
     next()
     this.setData()
-  }
-
-  get prevRoute() {
-    return {
-      path: '/',
-      query: {
-        before: this.pageInfo.startCursor,
-        search: this.$route.query.search,
-      },
-    }
-  }
-
-  get nextRoute() {
-    return {
-      path: '/',
-      query: {
-        after: this.pageInfo.endCursor,
-        search: this.$route.query.search,
-      },
-    }
   }
 }
 </script>

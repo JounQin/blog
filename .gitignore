@@ -5,3 +5,5 @@ node_modules
 sync
 .env.js
 .env.local
+.yarn/*
+!.yarn/plugins

@@ -13,8 +13,9 @@ const config: webpack.Configuration = {
     filename: 'server.js',
     libraryTarget: 'commonjs2',
   },
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   externals: nodeExternals({
-    whitelist: [/\.css/],
+    allowlist: [/\.css/],
   }),
   plugins: [
     new webpack.DefinePlugin({

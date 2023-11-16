@@ -5,7 +5,7 @@ import { enUS, zhCN } from 'date-fns/locale'
 
 import { Locale } from 'types'
 
-export type DateType = Date | string | number
+export type DateType = Date | number | string
 
 export const dateFormat = (date: DateType, f = 'yyyy-MM-dd') =>
   format(typeof date === 'string' ? parseISO(date) : date, f)
@@ -21,8 +21,6 @@ export const timeAgo = (date: DateType, locale: Locale = Locale.EN) =>
   })
 
 export const now =
-  // eslint-disable-next-line @typescript-eslint/unbound-method
   typeof performance === 'undefined' || !performance.now
-    ? // eslint-disable-next-line @typescript-eslint/unbound-method
-      Date.now
+    ? Date.now
     : performance.now.bind(performance)

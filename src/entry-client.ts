@@ -3,13 +3,13 @@ import Vue from 'vue'
 
 import createApp from 'app'
 import { apollo, translate } from 'plugins'
-import { LOCALE_COOKIE, setCookie } from 'utils'
 import { AsyncDataFn, Locale } from 'types'
+import { LOCALE_COOKIE, setCookie } from 'utils'
 
 const { app, router, store } = createApp()
 
 app.$watch('$t.locale', (curr: Locale) => {
-  setCookie(LOCALE_COOKIE, curr, Infinity, '/')
+  setCookie(LOCALE_COOKIE, curr, Number.POSITIVE_INFINITY, '/')
 })
 
 app.$watch('$tt.loading', (curr: boolean) => {
@@ -51,17 +51,16 @@ router.onReady(() => {
     if (activated.length > 0) {
       await Promise.all(
         activated.map(
+          // @ts-expect-error
           ({
             options,
-            asyncData = options && options.asyncData,
+            asyncData = options?.asyncData,
           }: {
             options?: {
               asyncData?: AsyncDataFn
             }
             asyncData?: AsyncDataFn
-          }) =>
-            asyncData &&
-            asyncData({ apollo, axios, route: to, store, translate }),
+          }) => asyncData?.({ apollo, axios, route: to, store, translate }),
         ),
       )
       await translate.cache.prefetch()
@@ -69,7 +68,6 @@ router.onReady(() => {
 
     next()
 
-    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     store.commit(SET_PROGRESS, 100)
 
     setTimeout(() => {

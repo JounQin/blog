@@ -1,9 +1,9 @@
 import Vue from 'vue'
 
 import { createApollo } from 'plugins'
-import { invertColor } from 'utils'
 import createRouter from 'router'
 import createStore from 'store'
+import { invertColor } from 'utils'
 import App from 'views/App.vue'
 
 Object.defineProperty(Vue.prototype, '$utils', {

@@ -2,7 +2,7 @@ import axios from 'axios'
 import Vue from 'vue'
 import { Translations, Translator } from 'vue-translator'
 
-import { Locale } from 'types'
+import { Locale, ServerContext } from 'types'
 import { DEFAULT_LOCALE, LOCALES } from 'utils'
 
 enum Placeholder {
@@ -41,9 +41,9 @@ const getErrorTip = (locale: string, type: boolean) => {
 }
 
 export interface Translate {
+  (template: string, type?: boolean): string
   cache?: TranslateCache
   loading?: boolean
-  (template: string, type?: boolean): string
 }
 
 export interface TranslateCacheData {
@@ -84,6 +84,7 @@ export const createTranslate = (
     (!__SERVER__ && window.__TRANSLATE_CACHE__) || {}
   const storages: Array<Promise<void>> = []
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const instance: Translate = (template, type = true) => {
     const placeholder = type ? Placeholder.TITLE : Placeholder.CONTENT
     const placeholders = allPlaceholders[placeholder]
@@ -119,7 +120,7 @@ export const createTranslate = (
       index: number
     }> = []
 
-    placeholders.forEach(item => {
+    for (const item of placeholders) {
       const index = main.indexOf(item.value)
       if (index !== -1) {
         indexes.push({
@@ -128,7 +129,7 @@ export const createTranslate = (
           index,
         })
       }
-    })
+    }
 
     indexes.sort((x, y) => x.index - y.index)
 
@@ -137,7 +138,7 @@ export const createTranslate = (
     let firstLocale: string
     let firstTranslation: string
 
-    indexes.forEach((item, index) => {
+    for (const [index, item] of indexes.entries()) {
       const itemIndex = item.index + item.placeholder.length
       const translation =
         index === indexes.length - 1
@@ -150,7 +151,7 @@ export const createTranslate = (
       }
 
       translations[item.locale] = translation
-    })
+    }
 
     const locale = translator.locale as Locale
 
@@ -197,8 +198,12 @@ export const createTranslate = (
         instance.loading = false
       }),
   }
-
-  Vue.util.defineReactive(instance, 'loading', false)
+  ;(
+    Vue.util as {
+      defineReactive: (obj: object, key: string, val: unknown) => void
+      warn: (msg: string) => void
+    }
+  ).defineReactive(instance, 'loading', false)
 
   return instance
 }
@@ -212,7 +217,7 @@ Object.defineProperty(
     ? {
         configurable: __DEV__,
         get(this: Vue) {
-          return this.$ssrContext.translate
+          return (this.$ssrContext as ServerContext).translate
         },
       }
     : {

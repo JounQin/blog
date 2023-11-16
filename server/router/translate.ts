@@ -1,8 +1,8 @@
 import crypto from 'crypto'
 
 import axios from 'axios'
-import googleTranslateAPI from 'google-translate-api'
 import _debug from 'debug'
+import googleTranslateAPI from 'google-translate-api'
 import { Middleware } from 'koa'
 import qs from 'qs'
 
@@ -34,7 +34,7 @@ const GoogleTranslateLocales: {
 }
 
 const translate: Middleware = async ctx => {
-  const { Source, SourceText }: Record<string, string> = ctx.query
+  const { Source, SourceText } = ctx.query as Record<string, string>
 
   if (!SourceText) {
     return
@@ -46,12 +46,12 @@ const translate: Middleware = async ctx => {
         from: GoogleTranslateLocales[Source],
         to: TOGGLE_LOCALE[Source as Locale],
       })
-      // eslint-disable-next-line require-atomic-updates
+
       ctx.body = {
         text: translated.text
-          .replace(/<code>([^<>]+)<\/\w+> Code>/g, '<code>$1</code>')
-          .replace(/<\/g> -([^<>]+)>/g, '</g-$1>')
-          .replace(/<\/ ([^<>]+)>/g, '</$1>'),
+          .replaceAll(/<code>([^<>]+)<\/\w+> Code>/g, '<code>$1</code>')
+          .replaceAll(/<\/g> -([^<>]+)>/g, '</g-$1>')
+          .replaceAll(/<\/ ([^<>]+)>/g, '</$1>'),
       }
       return
     } catch (e) {
@@ -102,15 +102,14 @@ const translate: Middleware = async ctx => {
   }
 
   ctx.body = {
-    text: target_text.replace(/<([^<>]+)>/g, (_matched, $1: string) => {
+    text: target_text.replaceAll(/<([^<>]+)>/g, (_matched, $1: string) => {
       $1 = $1.toLowerCase().trim()
-      if ($1.startsWith('/')) {
-        $1 = $1.replace(/ /g, '')
-      } else {
-        $1 = $1
-          .replace(/([-_a-z]+)= ?" ?([^"<>]+) ?"?/g, '$1="$2"')
-          .replace(/"+/g, '"')
-      }
+      $1 = $1.startsWith('/')
+        ? $1.replaceAll(' ', '')
+        : $1
+            // eslint-disable-next-line regexp/optimal-quantifier-concatenation
+            .replaceAll(/([_a-z-]+)= ?" ?([^"<>]+) ?"?/g, '$1="$2"')
+            .replaceAll(/"+/g, '"')
       return '<' + $1 + '>'
     }),
   }

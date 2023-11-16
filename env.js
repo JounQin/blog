@@ -1,4 +1,4 @@
-const fs = require('fs')
+const fs = require('node:fs')
 
 const { parse } = require('dotenv')
 
@@ -29,7 +29,7 @@ module.exports = {
     'PR: reviewed-changes-requested',
     'PR: unreviewed',
     'security',
-  ].join(),
+  ].join(','),
   ...localEnv,
   NODE_ENV: process.env.NODE_ENV || localEnv.NODE_ENV,
 }

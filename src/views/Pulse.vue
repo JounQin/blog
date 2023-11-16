@@ -4,32 +4,38 @@ main
     .col-md
       .text-center
         .btn-group
-          button.btn.btn-light(v-for="type of types"
-                               :class="{ active: type === activeType }"
-                               @click="activeType = type") {{ type }}
-      ol.list-unstyled(:class="$style.list")
-        li.d-flex.align-items-center.my-4(v-for="{ closedAt, createdAt, isPr, mergedAt, repository, state, title, url } of pulses")
+          button.btn.btn-light(
+            v-for='type of types',
+            :class='{ active: type === activeType }',
+            @click='activeType = type'
+          ) {{ type }}
+      ol.list-unstyled(:class='$style.list')
+        li.d-flex.align-items-center.my-4(
+          v-for='{ closedAt, createdAt, isPr, mergedAt, repository, state, title, url } of pulses'
+        )
           .px-3
-            i.fa(:class="[isPr ? 'fa-code-fork' : 'fa-bug', state.toLowerCase()]")
+            i.fa(
+              :class='[isPr ? "fa-code-fork" : "fa-bug", state.toLowerCase()]'
+            )
           div
             h5.font-weight-bold
-              a.heading-link(:href="url") {{ title }}
+              a.heading-link(:href='url') {{ title }}
               small.text-muted.ml-2 {{ $t('created_at') }}: {{ createdAt | dateFormat }}
-              small.text-muted.ml-2(v-if="mergedAt") {{ $t('merged_at') }}: {{ mergedAt | dateFormat }}
-              small.text-muted.ml-2(v-if="closedAt") {{ $t('closed_at') }}: {{ closedAt | dateFormat }}
-            a(:href="repository.url") {{ repository.nameWithOwner }}
-      .text-center(v-if="prPageInfo.hasNextPage || iPageInfo.hasNextPage")
+              small.text-muted.ml-2(v-if='mergedAt') {{ $t('merged_at') }}: {{ mergedAt | dateFormat }}
+              small.text-muted.ml-2(v-if='closedAt') {{ $t('closed_at') }}: {{ closedAt | dateFormat }}
+            a(:href='repository.url') {{ repository.nameWithOwner }}
+      .text-center(v-if='prPageInfo.hasNextPage || iPageInfo.hasNextPage')
         .d-inline-flex.align-items-center
-          .text-muted.clickable(@click="fetchMore") {{ $t('load_more') }}
-          hi-loading.ml-2(v-if="loading")
+          .text-muted.clickable(@click='fetchMore') {{ $t('load_more') }}
+          hi-loading.ml-2(v-if='loading')
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
 import HiLoading from 'components/HiLoading.vue'
-import { Issue, PageInfo, PullRequest, RootState, User } from 'types'
 import queries from 'queries.gql'
+import { Issue, PageInfo, PullRequest, RootState, User } from 'types'
 
 enum Type {
   ALL = 'All',
@@ -87,16 +93,20 @@ export default class Pulse extends Vue {
 
   get pulses() {
     switch (this.activeType) {
-      case Type.ALL:
+      case Type.ALL: {
         return [...this.pullRequests, ...this.issues].sort((x, y) =>
           x.createdAt > y.createdAt ? -1 : 1,
         )
-      case Type.PRS:
+      }
+      case Type.PRS: {
         return this.pullRequests
-      case Type.ISSUES:
+      }
+      case Type.ISSUES: {
         return this.issues
-      default:
+      }
+      default: {
         return null
+      }
     }
   }
 

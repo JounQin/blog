@@ -5,6 +5,8 @@ import Vue from 'vue'
 
 import { SERVER_PREFIX } from './constants'
 
+import { ServerContext } from 'types'
+
 export const createApollo = () =>
   new ApolloClient({
     link: createHttpLink({
@@ -23,7 +25,7 @@ Object.defineProperty(
     ? {
         configurable: __DEV__,
         get(this: Vue) {
-          return this.$ssrContext.apollo
+          return (this.$ssrContext as ServerContext).apollo
         },
       }
     : {

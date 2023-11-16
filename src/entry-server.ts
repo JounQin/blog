@@ -1,12 +1,12 @@
-import _axios from 'axios'
-import { createTranslator } from 'vue-translator'
-import LRU from 'lru-cache'
+import _axios, { AxiosRequestHeaders, AxiosResponse } from 'axios'
+import { LRUCache } from 'lru-cache'
 import serialize from 'serialize-javascript'
+import { createTranslator } from 'vue-translator'
 
+import createApp from 'app'
 import { createTranslate } from 'plugins'
 import { Apollo, ServerContext, AsyncDataFn } from 'types'
 import { DEFAULT_LOCALE, parseSetCookies } from 'utils'
-import createApp from 'app'
 
 const SET_COOKIE = 'set-cookie'
 
@@ -16,10 +16,9 @@ const SCRIPT_SUFFIX = __DEV__
   ? ''
   : ';(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}())'
 
-const cache = new LRU<string, Apollo>({
+const cache = new LRUCache<string, Apollo>({
   max: 1000,
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-  maxAge: 1000 * 60 * 15,
+  ttl: 1000 * 60 * 15,
 })
 
 export default (context: ServerContext) =>
@@ -27,20 +26,20 @@ export default (context: ServerContext) =>
   new Promise(async (resolve, reject) => {
     const start: boolean | number = __DEV__ && Date.now()
 
-    const { ctx } = context
+    const { ctx, locale } = context
 
     const { app, createApollo, router, store } = createApp()
 
-    const { url } = ctx
+    const { url, headers } = ctx
     const { fullPath } = router.resolve(url).route
 
     if (fullPath !== url) {
-      return reject(Object.assign(new Error(), { status: 302, url: fullPath }))
+      return reject(
+        Object.assign(new Error('redirect'), { status: 302, url: fullPath }),
+      )
     }
 
-    const axios = _axios.create({
-      headers: ctx.headers,
-    })
+    const axios = _axios.create({ headers: headers as AxiosRequestHeaders })
 
     let apollo = cache.get(url)
 
@@ -49,7 +48,7 @@ export default (context: ServerContext) =>
     }
 
     const translator = createTranslator({
-      locale: context.locale,
+      locale,
       defaultLocale: DEFAULT_LOCALE,
     })
 
@@ -66,23 +65,27 @@ export default (context: ServerContext) =>
       response => {
         const { headers } = response
 
-        const cookies = headers[SET_COOKIE] as string[]
+        const cookies = headers[SET_COOKIE]
 
-        parseSetCookies(cookies).forEach(
-          ({ name, expires, httponly: httpOnly, path, value }) => {
-            if (name !== KOA_SESS_SIG) {
-              ctx.cookies.set(name, value, {
-                expires: expires && new Date(expires),
-                httpOnly,
-                path,
-              })
-            }
-          },
-        )
+        for (const {
+          name,
+          expires,
+          httponly: httpOnly,
+          path,
+          value,
+        } of parseSetCookies(cookies)) {
+          if (name !== KOA_SESS_SIG) {
+            ctx.cookies.set(name, value, {
+              expires: expires && new Date(expires),
+              httpOnly,
+              path,
+            })
+          }
+        }
 
         return response
       },
-      e => {
+      (e: { response: AxiosResponse }) => {
         console.error('error:', e)
         if (e.response) {
           ctx.set(e.response.headers)
@@ -94,43 +97,49 @@ export default (context: ServerContext) =>
     await store.dispatch('fetchInfo', { apollo, axios })
 
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    router.push(ctx.url)
+    router.push(url)
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     router.onReady(async () => {
       const matched = router.getMatchedComponents()
 
       if (matched.length === 0) {
         console.error('no matched components')
-        return reject(Object.assign(new Error(), { status: 404 }))
+        return reject(Object.assign(new Error('not found'), { status: 404 }))
       }
 
       const { currentRoute: route } = router
 
       if (route.fullPath !== url) {
         return reject(
-          Object.assign(new Error(), { status: 302, url: route.fullPath }),
+          Object.assign(new Error('redirect'), {
+            status: 302,
+            url: route.fullPath,
+          }),
         )
       }
 
       try {
         await Promise.all(
           matched.map(
+            // @ts-expect-error
             ({
               options,
-              asyncData = options && options.asyncData,
+              asyncData = options?.asyncData,
             }: {
               options?: {
                 asyncData?: AsyncDataFn
               }
               asyncData?: AsyncDataFn
-            }) =>
-              asyncData &&
-              asyncData({ apollo, axios, route, store, translate }),
+            }) => asyncData?.({ apollo, axios, route, store, translate }),
           ),
         )
         await translate.cache.prefetch()
       } catch (e) {
-        return reject(e.response ? e.response.data : e)
+        const err = e as {
+          response?: AxiosResponse
+        }
+        return reject(err.response ? err.response.data : e)
       }
 
       if (__DEV__) {

@@ -1,17 +1,20 @@
 import { AxiosInstance } from 'axios'
-import { Translator } from 'vue-translator'
 import { Context } from 'koa'
+import { Translator } from 'vue-translator'
 
-import { Locale } from 'types'
+import { Translate } from 'plugins'
+import { Apollo, Locale } from 'types'
 
 export interface ServerContext {
   ctx: Context
+  apollo: Apollo
   axios: AxiosInstance
   locale: Locale
   script: string
   state: object
   title: string
   translator: Translator
+  translate: Translate
 }
 
 export interface SetCookie {

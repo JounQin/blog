@@ -2,15 +2,15 @@ import { InMemoryCache } from 'apollo-cache-inmemory'
 import ApolloClient from 'apollo-client'
 import { createHttpLink } from 'apollo-link-http'
 import axios from 'axios'
-import gql from 'graphql-tag'
-import fetch from 'node-fetch'
 import _debug from 'debug'
-import Koa, { DefaultState, DefaultContext } from 'koa'
+import gql from 'graphql-tag'
+import Koa, { DefaultState, DefaultContext, Middleware } from 'koa'
 import bodyParser from 'koa-bodyparser'
 import compose from 'koa-compose'
 import Router from 'koa-router'
 import session from 'koa-session'
-import uuid from 'uuid'
+import fetch from 'node-fetch'
+import { v4 as uuid } from 'uuid'
 
 import { serverHost, serverPort } from '../../build/config'
 
@@ -18,6 +18,7 @@ import translate from './translate'
 
 import { User } from 'types'
 
+// @ts-expect-error
 global.fetch = fetch
 
 const debug = _debug('1stg:server:router')
@@ -43,8 +44,10 @@ const ENV_KEYS = [...STR_ENV_KEYS, ...STR_ARR_ENV_KEYS]
 
 router
   .get('/fetchInfo', ctx => {
-    const { user } = ctx.session
-    let sessionID
+    const user = ctx.session.user as {
+      uuid: string
+    }
+    let sessionID: string
 
     if (!user) {
       sessionID = uuid()
@@ -56,7 +59,7 @@ router
         uuid: sessionID,
       },
       envs: ENV_KEYS.reduce((envs, key) => {
-        let value: string | string[] = process.env[key]
+        let value: string[] | string = process.env[key]
 
         if (STR_ARR_ENV_KEYS.includes(key)) {
           value = value ? value.split(',') : []
@@ -69,7 +72,7 @@ router
     }
   })
   .get('/oauth', async ctx => {
-    const { code, path, state }: Record<string, string> = ctx.query
+    const { code, path, state } = ctx.query as Record<string, string>
 
     if (!state || state !== ctx.session.uuid) {
       return ctx.throw('invalid oauth redirect')
@@ -128,14 +131,18 @@ router
 
     ctx.session.user = user.viewer
 
-    ctx.redirect(`${path.replace(/ /g, '%2B')}`)
+    ctx.redirect(`${path.replaceAll(' ', '%2B')}`)
   })
   .get('/translate', translate)
 
 export default (app?: Koa) => {
   const provided = !!app
 
-  const middlewares = [bodyParser(), router.routes(), router.allowedMethods()]
+  const middlewares = [
+    bodyParser(),
+    router.routes(),
+    router.allowedMethods(),
+  ] as Middleware[]
 
   if (!app) {
     app = new Koa()

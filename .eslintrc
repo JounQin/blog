@@ -2,6 +2,22 @@
   "root": true,
   "extends": "@1stg",
   "rules": {
-    "@typescript-eslint/no-unnecessary-condition": 0
-  }
+    "@typescript-eslint/no-unnecessary-condition": "off",
+    "markup/markup": "off",
+    "unicorn/prefer-node-protocol": "off"
+  },
+  "overrides": [
+    {
+      "files": "packtracker__webpack-plugin.d.ts",
+      "rules": {
+        "unicorn/filename-case": "off"
+      }
+    },
+    {
+      "files": "*.d.ts",
+      "rules": {
+        "no-var": "off"
+      }
+    }
+  ]
 }

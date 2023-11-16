@@ -1,12 +1,18 @@
 <template lang="pug">
 main
-  blockquote.d-flex.align-items-center.justify-content-center.text-secondary.quote(:class="$style.profile")
-    a(:href="owner.url")
-      img.mr-2(:src="owner.avatarUrl + '&s=40'", :srcset="owner.avatarUrl + '&s=80 2x'", :class="$style.avatar")
+  blockquote.d-flex.align-items-center.justify-content-center.text-secondary.quote(
+    :class='$style.profile'
+  )
+    a(:href='owner.url')
+      img.mr-2(
+        :src='owner.avatarUrl + "&s=40"',
+        :srcset='owner.avatarUrl + "&s=80 2x"',
+        :class='$style.avatar'
+      )
     .text-left
-      a(:href="owner.url") {{ owner.name }}
-      template(v-if="owner.email") ({{ owner.email }})
-      template(v-if="owner.bio || owner.description") :
+      a(:href='owner.url') {{ owner.name }}
+      template(v-if='owner.email') ({{ owner.email }})
+      template(v-if='owner.bio || owner.description') :
         br
         | {{ owner.bio || owner.description }}
   .d-flex.mb-2
@@ -15,13 +21,16 @@ main
       | {{ owner.location }}
     .flex-1.text-right
       i.fa.fa-link.mr-2
-      a(:href="owner.websiteUrl || owner.url") {{ owner.websiteUrl || owner.url }}
-  ul.list-unstyled(:class="$style.repositories")
-    li.mt-3.mt-md-4(v-for="{ description, id, nameWithOwner, stargazers, url } of owner.pinnedItems.nodes", :key="id")
+      a(:href='owner.websiteUrl || owner.url') {{ owner.websiteUrl || owner.url }}
+  ul.list-unstyled(:class='$style.repositories')
+    li.mt-3.mt-md-4(
+      v-for='{ description, id, nameWithOwner, stargazers, url } of owner.pinnedItems.nodes',
+      :key='id'
+    )
       .card.flex-1
         .card-body
           h5.card-title
-            a(:href="url")
+            a(:href='url')
               span.mr-2 {{ nameWithOwner.replace(login + '/', '') }}
               small
                 i.fa.fa-star.mr-1
@@ -37,36 +46,38 @@ import { Store } from 'vuex'
 import { Owner, OwnerType, RootState } from 'types'
 
 const getQueryOptions = (store: Store<RootState>) => ({
-  query: gql`query pinnedRepositories($login: String!) {
-  ${store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE}(login: $login) {
-    avatarUrl
-    ${
-      store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE === OwnerType.user
-        ? 'bio company'
-        : 'description'
-    }
-    email
-    id
-    location
-    name
-    resourcePath
-    url
-    websiteUrl
-    pinnedItems(first: 6) {
-      nodes {
-        ... on Repository {
-          description
-          id
-          nameWithOwner
-          url
-          stargazers {
-            totalCount
+  query: gql`
+    query pinnedRepositories($login: String!) {
+      ${store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE}(login: $login) {
+        avatarUrl
+        ${
+          store.state.envs.GITHUB_REPOSITORY_OWNER_TYPE === OwnerType.user
+            ? 'bio company'
+            : 'description'
+        }
+        email
+        id
+        location
+        name
+        resourcePath
+        url
+        websiteUrl
+        pinnedItems(first: 6) {
+          nodes {
+            ... on Repository {
+              description
+              id
+              nameWithOwner
+              url
+              stargazers {
+                totalCount
+              }
+            }
           }
         }
       }
     }
-  }
-}`,
+  `,
   variables: store.getters.LOGIN,
 })
 

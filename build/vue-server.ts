@@ -1,19 +1,21 @@
 import VueSSRServerPlugin from 'vue-server-renderer/server-plugin'
-import webpack from 'webpack'
+import webpack, { Configuration } from 'webpack'
 import merge from 'webpack-merge'
 import nodeExternals from 'webpack-node-externals'
 
 import baseConfig from './base'
 
-export default merge.smart(baseConfig, {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const config: Configuration = merge.smart(baseConfig, {
   entry: './src/entry-server.ts',
   target: 'node',
   output: {
     filename: 'server-bundle.js',
     libraryTarget: 'commonjs2',
   },
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   externals: nodeExternals({
-    whitelist: [/\.css$/],
+    allowlist: [/\.css$/],
   }),
   plugins: [
     new webpack.DefinePlugin({
@@ -25,3 +27,5 @@ export default merge.smart(baseConfig, {
     }),
   ],
 })
+
+export default config

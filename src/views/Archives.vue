@@ -1,24 +1,26 @@
 <template lang="pug">
 main
-  .my-2.my-md-5(:class="$style.main")
-    h6(:class="[$style.item, $style.title]") {{ $t('total_archives_count', [archives.length]) }}
+  .my-2.my-md-5(:class='$style.main')
+    h6(:class='[$style.item, $style.title]') {{ $t('total_archives_count', [archives.length]) }}
     ol.list-unstyled
-      li(v-for="{ archives, year } of archivesMap")
-        h5.mt-5.my-3(:class="$style.item") {{ year }}
+      li(v-for='{ archives, year } of archivesMap')
+        h5.mt-5.my-3(:class='$style.item') {{ year }}
         ol.list-unstyled
-          li.py-4(v-for="{ createdAt, id, number, title } of archives"
-             :class="[$style.item, $style.article]"
-             :key="id")
+          li.py-4(
+            v-for='{ createdAt, id, number, title } of archives',
+            :class='[$style.item, $style.article]',
+            :key='id'
+          )
             small.text-muted.mr-2 {{ createdAt | dateFormat('MM-dd') }}
-            router-link(:to="`/article/${number}`") {{ $tt(title) }}
+            router-link(:to='`/article/${number}`') {{ $tt(title) }}
 </template>
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Store } from 'vuex'
 
+import queries from 'queries.gql'
 import { Apollo, Issue, Repository, RootState } from 'types'
 import { getDefaultLabels } from 'utils'
-import queries from 'queries.gql'
 
 const fetchArchives = async ({
   apollo,
@@ -61,7 +63,6 @@ interface ArchivesMap {
   [year: number]: Issue[]
 }
 
-// eslint-disable-next-line @typescript-eslint/no-type-alias
 type ArchivesList = Array<{
   year: number
   archives: Issue[]
@@ -70,7 +71,7 @@ type ArchivesList = Array<{
 @Component({
   asyncData: async ({ apollo, store, translate }) => {
     const archives = await fetchArchives({ apollo, store })
-    archives.forEach(({ title }) => translate(title))
+    for (const { title } of archives) translate(title)
     apollo.writeQuery({
       query: queries.allArchives,
       data: {
@@ -102,7 +103,7 @@ export default class Archives extends Vue {
   get archivesMap(): ArchivesList {
     const archivesMap: ArchivesMap = {}
 
-    this.archives.forEach(archive => {
+    for (const archive of this.archives) {
       const year = new Date(archive.createdAt).getFullYear()
 
       if (!archivesMap[year]) {
@@ -110,7 +111,7 @@ export default class Archives extends Vue {
       }
 
       archivesMap[year].push(archive)
-    })
+    }
 
     return Object.keys(archivesMap)
       .reverse()

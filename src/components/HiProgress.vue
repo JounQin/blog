@@ -1,5 +1,5 @@
 <template lang="pug">
-div(:class="$style.progress" :style="{width: progress + '%'}")
+div(:class='$style.progress', :style='{ width: progress + "%" }')
 </template>
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'

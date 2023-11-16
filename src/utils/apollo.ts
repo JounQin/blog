@@ -4,7 +4,7 @@ import { ActionContext, Store } from 'vuex'
 import { Apollo, Repository, RootState } from 'types'
 
 export const getCategoriesQueryOptions = (
-  store: Store<RootState> | ActionContext<RootState, RootState>,
+  store: ActionContext<RootState, RootState> | Store<RootState>,
 ) => ({
   query: gql`
     query categories($name: String!, $owner: String!) {
@@ -19,6 +19,7 @@ export const getCategoriesQueryOptions = (
       }
     }
   `,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
   variables: store.getters.REPOSITORY,
 })
 

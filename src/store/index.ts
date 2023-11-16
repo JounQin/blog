@@ -49,12 +49,15 @@ const actions: {
 const mutations: {
   [key: string]: Mutation<RootState>
 } = {
+  // eslint-disable-next-line sonar/function-name
   SET_PROGRESS(state, progress: number) {
     state.progress = progress
   },
+  // eslint-disable-next-line sonar/function-name
   SET_USER(state, user: User) {
     state.user = user
   },
+  // eslint-disable-next-line sonar/function-name
   SET_ENVS(state, envs: Env) {
     state.envs = envs
   },

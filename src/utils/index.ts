@@ -1,6 +1,6 @@
 export * from './apollo'
 export * from './color'
-export * from './cookie'
 export * from './constant'
+export * from './cookie'
 export * from './dom'
 export * from './time'

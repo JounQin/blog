@@ -8,7 +8,6 @@ import { RootState } from './store'
 
 import { Translate } from 'plugins'
 
-// eslint-disable-next-line @typescript-eslint/no-type-alias
 export type Apollo = ApolloClient<NormalizedCacheObject>
 
 export interface AsyncData {

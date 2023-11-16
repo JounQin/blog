@@ -3,16 +3,16 @@ import koaWebpack from 'koa-webpack'
 import MFS from 'memory-fs'
 import webpack, { Stats } from 'webpack'
 
-import serverConfig from '../build/vue-server'
-import clientConfig from '../build/vue-client'
 import { resolve } from '../build/config'
+import clientConfig from '../build/vue-client'
+import serverConfig from '../build/vue-server'
 
 const debug = _debug('1stg:server:dev')
 
 export default (cb: (...args: unknown[]) => void) => {
-  let _resolve: () => void
-  let clientManifest: {}
-  let bundle: {}
+  let _resolve: (value?: unknown) => void
+  let clientManifest: unknown
+  let bundle: unknown
   let fs: MFS
 
   // eslint-disable-next-line promise/param-names
@@ -22,7 +22,7 @@ export default (cb: (...args: unknown[]) => void) => {
 
   const ready = (...args: unknown[]) => {
     _resolve()
-    // eslint-disable-next-line standard/no-callback-literal
+    // eslint-disable-next-line n/no-callback-literal
     cb(...args)
   }
 
@@ -32,9 +32,12 @@ export default (cb: (...args: unknown[]) => void) => {
     compiler: clientCompiler,
   })
 
+  // eslint-disable-next-line sonar/deprecation
   clientCompiler.plugin('done', (stats: Stats) => {
     const statsOutput = stats.toJson()
+    // eslint-disable-next-line unicorn/no-array-for-each
     statsOutput.errors.forEach(debug)
+    // eslint-disable-next-line unicorn/no-array-for-each
     statsOutput.warnings.forEach(debug)
 
     if (statsOutput.errors.length > 0) {
@@ -45,7 +48,7 @@ export default (cb: (...args: unknown[]) => void) => {
     webpackMiddlewarePromise.then(webpackMiddleware => {
       fs = webpackMiddleware.devMiddleware.fileSystem
       clientManifest = JSON.parse(
-        fs.readFileSync(resolve('dist/vue-ssr-client-manifest.json')),
+        fs.readFileSync(resolve('dist/vue-ssr-client-manifest.json')) as string,
       )
 
       if (bundle) {
@@ -68,7 +71,7 @@ export default (cb: (...args: unknown[]) => void) => {
     }
 
     bundle = JSON.parse(
-      mfs.readFileSync(resolve('dist/vue-ssr-server-bundle.json')),
+      mfs.readFileSync(resolve('dist/vue-ssr-server-bundle.json')) as string,
     )
 
     if (clientManifest) {

@@ -19,8 +19,10 @@ export const serverPort = +process.env.PORT || DEFAULT_PORT
 
 export const publicPath = '/'
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
 export const { resolve } = path
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 export const runtimeRequire: NodeRequire =
   typeof __non_webpack_require__ === 'undefined'
     ? require

@@ -1,3 +1,1 @@
-import invert from 'invert-color'
-
-export const invertColor = invert
+export { default as invertColor } from 'invert-color'

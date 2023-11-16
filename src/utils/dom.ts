@@ -6,10 +6,10 @@ const scrollSmoothNativeSupported =
   typeof document !== 'undefined' &&
   'scrollBehavior' in document.documentElement.style
 
-const scroll = (context: ScrollContext, el: Window | Element) => {
-  const { startX, startY, x = 0, y = 0 } = context
+const scroll = (context: ScrollContext, el: Element | Window) => {
+  const { startX, startY, x = 0, y = 0, startTime, duration } = context
 
-  let elapsed = (now() - context.startTime) / context.duration
+  let elapsed = (now() - startTime) / duration
   elapsed = elapsed > 1 ? 1 : elapsed
   const left = startX + (x - startX) * elapsed
   const top = startY + (y - startY) * elapsed
@@ -23,7 +23,7 @@ const scroll = (context: ScrollContext, el: Window | Element) => {
 
 export const scrollTo = (
   context: ScrollContext,
-  el: Window | Element = window,
+  el: Element | Window = window,
 ) => {
   if (scrollSmoothNativeSupported) {
     return el.scrollTo({
@@ -33,10 +33,10 @@ export const scrollTo = (
     })
   }
 
-  context.startX = context.startX || window.pageXOffset
-  context.startY = context.startY || window.pageYOffset
+  context.startX = context.startX || window.scrollX
+  context.startY = context.startY || window.scrollY
   context.startTime = context.startTime || now()
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
   context.duration = context.duration || 500
 
   scroll(context, el)

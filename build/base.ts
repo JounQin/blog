@@ -1,7 +1,7 @@
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
-import { VueLoaderPlugin } from 'vue-loader'
 import MiniCssExtractPlugin from 'mini-css-extract-plugin'
-import webpack, { Configuration } from 'webpack'
+import { VueLoaderPlugin } from 'vue-loader'
+import webpack, { Configuration, WebpackPluginInstance } from 'webpack'
 
 import { DEFAULT_PORT, NODE_ENV, __DEV__, publicPath, resolve } from './config'
 
@@ -13,8 +13,8 @@ const cssLoaders = (modules?: boolean) => [
     loader: 'css-loader',
     options: {
       sourceMap,
-      localsConvention: 'camelCase',
       modules: modules && {
+        exportLocalsConvention: 'camelCase',
         localIdentName: __DEV__
           ? '[name]__[local]___[hash:base64:5]'
           : '[hash:base64:10]',
@@ -146,13 +146,17 @@ const config: Configuration = {
       DEFAULT_PORT,
     }),
     new ForkTsCheckerWebpackPlugin({
-      tsconfig: resolve('src/tsconfig.json'),
-      vue: true,
+      typescript: {
+        configFile: resolve('src/tsconfig.json'),
+        extensions: {
+          vue: true,
+        },
+      },
     }),
     new MiniCssExtractPlugin({
       filename: '[name].[contenthash].css',
     }),
-    new VueLoaderPlugin(),
+    new VueLoaderPlugin() as WebpackPluginInstance,
   ],
 }
 

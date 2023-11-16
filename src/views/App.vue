@@ -1,53 +1,77 @@
 <template lang="pug">
 #app.container-fluid
-  hi-progress(:progress="progress")
+  hi-progress(:progress='progress')
   nav.fixed-top.navbar.navbar-expand-md.navbar-light.bg-light
     .container
-      router-link.navbar-brand(to="/")
-        img.brand-img(src="/logo-30.png", srcset="/logo-60.png 2x", alt="1stG")
-        span(:class="$style.brandName")
+      router-link.navbar-brand(to='/')
+        img.brand-img(src='/logo-30.png', srcset='/logo-60.png 2x', alt='1stG')
+        span(:class='$style.brandName')
           span 1stg
-      button.navbar-toggler(:aria-label="$t('toggle_navigation')", type="button", @click="toggleShow")
+      button.navbar-toggler(
+        :aria-label='$t("toggle_navigation")',
+        type='button',
+        @click='toggleShow'
+      )
         span.navbar-toggler-icon
-      .navbar-collapse(:class="[$style.collapse, { show }, `collaps${collapsing ? 'ing' : 'e'}`]"
-                        :style="{ height: collapseHeight }"
-                        @transitionend="transitionEnd")
+      .navbar-collapse(
+        :class='[$style.collapse, { show }, `collaps${collapsing ? "ing" : "e"}`]',
+        :style='{ height: collapseHeight }',
+        @transitionend='transitionEnd'
+      )
         ul.navbar-nav.justify-content-end.flex-1.pr-md-4
-          router-link.nav-item.d-block.d-lg-block(v-for="{ icon, link, text } of routes"
-                                                  :class="{ active: $route.fullPath.split('?')[0] === '/' + link, 'd-md-none': (!link || link === 'pulse') && $t.locale === 'en' }"
-                                                  :to="'/' + link"
-                                                  :key="link"
-                                                  tag="li"
-                                                  @click.native="toggleShow")
+          router-link.nav-item.d-block.d-lg-block(
+            v-for='{ icon, link, text } of routes',
+            :class='{ active: $route.fullPath.split("?")[0] === "/" + link, "d-md-none": (!link || link === "pulse") && $t.locale === "en" }',
+            :to='"/" + link',
+            :key='link',
+            tag='li',
+            @click.native='toggleShow'
+          )
             a.nav-link
-              i.fa.mr-2(:class="`fa-${ icon }`")
+              i.fa.mr-2(:class='`fa-${icon}`')
               | {{ $t(link || 'home') }}
-        form.form-inline.my-2.my-md-0(@submit.prevent="submit")
-          input.form-control.mr-2.flex-1(v-model.trim="search", type="search" :placeholder="$t('search_all_articles')")
-          button.btn.btn-outline-success(type="submit") {{ $t('search') }}
-          a.ml-2(v-if="user"
-                  :href="user.uuid ? `https://github.com/login/oauth/authorize?client_id=${ GITHUB_CLIENT_ID }&state=${user.uuid}&redirect_uri=${ GITHUB_OAUTH_CALLBACK }?path=${ $route.fullPath }` : user.websiteUrl || user.url"
-                  :target="user.uuid ? '_self' : '_blank'"
-                  rel="noopener")
-            template(v-if="user.uuid") {{ $t('login') }}
-            img.user-avatar(v-else, :src="user.avatarUrl + '&s=30'", :srcset="user.avatarUrl + '&s=60 2x'")
-  div(:class="$style.main")
+        form.form-inline.my-2.my-md-0(@submit.prevent='submit')
+          input.form-control.mr-2.flex-1(
+            v-model.trim='search',
+            type='search',
+            :placeholder='$t("search_all_articles")'
+          )
+          button.btn.btn-outline-success(type='submit') {{ $t('search') }}
+          a.ml-2(
+            v-if='user',
+            :href='user.uuid ? `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${user.uuid}&redirect_uri=${GITHUB_OAUTH_CALLBACK}?path=${$route.fullPath}` : user.websiteUrl || user.url',
+            :target='user.uuid ? "_self" : "_blank"',
+            rel='noopener'
+          )
+            template(v-if='user.uuid') {{ $t('login') }}
+            img.user-avatar(
+              v-else,
+              :src='user.avatarUrl + "&s=30"',
+              :srcset='user.avatarUrl + "&s=60 2x"'
+            )
+  div(:class='$style.main')
     router-view.container.py-4
-    button.text-muted(v-if="showScrollBtn", :class="$style.top", @click="scrollTo({y:0})") Top
+    button.text-muted(
+      v-if='showScrollBtn',
+      :class='$style.top',
+      @click='scrollTo({ y: 0 })'
+    ) Top
   footer.row.py-4.bg-light
     .container.d-flex
       .flex-1
-        a.ml-2(href="https://www.1stg.me") © 1stg.me
-        a.text-secondary.ml-2(:href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`")
+        a.ml-2(href='https://www.1stg.me') © 1stg.me
+        a.text-secondary.ml-2(
+          :href='`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`'
+        )
           .sr-only {{ REPOSITORY.owner + '/' + REPOSITORY.name }}
-          i.fa.fa-github(aria-hidden="true")
-        span.text-secondary.ml-2.pointer(:title="$t('toggle_locale')")
+          i.fa.fa-github(aria-hidden='true')
+        span.text-secondary.ml-2.pointer(:title='$t("toggle_locale")')
           .sr-only {{ $t('toggle_locale') }}
-          i.fa.fa-globe(aria-hidden="true", @click="$t.toggleLocale")
+          i.fa.fa-globe(aria-hidden='true', @click='$t.toggleLocale')
       div
         i.fa.fa-code.mr-2
         | by
-        a.mx-2(href="https://GitHub.com/JounQin") JounQin
+        a.mx-2(href='https://GitHub.com/JounQin') JounQin
         | with
         i.fa.fa-heart.ml-2
 </template>
@@ -171,7 +195,6 @@ export default class App extends Vue {
   }
 
   toggleShow() {
-    // eslint-disable-next-line no-magic-numbers
     if (document.documentElement.clientWidth >= 768) {
       return
     }
@@ -185,12 +208,12 @@ export default class App extends Vue {
     if (show) {
       this.show = show
       this.collapsing = true
-      this.timeoutId = setTimeout(() => {
+      this.timeoutId = window.setTimeout(() => {
         this.collapseHeight = COLLAPSE_HEIGHT
       })
     } else {
       this.collapseHeight = COLLAPSE_HEIGHT
-      this.timeoutId = setTimeout(() => {
+      this.timeoutId = window.setTimeout(() => {
         this.collapsing = true
         this.collapseHeight = null
       })
@@ -378,7 +401,7 @@ button {
   }
 
   @keyframes slide-left {
-    from {
+    0% {
       transform: translate3d(-100%, 0, 0);
     }
 
@@ -386,13 +409,13 @@ button {
       transform: translate3d(-100%, 0, 0);
     }
 
-    to {
+    100% {
       transform: translate3d(0, 0, 0);
     }
   }
 
   @keyframes slide-right {
-    from {
+    0% {
       transform: translate3d(100%, 0, 0);
     }
 
@@ -400,13 +423,13 @@ button {
       transform: translate3d(100%, 0, 0);
     }
 
-    to {
+    100% {
       transform: translate3d(0, 0, 0);
     }
   }
 
   @keyframes slide-top {
-    from {
+    0% {
       transform: translate3d(0, -100%, 0);
     }
 
@@ -414,7 +437,7 @@ button {
       transform: translate3d(0, -100%, 0);
     }
 
-    to {
+    100% {
       transform: translate3d(0, 0, 0);
     }
   }
@@ -422,7 +445,7 @@ button {
 
 .main {
   min-height: 100%;
-  margin: 0 -15px -63px -15px;
+  margin: 0 -15px -63px;
   padding: {
     top: 53px;
     bottom: 63px;
@@ -438,7 +461,7 @@ button {
     right: 0;
     padding: 0 14px;
     background-color: #f8f9fa;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 1px rgb(0 0 0 / 5%);
   }
 }
 
