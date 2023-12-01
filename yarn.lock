@@ -60,7 +60,7 @@ __metadata:
     "@types/html-webpack-plugin": "npm:^3.2.9"
     "@types/koa": "npm:^2.13.11"
     "@types/koa-bodyparser": "npm:^4.3.12"
-    "@types/koa-compose": "npm:^3.2.5"
+    "@types/koa-compose": "npm:^3.2.8"
     "@types/koa-compress": "npm:^4.0.6"
     "@types/koa-logger": "npm:^3.1.5"
     "@types/koa-router": "npm:^7.4.7"
@@ -4097,12 +4097,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/koa-compose@npm:*, @types/koa-compose@npm:^3.2.5":
+"@types/koa-compose@npm:*":
   version: 3.2.5
   resolution: "@types/koa-compose@npm:3.2.5"
   dependencies:
     "@types/koa": "npm:*"
   checksum: 0f46016227c9d17fd4ff5fb1fbec7f658a95dbf36f15e08d4f3aae8f24599c8069cadff6c2d6af5350d56e4c234b634066636bb2eaa216d5c29f453858c1f798
+  languageName: node
+  linkType: hard
+
+"@types/koa-compose@npm:^3.2.8":
+  version: 3.2.8
+  resolution: "@types/koa-compose@npm:3.2.8"
+  dependencies:
+    "@types/koa": "npm:*"
+  checksum: 95c32bdee738ac7c10439bbf6342ca3b9f0aafd7e8118739eac7fb0fa703a23cfe4c88f63e13a69a16fbde702e0bcdc62b272aa734325fc8efa7e5625479752e
   languageName: node
   linkType: hard
 
