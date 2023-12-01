@@ -68,7 +68,7 @@
   "devDependencies": {
     "@1stg/app-config": "^9.0.0",
     "@types/debug": "^4.1.12",
-    "@types/html-minifier": "^4",
+    "@types/html-minifier": "^4.0.5",
     "@types/html-webpack-plugin": "^3.2.9",
     "@types/koa": "^2.13.11",
     "@types/koa-bodyparser": "^4.3.12",

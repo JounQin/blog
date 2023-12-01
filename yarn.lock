@@ -56,7 +56,7 @@ __metadata:
   dependencies:
     "@1stg/app-config": "npm:^9.0.0"
     "@types/debug": "npm:^4.1.12"
-    "@types/html-minifier": "npm:^4"
+    "@types/html-minifier": "npm:^4.0.5"
     "@types/html-webpack-plugin": "npm:^3.2.9"
     "@types/koa": "npm:^2.13.11"
     "@types/koa-bodyparser": "npm:^4.3.12"
@@ -4022,7 +4022,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/html-minifier@npm:*, @types/html-minifier@npm:^4":
+"@types/html-minifier@npm:*, @types/html-minifier@npm:^4.0.5":
   version: 4.0.5
   resolution: "@types/html-minifier@npm:4.0.5"
   dependencies:
