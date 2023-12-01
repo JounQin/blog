@@ -63,7 +63,7 @@ __metadata:
     "@types/koa-compose": "npm:^3.2.5"
     "@types/koa-compress": "npm:^4.0.6"
     "@types/koa-logger": "npm:^3.1.5"
-    "@types/koa-router": "npm:^7.4.7"
+    "@types/koa-router": "npm:^7.4.8"
     "@types/koa-session": "npm:^6.4.5"
     "@types/koa-static-cache": "npm:^5.1.4"
     "@types/koa-webpack": "npm:^6.0.8"
@@ -4125,12 +4125,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/koa-router@npm:^7.4.7":
-  version: 7.4.7
-  resolution: "@types/koa-router@npm:7.4.7"
+"@types/koa-router@npm:^7.4.8":
+  version: 7.4.8
+  resolution: "@types/koa-router@npm:7.4.8"
   dependencies:
     "@types/koa": "npm:*"
-  checksum: 4a00a873aa7bffad44be72a824c9d95845a04b0d4a6177b62b264b89f04bc2575315a0f6255c30d3a756920bed4a0178786baff6e43a4f43af3474885d8d22fe
+  checksum: d9bd6c8c8869a5757dd0b8208fdd06402359a5b8f6a40706e89f81b2c0b796ae3561761913b9743dccff5508e04bca88ce14e05c6fdf8b45b1cccec2ed996fe8
   languageName: node
   linkType: hard
 

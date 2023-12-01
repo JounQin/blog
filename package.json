@@ -75,7 +75,7 @@
     "@types/koa-compose": "^3.2.5",
     "@types/koa-compress": "^4.0.6",
     "@types/koa-logger": "^3.1.5",
-    "@types/koa-router": "^7.4.7",
+    "@types/koa-router": "^7.4.8",
     "@types/koa-session": "^6.4.5",
     "@types/koa-static-cache": "^5.1.4",
     "@types/koa-webpack": "^6.0.8",
