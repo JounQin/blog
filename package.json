@@ -86,7 +86,7 @@
     "@types/node": "^20.9.0",
     "@types/node-fetch": "^2.6.9",
     "@types/prettier": "^2.7.3",
-    "@types/pug": "^2.0.9",
+    "@types/pug": "^2.0.10",
     "@types/qs": "^6.9.10",
     "@types/serialize-javascript": "^5.0.4",
     "@types/uuid": "^9.0.7",
