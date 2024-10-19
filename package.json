@@ -79,7 +79,7 @@
     "@types/koa-session": "^6.4.5",
     "@types/koa-static-cache": "^5.1.4",
     "@types/koa-webpack": "^6.0.8",
-    "@types/lodash": "^4.14.201",
+    "@types/lodash": "^4.17.12",
     "@types/lru-cache": "^7.10.10",
     "@types/memory-fs": "^0.3.7",
     "@types/mini-css-extract-plugin": "^1.2.2",
