@@ -67,7 +67,7 @@ __metadata:
     "@types/koa-session": "npm:^6.4.5"
     "@types/koa-static-cache": "npm:^5.1.4"
     "@types/koa-webpack": "npm:^6.0.8"
-    "@types/lodash": "npm:^4.14.201"
+    "@types/lodash": "npm:^4.17.12"
     "@types/lru-cache": "npm:^7.10.10"
     "@types/memory-fs": "npm:^0.3.7"
     "@types/mini-css-extract-plugin": "npm:^1.2.2"
@@ -4181,10 +4181,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash@npm:^4.14.201":
-  version: 4.14.201
-  resolution: "@types/lodash@npm:4.14.201"
-  checksum: 9b56a2a650880045343055e63c7ad73df97188453aa3de8375dc97670748d467f6f4a3b59d689f4ae45dd947d4c0b3ecd873763910336238736056dce20cfe56
+"@types/lodash@npm:^4.17.12":
+  version: 4.17.12
+  resolution: "@types/lodash@npm:4.17.12"
+  checksum: 3d829f97c0ea713135e6eb48e983feffb315f4cf228d03654ca8a328e3fecd03005bf7dd30bf411f4306967c610d96738d441588283a41456815f2ce1fd7044c
   languageName: node
   linkType: hard
 
