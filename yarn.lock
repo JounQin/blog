@@ -21712,11 +21712,11 @@ __metadata:
   linkType: hard
 
 "thenify@npm:>= 3.1.0 < 4":
-  version: 3.3.0
-  resolution: "thenify@npm:3.3.0"
+  version: 3.3.1
+  resolution: "thenify@npm:3.3.1"
   dependencies:
     any-promise: "npm:^1.0.0"
-  checksum: ec11390592ba586203f1964dc7aed0291e8c98f25e715dd9ff7518f451cb78facd81aa6d8bd48b7979a5cb116cc520790e4a7b7b22fa971c35f4cbcdbaf41dc7
+  checksum: 486e1283a867440a904e36741ff1a177faa827cf94d69506f7e3ae4187b9afdf9ec368b3d8da225c192bfe2eb943f3f0080594156bf39f21b57cd1411e2e7f6d
   languageName: node
   linkType: hard
 
