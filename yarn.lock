@@ -56,7 +56,7 @@ __metadata:
   dependencies:
     "@1stg/app-config": "npm:^9.0.0"
     "@types/debug": "npm:^4.1.12"
-    "@types/html-minifier": "npm:^4"
+    "@types/html-minifier": "npm:^4.0.6"
     "@types/html-webpack-plugin": "npm:^3.2.9"
     "@types/koa": "npm:^2.13.11"
     "@types/koa-bodyparser": "npm:^4.3.12"
@@ -4022,7 +4022,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/html-minifier@npm:*, @types/html-minifier@npm:^4":
+"@types/html-minifier@npm:*":
   version: 4.0.5
   resolution: "@types/html-minifier@npm:4.0.5"
   dependencies:
@@ -4030,6 +4030,17 @@ __metadata:
     "@types/relateurl": "npm:*"
     "@types/uglify-js": "npm:*"
   checksum: bd0f9604f2674f2b6f803080eb73cebc435e93ba4b691f02dd908a8f2575b9cbd0a6fc02c1ea37b660a8d37e8e1c9287ad4671f179096ee597f501793ef5d668
+  languageName: node
+  linkType: hard
+
+"@types/html-minifier@npm:^4.0.6":
+  version: 4.0.6
+  resolution: "@types/html-minifier@npm:4.0.6"
+  dependencies:
+    "@types/clean-css": "npm:*"
+    "@types/relateurl": "npm:*"
+    "@types/uglify-js": "npm:*"
+  checksum: 32c882f24aa23431bef032ea10e838342431faf16c2e771740b91ca6d116a8123524f9904c7a08b57d134c8c5e4f2add3f90ede4f29356f060522e67e6466d24
   languageName: node
   linkType: hard
 
