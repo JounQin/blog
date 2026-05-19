@@ -58,7 +58,7 @@ __metadata:
     "@types/debug": "npm:^4.1.12"
     "@types/html-minifier": "npm:^4"
     "@types/html-webpack-plugin": "npm:^3.2.9"
-    "@types/koa": "npm:^2.13.11"
+    "@types/koa": "npm:^2.15.2"
     "@types/koa-bodyparser": "npm:^4.3.12"
     "@types/koa-compose": "npm:^3.2.5"
     "@types/koa-compress": "npm:^4.0.6"
@@ -4165,7 +4165,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/koa@npm:*, @types/koa@npm:^2.13.11":
+"@types/koa@npm:*":
   version: 2.13.11
   resolution: "@types/koa@npm:2.13.11"
   dependencies:
@@ -4178,6 +4178,22 @@ __metadata:
     "@types/koa-compose": "npm:*"
     "@types/node": "npm:*"
   checksum: 135b35c799c45af57514edf27375f8db83f457a3753647820052f9f328405e30954b846a558a5a7007b48e1843b4ed4ba130a0d3f72f4584d8a528b5bf29b832
+  languageName: node
+  linkType: hard
+
+"@types/koa@npm:^2.15.2":
+  version: 2.15.2
+  resolution: "@types/koa@npm:2.15.2"
+  dependencies:
+    "@types/accepts": "npm:*"
+    "@types/content-disposition": "npm:*"
+    "@types/cookies": "npm:*"
+    "@types/http-assert": "npm:*"
+    "@types/http-errors": "npm:*"
+    "@types/keygrip": "npm:*"
+    "@types/koa-compose": "npm:*"
+    "@types/node": "npm:*"
+  checksum: 1bc8fd92e5eb125102f5bae71986222d425349da1678a045f8f069155db8f29fd76bb36a30fdfa53148a37f130a93c7f0a46002ffc0b94daa0a53ea6acbb5c45
   languageName: node
   linkType: hard
 
