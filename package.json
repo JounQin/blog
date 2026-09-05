@@ -82,7 +82,7 @@
     "@types/lodash": "^4.14.201",
     "@types/lru-cache": "^7.10.10",
     "@types/memory-fs": "^0.3.7",
-    "@types/mini-css-extract-plugin": "^1.2.2",
+    "@types/mini-css-extract-plugin": "^1.4.3",
     "@types/node": "^20.9.0",
     "@types/node-fetch": "^2.6.9",
     "@types/prettier": "^2.7.3",
