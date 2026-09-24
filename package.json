@@ -54,7 +54,7 @@
     "memory-fs": "^0.5.0",
     "node-fetch": "^2.7.0",
     "qs": "^6.11.2",
-    "serialize-javascript": "^6.0.1",
+    "serialize-javascript": "^7.0.0",
     "uuid": "^9.0.1",
     "vue": "^2.7.15",
     "vue-class-component": "^7.2.6",
