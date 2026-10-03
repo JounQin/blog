@@ -70,7 +70,7 @@ __metadata:
     "@types/lodash": "npm:^4.14.201"
     "@types/lru-cache": "npm:^7.10.10"
     "@types/memory-fs": "npm:^0.3.7"
-    "@types/mini-css-extract-plugin": "npm:^1.2.2"
+    "@types/mini-css-extract-plugin": "npm:^1.4.3"
     "@types/node": "npm:^20.9.0"
     "@types/node-fetch": "npm:^2.6.9"
     "@types/prettier": "npm:^2.7.3"
@@ -4231,7 +4231,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/mini-css-extract-plugin@npm:^1.2.2":
+"@types/mini-css-extract-plugin@npm:^1.4.3":
   version: 1.4.3
   resolution: "@types/mini-css-extract-plugin@npm:1.4.3"
   dependencies:
