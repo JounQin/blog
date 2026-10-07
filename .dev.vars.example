@@ -1,0 +1,43 @@
+# Local development variables for Cloudflare Workers.
+# Copy to `.dev.vars` (gitignored) — it is read by BOTH `yarn dev` (nitro runs
+# through the Cloudflare dev emulation) and `yarn worker:dev` (wrangler dev).
+# Production equivalents: `wrangler secret put <NAME>` for secrets and the
+# `vars` block of wrangler.jsonc for non-secret values.
+
+# GitHub personal access token: read-only access to the public blog repository.
+# classic PAT needs no scopes (or `public_repo`); a fine-grained PAT must be
+# scoped to public repositories read-only AND expire within 366 days, otherwise
+# organizations such as 1stG reject it.
+GITHUB_TOKEN=
+
+GITHUB_REPOSITORY_OWNER=JounQin
+GITHUB_REPOSITORY_NAME=blog
+GITHUB_REPOSITORY_OWNER_TYPE=user
+
+# comma separated; the first key signs the session cookie, all of them verify
+APP_KEYS=dev-key-1,dev-key-2
+
+# GitHub OAuth app (login button); callback: <origin>/api/oauth
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_OAUTH_CALLBACK=http://localhost:3000/api/oauth
+
+# translations need no configuration: they use @deeplx/core (DeepL free endpoints)
+
+# optional overrides (self-hosted GitHub / local stubs)
+# GITHUB_API_URL=https://api.github.com/graphql
+# GITHUB_OAUTH_TOKEN_URL=https://github.com/login/oauth/access_token
+
+# --- defaults carried over from the legacy env.js ---
+# labels hidden from the article list / categories
+GITHUB_EXCLUDED_LABELS=dependencies,feature,flag,greenkeeper,PR: draft,PR: merged,PR: partially-approved,PR: reviewed-approved,PR: reviewed-changes-requested,PR: unreviewed,security
+# repositories whose items are filtered out of the pulse page
+GITHUB_EXCLUDED_REPOSITORY_OWNERS=
+
+# The legacy env.js also defined DEBUG / PARSER_NO_WATCH / TS_NODE_FILES for the
+# old ts-node + nodemon + eslint 8 toolchain; the Nuxt stack does not use them:
+# DEBUG=1stg:*
+# PARSER_NO_WATCH=true
+# TS_NODE_FILES=true
+# NODE_ENV is provided by the tools themselves (`nuxt dev` = development,
+# `nuxt build` = production), so it is not hardcoded here.

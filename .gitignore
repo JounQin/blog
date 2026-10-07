@@ -1,10 +1,16 @@
 .*cache
 *.log
+.nuxt
+.output
+.wrangler
 dist
 node_modules
 sync
+.env
 .env.js
 .env.local
+.env.*.local
+.dev.vars
 .yarn/*
 !.yarn/plugins
 !.yarn/releases

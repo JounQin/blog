@@ -1,13 +1,3 @@
 {
-  "extends": "@1stg/tsconfig/app.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "esModuleInterop": true,
-    "module": "commonjs",
-    "paths": {
-      "*": ["src/*"]
-    },
-    "strictNullChecks": false
-  },
-  "include": ["**/*.ts", "**/*.vue"]
+  "extends": "./.nuxt/tsconfig.json"
 }

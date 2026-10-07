@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blog",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2025-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".output/public",
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "vars": {
+    "GITHUB_REPOSITORY_OWNER": "JounQin",
+    "GITHUB_REPOSITORY_NAME": "blog",
+    "GITHUB_REPOSITORY_OWNER_TYPE": "user",
+  },
+}
