@@ -107,11 +107,15 @@ export default defineNuxtConfig({
           // `additionalData` replaces the legacy style-resources-loader injection
           loadPaths: [resolve('./app/assets/styles'), resolve('./node_modules/bootstrap/scss')],
           additionalData: "@import 'pre-bootstrap';\n",
+          // Bootstrap 5.3 still uses @import, global builtins and the if()
+          // syntax: quietDeps silences warnings raised from node_modules, and
+          // the remaining categories that reach our own files are listed here
+          quietDeps: true,
           silenceDeprecations: [
             'import',
             'global-builtin',
             'color-functions',
-            'mixed-decls',
+            'if-function',
           ],
         },
       },
