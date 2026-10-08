@@ -39,8 +39,8 @@ export const useI18n = () => {
         // single attempt so a slow provider cannot multiply the render latency
         retry: 0,
         params: {
-          Source: sourceLocale,
-          SourceText: source,
+          source: sourceLocale,
+          sourceText: source,
           ...(retry ? { retry: 2 } : {}),
         },
       })

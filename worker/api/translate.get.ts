@@ -7,7 +7,7 @@ import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
  *
  * Powered by `@deeplx/core`, which talks to DeepL's free endpoints, so no API
  * key or other environment variable is required. `Source` is the locale of
- * `SourceText`; the target locale is the opposite one.
+ * `sourceText`; the target locale is the opposite one.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.EN]: 'EN',
@@ -92,15 +92,15 @@ const translateChunk = async (
 
 export default defineEventHandler(async event => {
   const query = getQuery(event)
-  const text = typeof query.SourceText === 'string' ? query.SourceText : ''
+  const text = typeof query.sourceText === 'string' ? query.sourceText : ''
 
   if (!text) {
     return { text: '' }
   }
 
   const requested =
-    typeof query.Source === 'string' && query.Source
-      ? query.Source
+    typeof query.source === 'string' && query.source
+      ? query.source
       : getCookie(event, LOCALE_COOKIE)
   const locale = requested === Locale.ZH ? Locale.ZH : Locale.EN
 

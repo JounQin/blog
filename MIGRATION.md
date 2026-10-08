@@ -155,7 +155,7 @@ All of the following was executed in this repository against a real build:
   app, `/api/login` returns 302 to GitHub with the right `client_id`, `state` and `redirect_uri`,
   sets the session cookie, and an intentionally invalid `code` makes GitHub answer
   `The code passed is incorrect or expired.` — which proves the client id/secret are accepted
-- **Translation**: `/api/translate?Source=zh&SourceText=…` returns the stubbed translation, and the
+- **Translation**: `/api/translate?source=zh&sourceText=…` returns the stubbed translation, and the
   home page HTML contains the translated title instead of the placeholder
 - **Resilience**: pointing the translation URL at a server that accepts connections and never
   answers, the page still renders 200 in ~4.3 s (2.5 s budget after the timeout was lowered).
