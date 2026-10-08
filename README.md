@@ -1,6 +1,6 @@
 # blog
 
-[![GitHub Actions](https://github.com/JounQin/blog/workflows/Node%20CI/badge.svg)](https://github.com/JounQin/blog/actions?query=workflow%3A%22Node+CI%22)
+[![GitHub Actions](https://github.com/JounQin/blog/workflows/CI/badge.svg)](https://github.com/JounQin/blog/actions?query=workflow%3A%22CI%22)
 [![Conventional Commits](https://img.shields.io/badge/conventional%20commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
