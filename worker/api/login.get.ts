@@ -1,4 +1,5 @@
 import { getBlogConfig } from '../utils/blog'
+import { safeInternalPath } from '../utils/path'
 import { readSession, writeSession } from '../utils/session'
 
 /**
@@ -35,12 +36,14 @@ export default defineEventHandler(async event => {
   }
 
   const { path } = getQuery(event) as { path?: string }
-  const target = typeof path === 'string' && path.startsWith('/') ? path : '/'
+  // `path` comes from the query string: reject protocol-relative targets and
+  // encode it, otherwise a `?` or `&` inside it would break the redirect_uri
+  const target = safeInternalPath(path)
 
   const authorizeUrl = new URL('https://github.com/login/oauth/authorize')
   authorizeUrl.searchParams.set('client_id', clientId)
   authorizeUrl.searchParams.set('state', uuid)
-  authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${target}`)
+  authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${encodeURIComponent(target)}`)
 
   return sendRedirect(event, authorizeUrl.toString(), 302)
 })

@@ -1,4 +1,5 @@
 import type { SessionUser } from '../utils/session'
+import { safeInternalPath } from '../utils/path'
 
 import { getBlogConfig } from '../utils/blog'
 import { getEnv } from '../utils/env'
@@ -97,7 +98,7 @@ export default defineEventHandler(async event => {
   })
 
   // never redirect off-site (the legacy implementation did the same via path)
-  const target = path.startsWith('/') ? path : '/'
+  const target = safeInternalPath(path)
 
-  return sendRedirect(event, target.replaceAll(' ', '%2B'), 302)
+  return sendRedirect(event, target.replaceAll(' ', '%20'), 302)
 })
