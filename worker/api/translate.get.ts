@@ -11,8 +11,9 @@ import { getEnv } from '../utils/env'
  * key or other environment variable is required. When `DEEPLX_URL` is set
  * (e.g. `https://<your-dlx-host>`) a self-hosted DLX instance
  * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a chunk
- * whose library attempts all failed gets one request to `<DEEPLX_URL>/translate`
- * with an optional `DEEPLX_TOKEN` bearer header and a shorter 4 s budget. The
+ * whose library attempts failed or that the library echoed unchanged gets one
+ * request to `<DEEPLX_URL>/translate` with an optional `DEEPLX_TOKEN` bearer
+ * header and a shorter 4 s budget. The
  * endpoint should serve `/translate` directly: redirects are followed, but a
  * 301/302/303 becomes a GET and drops the body, so only a method-preserving
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
@@ -211,19 +212,20 @@ const translateChunk = async (
         result.data
       ) {
         if (result.data === chunk) {
-          // The anonymous endpoint mirrors the requested `source_lang` as
-          // `detected_source_language` whenever its detection is not confident, so
-          // an identical output usually means the chunk had nothing to translate
-          // rather than a decline. Retrying it, or asking the self-hosted DLX,
-          // would not change that and would spend the operator's own DeepL quota
-          // for nothing, so this is reported as not translated instead.
+          // The library's anonymous profile echoes short, ambiguous or mixed
+          // chunks unchanged (it also mirrors the requested `source_lang` as
+          // `detected_source_language` when its detection is not confident), so
+          // retrying it with the same profile is pointless. The self-hosted DLX
+          // answers with a different client profile -- the iOS one -- which is the
+          // path that can still translate such a chunk, so stop retrying here and
+          // let the fallback try it once below.
           console.warn(
-            '[translate] library returned the source text unchanged, not retrying',
+            '[translate] library returned the source text unchanged, falling back',
             `attempt=${attempt}/${attempts}`,
             `length=${chunk.length}`,
             `source=${source} target=${target}`,
           )
-          return { text: chunk, ok: false }
+          break
         }
 
         return { text: result.data, ok: true }
@@ -261,11 +263,12 @@ const translateChunk = async (
   }
 
   // fallback: one self-hosted DLX request, and only when it is configured. It runs
-  // for real failures only (a 4xx above, or a 5xx/unusable result that used up the
-  // attempts); a translated or unchanged chunk never reaches it.
+  // when the library really failed (a 4xx above, or a 5xx/unusable result that used
+  // up the attempts) or echoed the chunk unchanged; a translated chunk never
+  // reaches it, and without `DEEPLX_URL` the chunk simply keeps its source text.
   if (service.url) {
     console.warn(
-      '[translate] library path exhausted, falling back to the self-hosted DLX',
+      '[translate] falling back to the self-hosted DLX',
       `attempts=${attempts}`,
       `length=${chunk.length}`,
       `source=${source} target=${target}`,

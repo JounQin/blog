@@ -69,28 +69,32 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
   `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
-- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for real
-  failures only, tried in this order for every chunk: `@deeplx/core` first (`translateByDeepLX`,
-  which returns `{ code, data, ... }` instead of throwing), retried while its `code` is **not** a
-  4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is pointless, and the
-  loop stops there). A 200 whose output is identical to the input is reported as **not
-  translated** without a retry and without touching DLX: the anonymous endpoint mirrors the
-  requested `source_lang` as `detected_source_language` whenever its detection is not confident,
-  so an identical output usually means the chunk had nothing to translate, and neither a retry
-  nor a self-hosted DLX would change that. Once the attempts are exhausted on a real failure,
-  **one** POST to `<DEEPLX_URL>/translate` with
+- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
+  chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
+  (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
+  `code` is **not** a 4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is
+  pointless, and the loop stops there). A 200 whose output is identical to the input is not
+  retried either, but it does go to DLX: the library's anonymous profile echoes short, ambiguous
+  or mixed chunks unchanged (and mirrors the requested `source_lang` as
+  `detected_source_language` when its detection is not confident), while the self-hosted DLX
+  answers with a different client profile — the iOS one — so it is the path that can still
+  translate such a chunk. When the fallback fails, or `DEEPLX_URL` is unset, that chunk keeps its
+  source text and the request reports `translated: false`. So, after the library attempts are
+  spent on a failure or the chunk came back unchanged, **one** POST to
+  `<DEEPLX_URL>/translate` with
   `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
   `{ text, source_lang, target_lang }`, for a self-hosted
   [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
   default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
   GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
   the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
-  `data !== chunk`. A chunk the library translates or returns unchanged never reaches DLX, and
-  with `DEEPLX_URL` unset nothing changes at all (the route stays library-only)
+  `data !== chunk`. A chunk the library translates never reaches DLX, and with `DEEPLX_URL` unset
+  nothing changes at all (the route stays library-only)
 - The library signal is the value `translateByDeepLX` returns: a 200 carries `data` (identical to
-  the input means not translated), a 4xx `code` short-circuits to the fallback, and any other
-  non-200 shape (5xx, empty payload, unexpected throw) spends the remaining attempts — no error
-  parsing, cause inspection or message matching
+  the input stops the retries and falls back to DLX, a different one is the translation), a 4xx
+  `code` short-circuits to the fallback, and any other non-200 shape (5xx, empty payload,
+  unexpected throw) spends the remaining attempts — no error parsing, cause inspection or message
+  matching
 - The fallback response only counts as translated when the HTTP status is 200, the JSON `code`
   is 200, `data` is a non-empty string and `data !== chunk`; everything else (any error status,
   an auth failure, a bad payload, an unchanged answer) fails like the library path, with a
