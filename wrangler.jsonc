@@ -11,10 +11,13 @@
   "observability": {
     "enabled": true,
   },
-  // No `vars` on purpose: GITHUB_REPOSITORY_OWNER / _NAME / _OWNER_TYPE are app
-  // constants, not per-environment configuration -- their defaults live in
-  // nuxt.config.ts (runtimeConfig.github) and are used when no environment
-  // variable overrides them. Without top-level `vars` a `previews` block is not
-  // required either, so nothing has to be duplicated per environment. If a value
-  // ever needs to differ per environment, add `vars` + a matching `previews.vars`.
+  // `previews` is required by `npx wrangler preview` (Workers Builds runs it for
+  // preview deployments) and may stay empty: assets, compatibility settings and
+  // migrations live at the top level, and we have no preview-specific vars or
+  // bindings. Keeping the app constants out of `vars` is why nothing has to be
+  // duplicated here -- GITHUB_REPOSITORY_OWNER / _NAME / _OWNER_TYPE have their
+  // defaults in nuxt.config.ts (runtimeConfig.github) and are only overridden
+  // when an environment variable is set. If a value ever needs to differ per
+  // environment, add `vars` plus the matching `previews.vars`.
+  "previews": {},
 }
