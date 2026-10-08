@@ -92,12 +92,15 @@ export const parseTranslation = (
 
   if (startIndex === -1) {
     // No locale markers at all: the text may be in either language, so it is sent
-    // as-is and the provider detects the source. The key carries the locale
-    // because the same untagged text is translated differently per target.
+    // as-is and the provider detects the source. The `auto:` prefix can never be
+    // the start of a marked template's key (`main` always begins with `[en]`,
+    // `[zh]` or `<p>[…]</p>`), so an untagged entry can never collide with a
+    // marked one; the locale is part of the key because the same untagged text is
+    // translated differently per target.
     return {
       text: template,
       needsRemote: true,
-      key: `[${locale}]${template}`,
+      key: `auto:${locale}:${template}`,
       source: template,
       targetLocale: locale,
     }
@@ -144,11 +147,16 @@ export const parseTranslation = (
     return { text: start + body + end, needsRemote: false }
   }
 
+  const source = firstTranslation || ''
+
   return {
-    text: start + (firstTranslation || '') + end,
-    needsRemote: true,
+    text: start + source + end,
+    // an empty first section has nothing to translate: staying remote would show
+    // the "translating" placeholder forever, because the composable never fires a
+    // request for an empty source
+    needsRemote: Boolean(source),
     key: main,
-    source: firstTranslation,
+    source,
     sourceLocale: firstLocale,
     // the section of `locale` is missing, so the first one is translated into it
     targetLocale: locale,
