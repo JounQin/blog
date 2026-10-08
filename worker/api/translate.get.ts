@@ -1,4 +1,7 @@
-import { translate } from '@deeplx/core'
+import {
+  translateByDeepLX,
+  type DeepLXTranslationSuccessResult,
+} from '@deeplx/core'
 import { $fetch } from 'ofetch'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
@@ -40,8 +43,12 @@ const FALLBACK_TIMEOUT = 4000
 /** Appended to `DEEPLX_URL`, which itself must not carry a trailing slash. */
 const DEEPLX_PATH = '/translate'
 
-type TargetLanguage = Parameters<typeof translate>[1]
-type SourceLanguage = NonNullable<Parameters<typeof translate>[2]>
+type TargetLanguage = Parameters<typeof translateByDeepLX>[1]
+type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
+
+/** `zh` matches `zh-Hans`, `EN` matches `en`; only the primary subtag counts. */
+const samePrimarySubtag = (a: string, b: string): boolean =>
+  a.toLowerCase().split('-')[0] === b.toLowerCase().split('-')[0]
 
 /** Self-hosted DLX. Both env vars are optional: `DEEPLX_URL` alone already
  * enables the fallback, and no `authorization` header is sent without a token. */
@@ -100,55 +107,44 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
 const MAX_ATTEMPTS = 2
 
 /**
- * Whether the chunk holds anything the target language cannot already read: CJK
- * when the target is English, Latin letters when the target is Chinese.
- *
- * It is still required: it guards the unchanged-text check below, because DeepL
- * also echoes back chunks that have nothing to translate (markup, numbers, text
- * already in the target language). Without it those would burn an allowed retry
- * and then make a pointless fallback request, so a page of markup could be sent
- * to DLX for nothing.
+ * Whether an unchanged answer is a decline rather than a chunk that already is
+ * in the target language. DeepL refuses to translate when it detects the
+ * language it was asked to translate *from* (`sourceLang` matches `source`, or
+ * -- with an auto source -- is anything but the target); a chunk already in the
+ * target language comes back unchanged with a different `sourceLang`. Measured
+ * against 0.2.4: `sourceLang` is the detected language, but the anonymous
+ * endpoint echoes the requested `source_lang` when its detection is not
+ * confident, so a short echo can still be reported as the requested source.
  */
-const expectsTranslation = (chunk: string, target: TargetLanguage): boolean =>
-  /ZH/.test(target) ? /[A-Za-z]/.test(chunk) : /[\u3400-\u9fff]/.test(chunk)
-
-/**
- * The provider status carried by a `@deeplx/core` failure. Its `translate()`
- * throws `new Error(message, { cause: { code, message } })`, where `code` is the
- * DeepL response status, or 503 for a failure the library itself normalises
- * (network error, abort, empty translation response). Measured against 0.2.3: a
- * rejected `target_lang` gives `cause.code === 400`, an aborted request gives
- * `cause.code === 503`. Only a numeric `cause.code` is trusted, so any other
- * error shape counts as having no status.
- */
-const statusOf = (error: unknown): number | undefined => {
-  const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code
-  return typeof code === 'number' ? code : undefined
-}
-
-/**
- * A 4xx means DeepL rejected this request or client profile, so repeating it is
- * pointless: the chunk goes to the self-hosted DLX (a different client profile)
- * right away. Everything else -- 5xx, timeouts, aborts, network failures and
- * anything unrecognised -- may be transient and consumes the remaining attempts.
- */
-const isRetryableError = (error: unknown): boolean => {
-  const status = statusOf(error)
-  return status === undefined || status < 400 || status >= 500
-}
+const isDecline = (
+  chunk: string,
+  result: DeepLXTranslationSuccessResult,
+  source: SourceLanguage | undefined,
+  target: TargetLanguage,
+): boolean =>
+  result.data === chunk &&
+  (source
+    ? samePrimarySubtag(result.sourceLang, source)
+    : !samePrimarySubtag(result.sourceLang, target))
 
 /**
  * One primary attempt through `@deeplx/core`, which talks to DeepL's anonymous
- * oneshot endpoint. Throws on provider errors (timeout, rate limit, ...).
+ * oneshot endpoint. `translateByDeepLX` reports failures as values
+ * (`{ code, message }`), so there is nothing to catch here.
  */
 const translateWithLibrary = (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage,
-): Promise<string> =>
-  translate(chunk, target, source, {
-    signal: AbortSignal.timeout(CHUNK_TIMEOUT),
-  })
+  source: SourceLanguage | undefined,
+): ReturnType<typeof translateByDeepLX> =>
+  translateByDeepLX(
+    source,
+    target,
+    chunk,
+    undefined,
+    undefined,
+    AbortSignal.timeout(CHUNK_TIMEOUT),
+  )
 
 /**
  * One fallback request to the self-hosted DLX service. The origin (host, port
@@ -170,7 +166,7 @@ const translateWithLibrary = (
 const translateWithDlx = async (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage,
+  source: SourceLanguage | undefined,
   service: DlxService,
 ): Promise<string> => {
   const url = service.url
@@ -225,50 +221,57 @@ const translateWithDlx = async (
 const translateChunk = async (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage,
+  source: SourceLanguage | undefined,
   attempts: number,
   service: DlxService,
 ): Promise<{ text: string; ok: boolean }> => {
-  // primary: the `@deeplx/core` library, up to `attempts` tries
+  // primary: the `@deeplx/core` library, up to `attempts` tries. It reports its
+  // outcome as a value, so the retry decision is a plain check on `code`
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const text = await translateWithLibrary(chunk, target, source)
+    const result = await translateWithLibrary(chunk, target, source)
 
-      if (text === chunk && expectsTranslation(chunk, target)) {
-        // DeepL answers 200 with the input text, without an error, when it declines
-        // to translate. Count it as a failed attempt so an allowed retry still runs,
-        // and fall back to the source text once the attempts are exhausted. An
-        // identical result is legitimate for chunks that carry nothing to translate
-        // (markup, names, text already in the target language), so those pass through.
+    // a 200 with a non-empty string is a real response
+    if (
+      result.code === 200 &&
+      'data' in result &&
+      typeof result.data === 'string' &&
+      result.data
+    ) {
+      if (isDecline(chunk, result, source, target)) {
+        // DeepL answers 200 with the input text when it declines to translate.
+        // Count it as a failed attempt so an allowed retry still runs, and fall
+        // back to the source text once the attempts are exhausted.
         console.warn(
-          '[translate] library returned the source text unchanged',
+          '[translate] library declined to translate the chunk',
           `attempt=${attempt}/${attempts}`,
           `length=${chunk.length}`,
           `source=${source} target=${target}`,
-          JSON.stringify(chunk.slice(0, 80)),
+          `sourceLang=${result.sourceLang}`,
         )
         continue
       }
 
-      return { text, ok: true }
-    } catch (error) {
-      // shows up in the Worker logs (observability is enabled in wrangler.jsonc)
+      return { text: result.data, ok: true }
+    }
+
+    // no usable response: log it (observability is enabled in wrangler.jsonc)
+    // and decide whether another attempt is worth it
+    console.warn(
+      `[translate] library chunk failed (attempt ${attempt}/${attempts})`,
+      `code=${result.code}`,
+      `message=${'message' in result ? result.message : 'none'}`,
+      `length=${chunk.length}`,
+    )
+
+    if (result.code >= 400 && result.code < 500) {
+      // 4xx: DeepL rejected this request/profile, so a repeated call would be
+      // rejected the same way; stop retrying and let the fallback try instead
       console.warn(
-        `[translate] library chunk failed (attempt ${attempt}/${attempts})`,
-        String(error),
+        '[translate] library rejected the request (4xx), not retrying',
+        `code=${result.code}`,
         `length=${chunk.length}`,
       )
-
-      if (!isRetryableError(error)) {
-        // 4xx: DeepL rejected this request/profile, so a repeated call would be
-        // rejected the same way; stop retrying and let the fallback try instead
-        console.warn(
-          '[translate] library rejected the request (4xx), not retrying',
-          `status=${statusOf(error)}`,
-          `length=${chunk.length}`,
-        )
-        break
-      }
+      break
     }
   }
 

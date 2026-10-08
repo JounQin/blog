@@ -65,16 +65,18 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 
 ### Translation
 
-- `/api/translate` is backed by `@deeplx/core` (`translate(text, target, source)`, DeepL's
+- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(source, target, text)`, DeepL's
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
   `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback**, tried in
-  this order for every chunk: `@deeplx/core` first, retried while its failure is **not** a 4xx (a
-  4xx means DeepL rejected the request/client profile, so a repeat is pointless, and the loop
-  stops there). An unchanged answer for a chunk that `expectsTranslation` says has something to
-  translate also counts as a failed attempt and consumes the remaining attempts — a chunk with
-  nothing to translate (markup, numbers, text already in the target language) is passed through
+  this order for every chunk: `@deeplx/core` first (`translateByDeepLX`, which returns
+  `{ code, data, sourceLang, ... }` instead of throwing), retried while its `code` is **not** a 4xx
+  (a 4xx means DeepL rejected the request/client profile, so a repeat is pointless, and the loop
+  stops there). A 200 whose output is unchanged counts as a decline — and consumes the remaining
+  attempts — only when DeepL reports the language we asked to translate *from*: `sourceLang`
+  matches `source` (or, with an auto source, is not the target). An unchanged answer with a
+  different detected language is the chunk already being in the target language, so it is returned
   as is. Once the attempts are exhausted, **one** POST to `<DEEPLX_URL>/translate` with
   `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
   `{ text, source_lang, target_lang }`, for a self-hosted
@@ -83,9 +85,10 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   response is judged — HTTP 200, `code` 200, a non-empty `data` and `data !== chunk`. A chunk
   the library translates never reaches DLX, and with `DEEPLX_URL` unset nothing changes at all
   (the route stays library-only)
-- The library's status comes from the real field `error.cause.code` (its `translate()` throws
-  `new Error(message, { cause: { code, message } })`; a network failure or abort is normalised to
-  503), classified by the tiny `statusOf` / `isRetryableError` helpers — no message matching
+- The library signal is the value `translateByDeepLX` returns: a 4xx `code` short-circuits to the
+  fallback, any other non-200 shape (5xx, empty payload) spends the remaining attempts, and a
+  200 carries `data` plus the `sourceLang` used for the decline check — no error parsing, cause
+  inspection or message matching
 - The fallback response only counts as translated when the HTTP status is 200, the JSON `code`
   is 200, `data` is a non-empty string and `data !== chunk`; everything else (any error status,
   an auth failure, a bad payload, an unchanged answer) fails like the library path, with a
