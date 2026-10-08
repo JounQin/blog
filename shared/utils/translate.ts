@@ -40,7 +40,10 @@ export interface ParsedTranslation {
   /** cache key + payload for the remote translation */
   key?: string
   source?: string
+  /** the language of `source`, when the template labels it */
   sourceLocale?: string
+  /** the language to produce; sent to /api/translate as `target` */
+  targetLocale?: string
   start?: string
   end?: string
 }
@@ -88,7 +91,16 @@ export const parseTranslation = (
   }
 
   if (startIndex === -1) {
-    return { text: template, needsRemote: false }
+    // No locale markers at all: the text may be in either language, so it is sent
+    // as-is and the provider detects the source. The key carries the locale
+    // because the same untagged text is translated differently per target.
+    return {
+      text: template,
+      needsRemote: true,
+      key: `[${locale}]${template}`,
+      source: template,
+      targetLocale: locale,
+    }
   }
 
   const start = template.slice(0, Math.max(0, startIndex))
@@ -138,6 +150,8 @@ export const parseTranslation = (
     key: main,
     source: firstTranslation,
     sourceLocale: firstLocale,
+    // the section of `locale` is missing, so the first one is translated into it
+    targetLocale: locale,
     start,
     end,
   }

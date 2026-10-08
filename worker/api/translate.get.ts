@@ -1,7 +1,7 @@
 import { translateByDeepLX } from '@deeplx/core'
 import { $fetch } from 'ofetch'
 
-import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
+import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE, isLocale } from '../../shared/utils/locale'
 import { getEnv } from '../utils/env'
 
 /**
@@ -18,7 +18,13 @@ import { getEnv } from '../utils/env'
  * 301/302/303 becomes a GET and drops the body, so only a method-preserving
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
  * behaviour is exactly the library-only one, which keeps the fallback reversible.
- * `Source` is the locale of `sourceText`; the target locale is the opposite one.
+ *
+ * The source language is never forced: both providers are called with an
+ * auto-detected source, because a forced `source_lang` is mirrored back as
+ * `detected_source_language` -- and the chunk echoed -- whenever the endpoint's
+ * own detection is not confident. `target` says which language to produce; when
+ * the caller does not send it, it is derived from `source`, or from the locale
+ * cookie, exactly as before.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.EN]: 'EN',
@@ -42,7 +48,6 @@ const FALLBACK_TIMEOUT = 4000
 const DEEPLX_PATH = '/translate'
 
 type TargetLanguage = Parameters<typeof translateByDeepLX>[1]
-type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
 
 /** Self-hosted DLX. Both env vars are optional: `DEEPLX_URL` alone already
  * enables the fallback, and no `authorization` header is sent without a token. */
@@ -102,16 +107,17 @@ const MAX_ATTEMPTS = 2
 
 /**
  * One primary attempt through `@deeplx/core`, which talks to DeepL's anonymous
- * oneshot endpoint. `translateByDeepLX` reports failures as values
+ * oneshot endpoint. The source language is left to the provider, so a short or
+ * mixed chunk is not echoed back merely because a forced `source_lang` was
+ * mirrored as the detected one. `translateByDeepLX` reports failures as values
  * (`{ code, message }`), so the retry decision is a plain check on the result.
  */
 const translateWithLibrary = (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage | undefined,
 ): ReturnType<typeof translateByDeepLX> =>
   translateByDeepLX(
-    source,
+    undefined,
     target,
     chunk,
     undefined,
@@ -122,7 +128,8 @@ const translateWithLibrary = (
 /**
  * One fallback request to the self-hosted DLX service. The origin (host, port
  * and any path prefix) comes from `DEEPLX_URL` verbatim and only `/translate`
- * is appended, so nothing here is host or port specific.
+ * is appended, so nothing here is host or port specific. `source_lang` is left
+ * out, so the DLX detects the language itself exactly like the library call.
  *
  * Redirects are followed (the runtime default), but the endpoint should serve
  * `/translate` directly: a 301/302/303 is re-issued as a GET and drops the JSON
@@ -139,7 +146,6 @@ const translateWithLibrary = (
 const translateWithDlx = async (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage | undefined,
   service: DlxService,
 ): Promise<string> => {
   const url = service.url
@@ -158,7 +164,6 @@ const translateWithDlx = async (
     },
     body: {
       text: chunk,
-      source_lang: source,
       target_lang: target,
     },
     // exactly one fallback request: ofetch does not retry POST by default
@@ -194,7 +199,6 @@ const translateWithDlx = async (
 const translateChunk = async (
   chunk: string,
   target: TargetLanguage,
-  source: SourceLanguage | undefined,
   attempts: number,
   service: DlxService,
 ): Promise<{ text: string; ok: boolean }> => {
@@ -202,7 +206,7 @@ const translateChunk = async (
   // outcome as a value, so the retry decision is a plain check on `code`
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const result = await translateWithLibrary(chunk, target, source)
+      const result = await translateWithLibrary(chunk, target)
 
       // a 200 with a non-empty string is a real response
       if (
@@ -223,7 +227,7 @@ const translateChunk = async (
             '[translate] library returned the source text unchanged, falling back',
             `attempt=${attempt}/${attempts}`,
             `length=${chunk.length}`,
-            `source=${source} target=${target}`,
+            `target=${target}`,
           )
           break
         }
@@ -271,12 +275,12 @@ const translateChunk = async (
       '[translate] falling back to the self-hosted DLX',
       `attempts=${attempts}`,
       `length=${chunk.length}`,
-      `source=${source} target=${target}`,
+      `target=${target}`,
     )
 
     try {
       return {
-        text: await translateWithDlx(chunk, target, source, service),
+        text: await translateWithDlx(chunk, target, service),
         ok: true,
       }
     } catch (error) {
@@ -299,14 +303,17 @@ export default defineEventHandler(async event => {
     return { text: '' }
   }
 
-  const requested =
-    typeof query.source === 'string' && query.source
-      ? query.source
-      : getCookie(event, LOCALE_COOKIE)
-  const locale = requested === Locale.ZH ? Locale.ZH : Locale.EN
+  const sourceLocale = isLocale(query.source) ? query.source : undefined
+  const targetLocale = isLocale(query.target) ? query.target : undefined
+  const cookie = getCookie(event, LOCALE_COOKIE)
+  const cookieLocale = isLocale(cookie) ? cookie : Locale.EN
 
-  const target = DEEPL_LOCALES[TOGGLE_LOCALE[locale]] as TargetLanguage
-  const source = DEEPL_LOCALES[locale] as SourceLanguage
+  // the provider always detects the source language itself; `source` is only
+  // used to derive the target for callers that still send it, and `target` wins
+  // when present
+  const target = DEEPL_LOCALES[
+    targetLocale ?? TOGGLE_LOCALE[sourceLocale ?? cookieLocale]
+  ] as TargetLanguage
 
   // chunks are translated in parallel, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
@@ -322,9 +329,7 @@ export default defineEventHandler(async event => {
   }
   const chunks = splitText(text)
   const results = await Promise.all(
-    chunks.map(chunk =>
-      translateChunk(chunk, target, source, attempts, service),
-    ),
+    chunks.map(chunk => translateChunk(chunk, target, attempts, service)),
   )
 
   return {

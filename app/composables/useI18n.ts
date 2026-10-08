@@ -30,6 +30,7 @@ export const useI18n = () => {
     key: string,
     source: string,
     sourceLocale?: string,
+    targetLocale?: string,
     retry = false,
   ) => {
     try {
@@ -40,6 +41,8 @@ export const useI18n = () => {
         retry: 0,
         params: {
           source: sourceLocale,
+          // the language to produce: the route auto-detects the source itself
+          target: targetLocale,
           sourceText: source,
           ...(retry ? { retry: true } : {}),
         },
@@ -73,7 +76,9 @@ export const useI18n = () => {
         continue
       }
 
-      tasks.push(request(key, parsed.source, parsed.sourceLocale))
+      tasks.push(
+        request(key, parsed.source, parsed.sourceLocale, parsed.targetLocale),
+      )
     }
 
     await Promise.all(tasks)
@@ -99,7 +104,13 @@ export const useI18n = () => {
 
     if (import.meta.client && parsed.source && !pending.value[key]) {
       pending.value[key] = true
-      void request(key, parsed.source, parsed.sourceLocale, true).finally(() => {
+      void request(
+        key,
+        parsed.source,
+        parsed.sourceLocale,
+        parsed.targetLocale,
+        true,
+      ).finally(() => {
         pending.value[key] = false
       })
     }

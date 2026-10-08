@@ -65,25 +65,30 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 
 ### Translation
 
-- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(source, target, text)`, DeepL's
+- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(undefined, target, text)`, DeepL's
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
-  `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
+  `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone. The source language is
+  never forced: the provider detects it, because a forced `source_lang` is mirrored back as
+  `detected_source_language` — and the chunk echoed — whenever its detection is not confident.
+  `target` (the language to produce) is therefore explicit; the route still accepts `source` and
+  derives the target from it (or from the locale cookie) when `target` is absent. Untagged text,
+  i.e. a string without `[en]`/`[zh]` markers, is translated the same way, with the provider
+  detecting its language
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
   chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
   (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
   `code` is **not** a 4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is
   pointless, and the loop stops there). A 200 whose output is identical to the input is not
   retried either, but it does go to DLX: the library's anonymous profile echoes short, ambiguous
-  or mixed chunks unchanged (and mirrors the requested `source_lang` as
-  `detected_source_language` when its detection is not confident), while the self-hosted DLX
-  answers with a different client profile — the iOS one — so it is the path that can still
-  translate such a chunk. When the fallback fails, or `DEEPLX_URL` is unset, that chunk keeps its
-  source text and the request reports `translated: false`. So, after the library attempts are
+  or mixed chunks unchanged, while the self-hosted DLX answers with a different client profile —
+  the iOS one — so it is the path that can still translate such a chunk. When the fallback fails,
+  or `DEEPLX_URL` is unset, that chunk keeps its source text and the request reports
+  `translated: false`. So, after the library attempts are
   spent on a failure or the chunk came back unchanged, **one** POST to
   `<DEEPLX_URL>/translate` with
   `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
-  `{ text, source_lang, target_lang }`, for a self-hosted
+  `{ text, target_lang }` (`source_lang` is omitted so the DLX detects it too), for a self-hosted
   [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
   default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
   GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
