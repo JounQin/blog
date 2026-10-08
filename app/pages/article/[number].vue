@@ -63,11 +63,12 @@ useHead(() => ({
     >
       {{ t('toggle_locale') }}
     </small>
-    <!-- eslint-disable-next-line vue/no-v-html -->
+    <!-- eslint-disable vue/no-v-html -- GitHub renders this markup -->
     <div
       class="markdown-body comment-body my-3 my-md-5"
       v-html="tt(article.bodyHTML, false)"
     />
+    <!-- eslint-enable vue/no-v-html -->
     <ul class="list-unstyled">
       <li
         v-for="comment of article.comments.nodes"
@@ -117,11 +118,12 @@ useHead(() => ({
                 </a>
               </div>
             </div>
-            <!-- eslint-disable-next-line vue/no-v-html -->
+            <!-- eslint-disable vue/no-v-html -- GitHub renders this markup -->
             <div
               class="card-body markdown-body comment-body"
               v-html="comment.bodyHTML"
             />
+            <!-- eslint-enable vue/no-v-html -->
           </div>
         </div>
       </li>
