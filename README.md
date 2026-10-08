@@ -8,7 +8,7 @@ A blog system built on the GitHub GraphQL API, with Nuxt 4 SSR running on Cloudf
 
 - Articles are the GitHub issues of the `JounQin/blog` repository: title, body, labels and comments are read through GraphQL
 - SSR: Nuxt 4 + Vue 3, nitro `cloudflare_module` preset, running on Cloudflare Workers (workerd)
-- i18n: `en` / `zh`, including the `[en]…[zh]…[_end_]` translation DSL, with `@deeplx/core` (no API key needed) as the remote translation provider
+- i18n: `en` / `zh`, including the `[en]…[zh]…[_end_]` translation DSL, with `@deeplx/core` (no API key needed) as the remote translation provider; optionally set `DEEPLX_URL` / `DEEPLX_TOKEN` to fall back to a self-hosted [DLX](https://github.com/OwO-Network/DLX) instance when the library fails or declines a chunk
 - PWA: `@vite-pwa/nuxt` (service worker + web manifest)
 - Login: GitHub OAuth with an HMAC-signed cookie session
 - Environment variables, deployment checklist and the migration log live in [MIGRATION.md](MIGRATION.md)

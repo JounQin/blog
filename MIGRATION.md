@@ -69,6 +69,20 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
   `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
+- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback**, tried in
+  this order for every chunk: `@deeplx/core` first, retried only while its failure is **not** a
+  4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is pointless); a 4xx
+  and the unchanged-text echo stop the retries; then **one** POST to `<DEEPLX_URL>/translate`
+  with `Authorization: Bearer $DEEPLX_TOKEN` and `{ text, source_lang, target_lang }`, for a
+  self-hosted [DLX](https://github.com/OwO-Network/DLX). A chunk the library translates never
+  reaches DLX, and with `DEEPLX_URL` unset nothing changes at all (the route stays library-only)
+- The library's status comes from the real field `error.cause.code` (its `translate()` throws
+  `new Error(message, { cause: { code, message } })`; a network failure or abort is normalised to
+  503), classified by the tiny `statusOf` / `isRetryableError` helpers — no message matching
+- The fallback response only counts as translated when the HTTP status is 200, the JSON `code`
+  is 200, `data` is a non-empty string and `data !== chunk`; everything else (any error status,
+  an auth failure, a bad payload, an unchanged answer) fails like the library path, with a
+  warning that names the path and the status/code but never the token
 - Bundle workaround: `@deeplx/core` imports `node-fetch-native/proxy`, and `node-fetch-native` ships
   a conditional exports map whose `workerd`/`worker` branch points at `dist/native.mjs` (a file).
   Nitro's builder is still **Rollup based** (`nitropack@2.13.4` depends on `rollup@^4.60.2`; the app
@@ -100,6 +114,11 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   `GITHUB_TOKEN` only in `.env.local`, `/api/categories` returns **503**, so `.env` / `.env.local`
   never reach the worker runtime (they only matter for a plain node preset)
 - Production: secrets via `wrangler secret put <NAME>`. Non-secret overrides can be Worker variables (dashboard) or a `wrangler.jsonc` `vars` block, but a `vars` block requires a matching `previews.vars` (Workers Builds refuses a preview deploy without it), so the `GITHUB_REPOSITORY_*` values are deliberately left to their `nuxt.config.ts` defaults instead of being duplicated per environment
+- `DEEPLX_URL` / `DEEPLX_TOKEN` are optional and make a self-hosted DLX the `/api/translate`
+  fallback when the `@deeplx/core` path fails. Put them in the dashboard (Worker
+  variables/secrets) for **both** Production and Preview — **not** in a `wrangler.jsonc` `vars`
+  block, which would force a `previews.vars` copy and overwrite the dashboard values on every
+  deploy
 
 ### Cleanup (done)
 
@@ -196,7 +215,10 @@ Values to add with `wrangler secret put <NAME>` (or in the dashboard):
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app                                                                 |
 | `GITHUB_OAUTH_CALLBACK`                     | e.g. `https://blog.1stg.me/api/oauth`; locally `http://localhost:3000/api/oauth` |
 
-Translation needs no variable at all (`@deeplx/core`).
+Translation needs no variable at all (`@deeplx/core`). Optionally add `DEEPLX_URL`
+(e.g. `https://<your-dlx-host>`) and `DEEPLX_TOKEN` to fall back to a self-hosted DLX when
+`@deeplx/core` fails or declines a chunk; both scopes (Production and Preview) need them, and
+they must not go into `wrangler.jsonc` (see above).
 
 Custom domain: worker `blog` + `blog.1stg.me` (the removed `vercel.json` used to rewrite to Heroku;
 this should become a Cloudflare custom domain).
@@ -241,7 +263,9 @@ this should become a Cloudflare custom domain).
 Worker Previews do not inherit production settings. Add the runtime secrets to the
 Preview scope as well (the Worker -> Settings -> Variables and Secrets -> Preview),
 otherwise `/api/*` runs without credentials and login is unavailable:
-`GITHUB_TOKEN`, `APP_KEYS`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
+`GITHUB_TOKEN`, `APP_KEYS`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — plus
+`DEEPLX_URL` / `DEEPLX_TOKEN` when previews should use the self-hosted DLX fallback too
+(without them a preview sticks to `@deeplx/core`).
 
 Leave `GITHUB_OAUTH_CALLBACK` unset for previews: `/api/login` derives it from the
 origin of the incoming request. Register `https://jounqin.workers.dev/api/oauth` in
