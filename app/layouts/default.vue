@@ -133,7 +133,7 @@ function preventGesture(event: Event) {
     class="container-fluid"
   >
     <HiProgress :progress="progress" />
-    <nav class="fixed-top navbar navbar-expand-md navbar-light bg-light">
+    <nav class="fixed-top navbar navbar-expand-md">
       <div class="container">
         <NuxtLink
           class="navbar-brand"
@@ -237,7 +237,7 @@ function preventGesture(event: Event) {
         Top
       </button>
     </div>
-    <footer class="row py-4 bg-light">
+    <footer class="row py-4">
       <div class="container d-flex">
         <div class="flex-1">
           <a
@@ -296,7 +296,7 @@ function preventGesture(event: Event) {
     content: '';
     display: block;
     height: 2px;
-    background-color: $link-color;
+    background-color: currentColor;
     animation: 1s ease;
   }
 
@@ -365,6 +365,13 @@ function preventGesture(event: Event) {
   }
 }
 
+// `bg-body-tertiary` would read `--bs-tertiary-bg-rgb`, which still holds
+// Bootstrap's own value rather than the token the dark bridge installs
+.navbar,
+footer {
+  background-color: var(--bs-tertiary-bg);
+}
+
 @media (max-width: $grid-breakpoints-md) {
   .collapse {
     position: absolute;
@@ -373,7 +380,7 @@ function preventGesture(event: Event) {
     left: 0;
     right: 0;
     padding: 0 14px;
-    background-color: #f8f9fa;
+    background-color: var(--bs-tertiary-bg);
     box-shadow: 0 1px 1px rgb(0 0 0 / 5%);
   }
 }
@@ -385,8 +392,8 @@ function preventGesture(event: Event) {
   padding: 2px 5px;
   border-radius: 2px;
   font-size: 12px;
-  border: 1px solid $border-color;
-  background-color: #fff;
+  border: 1px solid var(--bs-border-color);
+  background-color: var(--bs-body-bg);
   z-index: 10001;
 }
 </style>

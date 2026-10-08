@@ -104,7 +104,7 @@ useHead(() => ({
               <div class="d-inline-block">
                 <a
                   v-if="comment.author"
-                  class="text-dark"
+                  class="text-body"
                   :href="comment.author.url"
                 >
                   {{ comment.author.login }}

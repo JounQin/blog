@@ -128,4 +128,34 @@ useHead(() => ({ title: t('archives') }))
     }
   }
 }
+
+// The timeline grays above are tuned for the light theme; on a dark page reuse
+// the GitHub tokens so the dots and rails stay visible.
+@include color-mode(dark) {
+  .archives-main:before {
+    background-color: var(--borderColor-muted);
+  }
+
+  .archives-item {
+    &:before {
+      background-color: var(--fgColor-muted);
+    }
+
+    &.archives-title:before {
+      background-color: var(--fgColor-default);
+    }
+
+    &.archives-article {
+      border-bottom-color: var(--borderColor-default);
+
+      &:hover {
+        border-bottom-color: var(--fgColor-muted);
+
+        &:before {
+          background-color: var(--fgColor-default);
+        }
+      }
+    }
+  }
+}
 </style>

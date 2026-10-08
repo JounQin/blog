@@ -1,2 +1,13 @@
 $link-color: #555 !default;
 $link-hover-decoration: none !default;
+
+// Follow the operating system color scheme with pure CSS (`@media
+// (prefers-color-scheme: dark)`) instead of the default `[data-bs-theme]`
+// attribute. The bundled `github-markdown-css` already switches
+// `.markdown-body` this way, so this keeps the rest of the chrome in sync
+// without any client side script or flash of the wrong theme.
+//
+// The dark palette is deliberately *not* declared here: it is inherited from the
+// `github-markdown-css` design tokens, which `nuxt.config.ts` hoists to `:root`
+// — see the bridge at the top of `main.scss`.
+$color-mode-type: media-query !default;

@@ -14,7 +14,7 @@ defineProps<{
 <style lang="scss" scoped>
 .hi-loading {
   animation: loading 0.5s infinite linear;
-  border: 2px solid rgb(204 204 204);
+  border: 2px solid #ccc;
   border: {
     right-color: transparent;
     radius: 50%;
@@ -22,6 +22,13 @@ defineProps<{
 
   width: 15px;
   height: 15px;
+
+  // the light `#ccc` ring disappears on the dark canvas
+  @include color-mode(dark) {
+    border-color: var(--fgColor-muted);
+    // re-assert the gap the shorthand above punched into the ring
+    border-right-color: transparent;
+  }
 }
 
 @keyframes loading {
