@@ -229,3 +229,9 @@ this should become a Cloudflare custom domain).
 2. Nothing is committed yet; review `git status` before committing
 3. A real browser login round trip still has to be done on port 3000 (`yarn dev`), because that is
    the callback origin registered for local development
+
+- `GITHUB_OAUTH_CALLBACK` may be left unset. Development and production set it
+  explicitly; previews omit it and `/api/login` derives the callback from the origin
+  of the incoming request. That works because the registered redirect URI
+  (`https://jounqin.workers.dev/api/oauth`) has GitHub's "Allow wildcard matching"
+  enabled, so any subdomain of it is accepted.

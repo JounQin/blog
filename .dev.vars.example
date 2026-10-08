@@ -18,6 +18,9 @@ GITHUB_REPOSITORY_OWNER_TYPE=user
 APP_KEYS=dev-key-1,dev-key-2
 
 # GitHub OAuth app (login button); callback: <origin>/api/oauth
+# GITHUB_OAUTH_CALLBACK is optional: when empty, /api/login derives it from the
+# origin of the incoming request -- previews rely on that, together with a wildcard
+# redirect URI in the GitHub app settings.
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 GITHUB_OAUTH_CALLBACK=http://localhost:3000/api/oauth

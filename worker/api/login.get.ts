@@ -13,12 +13,19 @@ import { readSession, writeSession } from '../utils/session'
 export default defineEventHandler(async event => {
   const { clientId, oauthCallback } = getBlogConfig(event)
 
-  if (!clientId || !oauthCallback) {
+  if (!clientId) {
     throw createError({
       statusCode: 503,
       statusMessage: 'GitHub OAuth app is not configured',
     })
   }
+
+  // Development and production set GITHUB_OAUTH_CALLBACK explicitly. Previews
+  // do not, so the origin of the current request is used instead -- combined
+  // with GitHub's per-URI "Allow wildcard matching" (any subdomain of the
+  // registered redirect URI is accepted) every preview host works without
+  // configuring the variable per environment.
+  const callback = oauthCallback || `${getRequestURL(event).origin}/api/oauth`
 
   const session = await readSession(event)
   const uuid = session.uuid || crypto.randomUUID()
@@ -33,7 +40,7 @@ export default defineEventHandler(async event => {
   const authorizeUrl = new URL('https://github.com/login/oauth/authorize')
   authorizeUrl.searchParams.set('client_id', clientId)
   authorizeUrl.searchParams.set('state', uuid)
-  authorizeUrl.searchParams.set('redirect_uri', `${oauthCallback}?path=${target}`)
+  authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${target}`)
 
   return sendRedirect(event, authorizeUrl.toString(), 302)
 })
