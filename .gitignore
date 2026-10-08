@@ -14,3 +14,7 @@ sync
 .yarn/*
 !.yarn/plugins
 !.yarn/releases
+
+# Synology metadata (#recycle, @eaDir) -- the NAS equivalent of .DS_Store
+@eaDir/
+#recycle/
