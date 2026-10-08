@@ -79,12 +79,14 @@ const translateChunk = async (
 
       if (text === chunk) {
         // DeepL answers 200 with the input text, without an error, when it declines
-        // to translate -- treat that as a failure instead of a translation
+        // to translate. Count it as a failed attempt so an allowed retry still runs,
+        // and fall back to the source text once the attempts are exhausted.
         console.warn(
           '[translate] DeepL returned the source text unchanged',
+          `attempt=${attempt}/${attempts}`,
           `length=${chunk.length}`,
         )
-        return { text, ok: false }
+        continue
       }
 
       return { text, ok: true }
