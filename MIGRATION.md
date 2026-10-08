@@ -65,16 +65,16 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 
 ### Translation
 
-- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(undefined, target, text)`, DeepL's
+- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(source, target, text)`, DeepL's
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
-  `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone. The source language is
-  never forced: the provider detects it, because a forced `source_lang` is mirrored back as
-  `detected_source_language` — and the chunk echoed — whenever its detection is not confident.
-  `target` (the language to produce) is therefore explicit; the route still accepts `source` and
-  derives the target from it (or from the locale cookie) when `target` is absent. Untagged text,
-  i.e. a string without `[en]`/`[zh]` markers, is translated the same way, with the provider
-  detecting its language
+  `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone. A caller-provided `source`
+  is passed to the provider; when it is missing the provider detects the language itself, which is
+  how untagged text, i.e. a string without `[en]`/`[zh]` markers, is translated. `target` (the
+  language to produce) is explicit in that case; with `source` but no `target` the target is still
+  derived from `source`, and with neither from the locale cookie, exactly as before. Note that the
+  anonymous endpoint mirrors a given `source_lang` as `detected_source_language` whenever its own
+  detection is not confident, so an accurate tag helps and a wrong one can cause an echo
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
   chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
   (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
@@ -88,7 +88,8 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   spent on a failure or the chunk came back unchanged, **one** POST to
   `<DEEPLX_URL>/translate` with
   `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
-  `{ text, target_lang }` (`source_lang` is omitted so the DLX detects it too), for a self-hosted
+  `{ text, source_lang?, target_lang }` (`source_lang` is sent only when the caller named a
+  source, so the DLX detects it otherwise), for a self-hosted
   [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
   default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
   GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
