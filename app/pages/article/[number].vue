@@ -45,7 +45,7 @@ useHead(() => ({
       <li
         v-for="label of article.labels.nodes"
         :key="label.id"
-        class="d-inline-flex ml-2 px-2"
+        class="d-inline-flex ms-2 px-2"
         :style="{ backgroundColor: `#${label.color}` }"
       >
         <NuxtLink
@@ -80,7 +80,7 @@ useHead(() => ({
           :href="comment.author.url"
         >
           <img
-            class="rounded mr-3 avatar-img"
+            class="rounded me-3 avatar-img"
             :src="`${comment.author.avatarUrl}&s=50`"
             :srcset="`${comment.author.avatarUrl}&s=100 2x`"
             alt="avatar"
@@ -95,7 +95,7 @@ useHead(() => ({
                 :href="comment.author.url"
               >
                 <img
-                  class="rounded mr-3 avatar-img"
+                  class="rounded me-3 avatar-img"
                   :src="`${comment.author.avatarUrl}&s=32`"
                   :srcset="`${comment.author.avatarUrl}&s=64 2x`"
                   alt="avatar"
@@ -110,7 +110,7 @@ useHead(() => ({
                   {{ comment.author.login }}
                 </a>
                 <a
-                  class="small text-secondary d-block d-md-inline-block ml-0 ml-md-2"
+                  class="small text-secondary d-block d-md-inline-block ms-0 ms-md-2"
                   :href="comment.url"
                 >
                   {{ timeAgo(comment.createdAt, locale) }}
