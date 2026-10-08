@@ -235,3 +235,16 @@ this should become a Cloudflare custom domain).
   of the incoming request. That works because the registered redirect URI
   (`https://jounqin.workers.dev/api/oauth`) has GitHub's "Allow wildcard matching"
   enabled, so any subdomain of it is accepted.
+
+## Preview environment
+
+Worker Previews do not inherit production settings. Add the runtime secrets to the
+Preview scope as well (the Worker -> Settings -> Variables and Secrets -> Preview),
+otherwise `/api/*` runs without credentials and login is unavailable:
+`GITHUB_TOKEN`, `APP_KEYS`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
+
+Leave `GITHUB_OAUTH_CALLBACK` unset for previews: `/api/login` derives it from the
+origin of the incoming request. Register `https://jounqin.workers.dev/api/oauth` in
+the GitHub OAuth app with "Allow wildcard matching" so every preview host (and the
+workers.dev URL itself) is accepted, and keep the explicit value for development
+(`http://localhost:3000/api/oauth`) and production (`https://blog.1stg.me/api/oauth`).
