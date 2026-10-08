@@ -1,4 +1,5 @@
 import { translate } from '@deeplx/core'
+import { $fetch } from 'ofetch'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
 import { getEnv } from '../utils/env'
@@ -11,8 +12,11 @@ import { getEnv } from '../utils/env'
  * (e.g. `https://<your-dlx-host>`) a self-hosted DLX instance
  * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a chunk
  * whose library attempts all failed gets one request to `<DEEPLX_URL>/translate`
- * with `DEEPLX_TOKEN` as the bearer token. With `DEEPLX_URL` unset the behaviour
- * is exactly the library-only one, which keeps the fallback reversible.
+ * with an optional `DEEPLX_TOKEN` bearer header and a shorter 4 s budget. The
+ * endpoint may redirect and we follow it, so an `http` -> `https` (or a path
+ * prefix) deployment keeps working; the token only ever goes to the configured
+ * origin on that first request. With `DEEPLX_URL` unset the behaviour is exactly
+ * the library-only one, which keeps the fallback reversible.
  * `Source` is the locale of `sourceText`; the target locale is the opposite one.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
@@ -25,6 +29,13 @@ const MAX_CHARS = 1500
 // a cold isolate pays a cookie warm-up request first, so the budget is generous
 // (measured ~2 s per translation from node, including the session warm-up)
 const CHUNK_TIMEOUT = 8000
+/**
+ * The fallback gets its own, shorter budget. It runs after the library path, so
+ * on the SSR prefetch (one library attempt) a worst-case chunk waits 8 s for the
+ * library plus 4 s here -- 12 s instead of the 16 s a second 8 s would cost. A
+ * client-triggered call allows two library attempts (20 s worst case).
+ */
+const FALLBACK_TIMEOUT = 4000
 
 /** Appended to `DEEPLX_URL`, which itself must not carry a trailing slash. */
 const DEEPLX_PATH = '/translate'
@@ -32,10 +43,11 @@ const DEEPLX_PATH = '/translate'
 type TargetLanguage = Parameters<typeof translate>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translate>[2]>
 
-/** Self-hosted DLX, configured only when `DEEPLX_URL` is present. */
+/** Self-hosted DLX. Both env vars are optional: `DEEPLX_URL` alone already
+ * enables the fallback, and no `authorization` header is sent without a token. */
 interface DlxService {
-  url: string
-  token: string
+  url?: string
+  token?: string
 }
 
 /** DLX answers `{ code, data, ... }`: `data` is the translation on success. */
@@ -87,7 +99,16 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
  * multiply the render latency. */
 const MAX_ATTEMPTS = 2
 
-/** CJK when the target is English, Latin letters when the target is Chinese. */
+/**
+ * Whether the chunk holds anything the target language cannot already read: CJK
+ * when the target is English, Latin letters when the target is Chinese.
+ *
+ * It is still required: it guards the unchanged-text check below, because DeepL
+ * also echoes back chunks that have nothing to translate (markup, numbers, text
+ * already in the target language). Without it those would burn an allowed retry
+ * and then make a pointless fallback request, so a page of markup could be sent
+ * to DLX for nothing.
+ */
 const expectsTranslation = (chunk: string, target: TargetLanguage): boolean =>
   /ZH/.test(target) ? /[A-Za-z]/.test(chunk) : /[\u3400-\u9fff]/.test(chunk)
 
@@ -134,8 +155,15 @@ const translateWithLibrary = (
  * and any path prefix) comes from `DEEPLX_URL` verbatim and only `/translate`
  * is appended, so nothing here is host or port specific.
  *
- * It counts as a success only when the HTTP status is 200, the JSON `code` is
- * 200 and `data` is a non-empty string other than the input; anything else
+ * Redirects are followed (the runtime default), so an endpoint that redirects
+ * `http` -> `https` or sits behind a path prefix keeps working. That is not a
+ * credential leak: the bearer token already goes to the configured origin on the
+ * first request, so a hostile or compromised endpoint could read it anyway.
+ * `ignoreResponseError` keeps ofetch from throwing on a non-2xx, so the status of
+ * the final response can be inspected here.
+ *
+ * It counts as a success only when the final HTTP status is 200, the JSON `code`
+ * is 200 and `data` is a non-empty string other than the input; anything else
  * (429, an auth failure whose body may not even be JSON, an empty payload or an
  * unchanged answer) throws. The token is never logged.
  */
@@ -145,32 +173,46 @@ const translateWithDlx = async (
   source: SourceLanguage,
   service: DlxService,
 ): Promise<string> => {
-  const response = await fetch(`${service.url}${DEEPLX_PATH}`, {
+  const url = service.url
+
+  // the caller only takes this path when `DEEPLX_URL` is set; the guard keeps the
+  // optional env type honest instead of fetching `undefined/translate`
+  if (!url) {
+    throw new Error('DEEPLX_URL is not configured')
+  }
+
+  const response = await $fetch.raw<DlxResponse>(`${url}${DEEPLX_PATH}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      ...(service.token ? { authorization: `Bearer ${service.token}` } : {}),
+      ...(service.token && { authorization: `Bearer ${service.token}` }),
     },
-    body: JSON.stringify({
+    body: {
       text: chunk,
       source_lang: source,
       target_lang: target,
-    }),
-    signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+    },
+    // exactly one fallback request: ofetch does not retry POST by default
+    redirect: 'follow',
+    ignoreResponseError: true,
+    signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
   })
 
-  const payload = (await response
-    .json()
-    .catch(() => null)) as DlxResponse | null
+  if (response.status !== 200) {
+    console.warn(
+      '[translate] DLX answered with a non-200 status',
+      `status=${response.status}`,
+      `length=${chunk.length}`,
+    )
+    throw new Error(`DLX responded with HTTP ${response.status}`)
+  }
+
+  // ofetch parses the body into `_data` (destr, so a non-JSON body stays a string)
+  const payload: DlxResponse | undefined = response._data
   const { code, data } = payload ?? {}
 
-  if (
-    response.status !== 200 ||
-    code !== 200 ||
-    typeof data !== 'string' ||
-    !data
-  ) {
-    throw new Error(`DLX responded with HTTP ${response.status}, code ${code}`)
+  if (code !== 200 || typeof data !== 'string' || !data) {
+    throw new Error(`DLX responded with HTTP 200, code ${code}`)
   }
 
   if (data === chunk) {
@@ -185,7 +227,7 @@ const translateChunk = async (
   target: TargetLanguage,
   source: SourceLanguage,
   attempts: number,
-  service: DlxService | undefined,
+  service: DlxService,
 ): Promise<{ text: string; ok: boolean }> => {
   // primary: the `@deeplx/core` library, up to `attempts` tries
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -233,7 +275,7 @@ const translateChunk = async (
   // fallback: a single self-hosted DLX request, and only when it is configured.
   // It is lazy on purpose: a chunk the library translated never reaches it, so
   // the public service stays out of the hot path while it is being validated.
-  if (service) {
+  if (service.url) {
     console.warn(
       '[translate] library path exhausted, falling back to the self-hosted DLX',
       `attempts=${attempts}`,
@@ -280,11 +322,13 @@ export default defineEventHandler(async event => {
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
   const attempts = query.retry ? MAX_ATTEMPTS : 1
-  // read per request: Worker bindings are not available at module scope
-  const url = getEnv(event, 'DEEPLX_URL').replace(/\/+$/, '')
-  const service: DlxService | undefined = url
-    ? { url, token: getEnv(event, 'DEEPLX_TOKEN') }
-    : undefined
+  // read per request: Worker bindings are not available at module scope. Both
+  // variables are optional and read independently, so a token alone configures
+  // nothing and a URL alone already enables the fallback (without the header).
+  const service: DlxService = {
+    url: getEnv(event, 'DEEPLX_URL').replace(/\/+$/, ''),
+    token: getEnv(event, 'DEEPLX_TOKEN'),
+  }
   const chunks = splitText(text)
   const results = await Promise.all(
     chunks.map(chunk =>

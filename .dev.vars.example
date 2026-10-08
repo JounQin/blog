@@ -28,7 +28,8 @@ GITHUB_OAUTH_CALLBACK=http://localhost:3000/api/oauth
 # translations need no configuration: they use @deeplx/core (DeepL free endpoints)
 # optional fallback: when @deeplx/core fails or declines a chunk, retry it once against a
 # self-hosted DLX (https://github.com/OwO-Network/DLX), which answers
-# POST <DEEPLX_URL>/translate with `Authorization: Bearer <DEEPLX_TOKEN>`
+# POST <DEEPLX_URL>/translate (4s timeout, redirects followed) with an optional
+# `Authorization: Bearer <DEEPLX_TOKEN>` -- DEEPLX_URL alone already enables the fallback
 # DEEPLX_URL=https://<your-dlx-host>
 # DEEPLX_TOKEN=
 

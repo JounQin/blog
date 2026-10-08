@@ -70,12 +70,19 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
   `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback**, tried in
-  this order for every chunk: `@deeplx/core` first, retried only while its failure is **not** a
-  4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is pointless); a 4xx
-  and the unchanged-text echo stop the retries; then **one** POST to `<DEEPLX_URL>/translate`
-  with `Authorization: Bearer $DEEPLX_TOKEN` and `{ text, source_lang, target_lang }`, for a
-  self-hosted [DLX](https://github.com/OwO-Network/DLX). A chunk the library translates never
-  reaches DLX, and with `DEEPLX_URL` unset nothing changes at all (the route stays library-only)
+  this order for every chunk: `@deeplx/core` first, retried while its failure is **not** a 4xx (a
+  4xx means DeepL rejected the request/client profile, so a repeat is pointless, and the loop
+  stops there). An unchanged answer for a chunk that `expectsTranslation` says has something to
+  translate also counts as a failed attempt and consumes the remaining attempts — a chunk with
+  nothing to translate (markup, numbers, text already in the target language) is passed through
+  as is. Once the attempts are exhausted, **one** POST to `<DEEPLX_URL>/translate` with
+  `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
+  `{ text, source_lang, target_lang }`, for a self-hosted
+  [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
+  default), so an `http` -> `https` or path-prefixed endpoint keeps working; only the **final**
+  response is judged — HTTP 200, `code` 200, a non-empty `data` and `data !== chunk`. A chunk
+  the library translates never reaches DLX, and with `DEEPLX_URL` unset nothing changes at all
+  (the route stays library-only)
 - The library's status comes from the real field `error.cause.code` (its `translate()` throws
   `new Error(message, { cause: { code, message } })`; a network failure or abort is normalised to
   503), classified by the tiny `statusOf` / `isRetryableError` helpers — no message matching
@@ -93,8 +100,10 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 - Texts longer than the provider's 1500-character anonymous limit are split at safe
   boundaries (newline, `>`, space) and translated in parallel; a chunk that fails (timeout,
   rate limit) keeps its original text, so a long article never blocks the SSR
-- Each request uses `AbortSignal.timeout(4000)`; every page-level API call, GitHub request and
-  translation request also uses `retry: 0`, so the worst-case SSR latency stays inside one timeout
+- Provider requests carry their own `AbortSignal.timeout`: 8 s for `@deeplx/core` (a cold
+  isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
+  chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side
+  translation request use `retry: 0`, and ofetch does not retry the fallback POST by default
 - Only titles are prefetched during SSR: article bodies exceed the provider's per-request limit
   and are filled in on the client by the existing `tt()` path
 - `useI18n().prefetch()` resolves the DSL and requests the missing translations inside
