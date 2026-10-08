@@ -89,7 +89,7 @@ useHead(() => ({ title: t('home') }))
           <li
             v-for="label of issue.labels.nodes"
             :key="label.id"
-            class="d-inline-flex ml-2"
+            class="d-inline-flex ms-2"
             :style="{ backgroundColor: `#${label.color}` }"
           >
             <NuxtLink

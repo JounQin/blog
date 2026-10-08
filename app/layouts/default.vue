@@ -161,7 +161,7 @@ function preventGesture(event: Event) {
           :style="{ height: collapseHeight }"
           @transitionend="transitionEnd"
         >
-          <ul class="navbar-nav justify-content-end flex-1 pr-md-4">
+          <ul class="navbar-nav justify-content-end flex-1 pe-md-4">
             <li
               v-for="item of routes"
               :key="item.link"
@@ -178,7 +178,7 @@ function preventGesture(event: Event) {
                 @click="toggleShow"
               >
                 <i
-                  class="fa mr-2"
+                  class="fa me-2"
                   :class="`fa-${item.icon}`"
                 />
                 {{ t(item.link || 'home') }}
@@ -186,12 +186,12 @@ function preventGesture(event: Event) {
             </li>
           </ul>
           <form
-            class="form-inline my-2 my-md-0"
+            class="d-flex align-items-center my-2 my-md-0"
             @submit.prevent="submit"
           >
             <input
               v-model.trim="search"
-              class="form-control mr-2 flex-1"
+              class="form-control me-2 flex-1"
               type="search"
               :placeholder="t('search_all_articles')"
             >
@@ -203,7 +203,7 @@ function preventGesture(event: Event) {
             </button>
             <a
               v-if="user?.login"
-              class="ml-2"
+              class="ms-2"
               :href="user.websiteUrl || user.url"
               target="_blank"
               rel="noopener"
@@ -217,7 +217,7 @@ function preventGesture(event: Event) {
             </a>
             <a
               v-else-if="loginHref"
-              class="ml-2"
+              class="ms-2"
               :href="loginHref"
               rel="noopener"
             >
@@ -241,15 +241,15 @@ function preventGesture(event: Event) {
       <div class="container d-flex">
         <div class="flex-1">
           <a
-            class="ml-2"
+            class="ms-2"
             href="https://www.1stg.me"
             >© 1stg.me</a
           >
           <a
-            class="text-secondary ml-2"
+            class="text-secondary ms-2"
             :href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`"
           >
-            <span class="sr-only">
+            <span class="visually-hidden">
               {{ `${REPOSITORY.owner}/${REPOSITORY.name}` }}
             </span>
             <i
@@ -258,11 +258,11 @@ function preventGesture(event: Event) {
             />
           </a>
           <span
-            class="text-secondary ml-2 pointer"
+            class="text-secondary ms-2 pointer"
             :title="t('toggle_locale')"
             @click="toggleLocale"
           >
-            <span class="sr-only">{{ t('toggle_locale') }}</span>
+            <span class="visually-hidden">{{ t('toggle_locale') }}</span>
             <i
               class="fa fa-globe"
               aria-hidden="true"
@@ -270,13 +270,13 @@ function preventGesture(event: Event) {
           </span>
         </div>
         <div>
-          <i class="fa fa-code mr-2" />by
+          <i class="fa fa-code me-2" />by
           <a
             class="mx-2"
             href="https://GitHub.com/JounQin"
             >JounQin</a
           >with
-          <i class="fa fa-heart ml-2" />
+          <i class="fa fa-heart ms-2" />
         </div>
       </div>
     </footer>

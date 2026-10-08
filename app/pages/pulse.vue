@@ -122,25 +122,25 @@ useHead(() => ({ title: t('pulse') }))
               />
             </div>
             <div>
-              <h5 class="font-weight-bold">
+              <h5 class="fw-bold">
                 <a
                   class="heading-link"
                   :href="item.url"
                   >{{ item.title }}</a
                 >
-                <small class="text-muted ml-2">
+                <small class="text-muted ms-2">
                   {{ t('created_at') }}: {{ dateFormat(item.createdAt) }}
                 </small>
                 <small
                   v-if="(item as PullRequestItem).mergedAt"
-                  class="text-muted ml-2"
+                  class="text-muted ms-2"
                 >
                   {{ t('merged_at') }}:
                   {{ dateFormat((item as PullRequestItem).mergedAt as string) }}
                 </small>
                 <small
                   v-if="(item as PulseIssue).closedAt"
-                  class="text-muted ml-2"
+                  class="text-muted ms-2"
                 >
                   {{ t('closed_at') }}:
                   {{ dateFormat((item as PulseIssue).closedAt as string) }}
@@ -172,7 +172,7 @@ useHead(() => ({ title: t('pulse') }))
             </span>
             <HiLoading
               v-if="loading"
-              class="ml-2"
+              class="ms-2"
             />
           </div>
         </div>

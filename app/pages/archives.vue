@@ -63,7 +63,7 @@ useHead(() => ({ title: t('archives') }))
               :key="issue.id"
               class="py-4 archives-item archives-article"
             >
-              <small class="text-muted mr-2">
+              <small class="text-muted me-2">
                 {{ dateFormat(issue.createdAt, 'MM-dd') }}
               </small>
               <NuxtLink :to="`/article/${issue.number}`">

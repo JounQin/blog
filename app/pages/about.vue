@@ -23,13 +23,13 @@ useHead(() => ({ title: t('about') }))
     >
       <a :href="owner.url">
         <img
-          class="mr-2 about-avatar"
+          class="me-2 about-avatar"
           :src="`${owner.avatarUrl}&s=40`"
           :srcset="`${owner.avatarUrl}&s=80 2x`"
           alt="avatar"
         >
       </a>
-      <div class="text-left">
+      <div class="text-start">
         <a :href="owner.url">{{ owner.name }}</a>
         <template v-if="owner.email"> ({{ owner.email }})</template>
         <template v-if="owner.bio || owner.description">
@@ -40,10 +40,10 @@ useHead(() => ({ title: t('about') }))
     </blockquote>
     <div class="d-flex mb-2">
       <div class="flex-1">
-        <i class="fa fa-location-arrow mr-2" />{{ owner.location }}
+        <i class="fa fa-location-arrow me-2" />{{ owner.location }}
       </div>
-      <div class="flex-1 text-right">
-        <i class="fa fa-link mr-2" />
+      <div class="flex-1 text-end">
+        <i class="fa fa-link me-2" />
         <a :href="owner.websiteUrl || owner.url">
           {{ owner.websiteUrl || owner.url }}
         </a>
@@ -59,11 +59,11 @@ useHead(() => ({ title: t('about') }))
           <div class="card-body">
             <h5 class="card-title">
               <a :href="repository.url">
-                <span class="mr-2">
+                <span class="me-2">
                   {{ repository.nameWithOwner.replace(`${login}/`, '') }}
                 </span>
                 <small>
-                  <i class="fa fa-star mr-1" />
+                  <i class="fa fa-star me-1" />
                   {{ repository.stargazers.totalCount }}
                 </small>
               </a>

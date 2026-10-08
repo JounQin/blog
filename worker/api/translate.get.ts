@@ -76,6 +76,19 @@ const translateChunk = async (
       const text = await translate(chunk, target, source, {
         signal: AbortSignal.timeout(CHUNK_TIMEOUT),
       })
+
+      if (text === chunk) {
+        // DeepL answers 200 with the input text, without an error, when it declines
+        // to translate. Count it as a failed attempt so an allowed retry still runs,
+        // and fall back to the source text once the attempts are exhausted.
+        console.warn(
+          '[translate] DeepL returned the source text unchanged',
+          `attempt=${attempt}/${attempts}`,
+          `length=${chunk.length}`,
+        )
+        continue
+      }
+
       return { text, ok: true }
     } catch (error) {
       // shows up in the Worker logs (observability is enabled in wrangler.jsonc)

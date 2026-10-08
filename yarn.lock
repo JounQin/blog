@@ -52,7 +52,7 @@ __metadata:
   resolution: "@1stg/blog@workspace:."
   dependencies:
     "@1stg/app-config": "npm:^15.0.0"
-    "@deeplx/core": "npm:^0.2.2"
+    "@deeplx/core": "npm:^0.2.3"
     "@nuxt/eslint": "npm:^1.17.0"
     "@types/node": "npm:^24"
     "@typescript/native": "npm:typescript@^7"
@@ -3280,13 +3280,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deeplx/core@npm:^0.2.2":
-  version: 0.2.2
-  resolution: "@deeplx/core@npm:0.2.2"
+"@deeplx/core@npm:^0.2.3":
+  version: 0.2.3
+  resolution: "@deeplx/core@npm:0.2.3"
   dependencies:
     node-fetch-native: "npm:^1.6.7"
     x-fetch: "npm:^0.2.6"
-  checksum: 10/4e30534f499a0213eff410823fedf758ff541f5bdd4d950e212d9b9362c9b968904c694ac452a1a537a629c7e5307814372c8da296e5807320878f80268082d5
+  checksum: 10/eedf9133ac4bd149af7aa7dc89f100533429c3282bbb7e0d02d7f552d43203403b34c5b900a9a1a4c602e03458b252f8b118345c7f75bf0607f26849e6a55606
   languageName: node
   linkType: hard
 

@@ -21,7 +21,7 @@
     "worker:dev": "wrangler dev"
   },
   "dependencies": {
-    "@deeplx/core": "^0.2.2",
+    "@deeplx/core": "^0.2.3",
     "date-fns": "^4.4.0",
     "github-markdown-css": "^5.9.0",
     "invert-color": "^3.0.0",
