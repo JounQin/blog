@@ -63,7 +63,7 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
 /** Client-triggered calls may retry once: the anonymous DeepL endpoints rate
  * limit and need a session warm-up. The SSR prefetch never retries (see below),
  * so a slow provider cannot multiply the render latency. */
-const ATTEMPTS = 2
+const MAX_ATTEMPTS = 2
 
 const translateChunk = async (
   chunk: string,
@@ -111,7 +111,7 @@ export default defineEventHandler(async event => {
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
-  const attempts = query.Retry === '1' ? ATTEMPTS : 1
+  const attempts = Math.min(Number(query.retry) || 1, MAX_ATTEMPTS)
   const chunks = splitText(text)
   const results = await Promise.all(
     chunks.map(chunk => translateChunk(chunk, target, source, attempts)),
