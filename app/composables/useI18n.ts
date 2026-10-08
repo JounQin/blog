@@ -30,12 +30,19 @@ export const useI18n = () => {
     key: string,
     source: string,
     sourceLocale?: string,
+    retry = false,
   ) => {
     try {
       const { text } = await $fetch<{ text: string }>('/api/translate', {
-        // no retry: a slow provider must not multiply the SSR latency
+        // no transport retry: `Retry=1` only allows one retry inside the route,
+        // and only for client-triggered calls -- the SSR prefetch stays within a
+        // single attempt so a slow provider cannot multiply the render latency
         retry: 0,
-        params: { Source: sourceLocale, SourceText: source },
+        params: {
+          Source: sourceLocale,
+          SourceText: source,
+          ...(retry ? { Retry: '1' } : {}),
+        },
       })
       cache.value[key] = text
     } catch {
@@ -92,7 +99,7 @@ export const useI18n = () => {
 
     if (import.meta.client && parsed.source && !pending.value[key]) {
       pending.value[key] = true
-      void request(key, parsed.source, parsed.sourceLocale).finally(() => {
+      void request(key, parsed.source, parsed.sourceLocale, true).finally(() => {
         pending.value[key] = false
       })
     }

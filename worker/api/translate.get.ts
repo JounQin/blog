@@ -60,16 +60,18 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
   return chunks
 }
 
-/** Anonymous DeepL endpoints rate limit and need a session warm-up, so one
- * retry with a fresh timeout removes most of the silent fallbacks. */
+/** Client-triggered calls may retry once: the anonymous DeepL endpoints rate
+ * limit and need a session warm-up. The SSR prefetch never retries (see below),
+ * so a slow provider cannot multiply the render latency. */
 const ATTEMPTS = 2
 
 const translateChunk = async (
   chunk: string,
   target: TargetLanguage,
   source: SourceLanguage,
+  attempts: number,
 ): Promise<{ text: string; ok: boolean }> => {
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const text = await translate(chunk, target, source, {
         signal: AbortSignal.timeout(CHUNK_TIMEOUT),
@@ -78,7 +80,7 @@ const translateChunk = async (
     } catch (error) {
       // shows up in the Worker logs (observability is enabled in wrangler.jsonc)
       console.warn(
-        `[translate] chunk failed (attempt ${attempt}/${ATTEMPTS})`,
+        `[translate] chunk failed (attempt ${attempt}/${attempts})`,
         String(error),
         `length=${chunk.length}`,
       )
@@ -107,9 +109,12 @@ export default defineEventHandler(async event => {
 
   // chunks are translated in parallel, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
+  // only a client-triggered call may retry: the SSR prefetch awaits this route
+  // before rendering, so retrying there would double the worst-case latency
+  const attempts = query.Retry === '1' ? ATTEMPTS : 1
   const chunks = splitText(text)
   const results = await Promise.all(
-    chunks.map(chunk => translateChunk(chunk, target, source)),
+    chunks.map(chunk => translateChunk(chunk, target, source, attempts)),
   )
 
   return {
