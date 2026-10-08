@@ -139,7 +139,7 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   `yarn lint` = `eslint .` → 0 problems; `lint-staged` runs `eslint --fix` on staged files
 - **TypeScript pinned to 6.0.3**: 5.2 cannot parse Vite/Vue `.d.mts` files (`TS1003`) and 7.0 is
   rejected by typescript-eslint (`typescript-eslint does not support TS 7.0`)
-- **CI** (`.github/workflows/nodejs.yml`): single job, Node 22, `yarn lint` + `yarn typecheck` +
+- **CI** (`.github/workflows/ci.yaml`): single job, Node from `.node-version`, `yarn lint` + `yarn typecheck` +
   `yarn build` (the Node 18/20 × macOS/ubuntu matrix is gone; Nuxt 4 needs Node 20.19+/22.12+)
 
 ## Verification
