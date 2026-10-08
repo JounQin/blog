@@ -65,10 +65,36 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 
 ### Translation
 
-- `/api/translate` is backed by `@deeplx/core` (`translate(text, target, source)`, DeepL's
+- `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(source, target, text)`, DeepL's
   free endpoints), so **no translation environment variable is needed** — the previous
   Google / Tencent providers (and their `GOOGLE_TRANSLATE_ENABLED`, `GOOGLE_TRANSLATE_URL`,
   `TRY_TENCENT_ON_GOOGLE_FAILED` and `TENCENT_*` variables) are gone
+- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for real
+  failures only, tried in this order for every chunk: `@deeplx/core` first (`translateByDeepLX`,
+  which returns `{ code, data, ... }` instead of throwing), retried while its `code` is **not** a
+  4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is pointless, and the
+  loop stops there). A 200 whose output is identical to the input is reported as **not
+  translated** without a retry and without touching DLX: the anonymous endpoint mirrors the
+  requested `source_lang` as `detected_source_language` whenever its detection is not confident,
+  so an identical output usually means the chunk had nothing to translate, and neither a retry
+  nor a self-hosted DLX would change that. Once the attempts are exhausted on a real failure,
+  **one** POST to `<DEEPLX_URL>/translate` with
+  `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
+  `{ text, source_lang, target_lang }`, for a self-hosted
+  [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
+  default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
+  GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
+  the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
+  `data !== chunk`. A chunk the library translates or returns unchanged never reaches DLX, and
+  with `DEEPLX_URL` unset nothing changes at all (the route stays library-only)
+- The library signal is the value `translateByDeepLX` returns: a 200 carries `data` (identical to
+  the input means not translated), a 4xx `code` short-circuits to the fallback, and any other
+  non-200 shape (5xx, empty payload, unexpected throw) spends the remaining attempts — no error
+  parsing, cause inspection or message matching
+- The fallback response only counts as translated when the HTTP status is 200, the JSON `code`
+  is 200, `data` is a non-empty string and `data !== chunk`; everything else (any error status,
+  an auth failure, a bad payload, an unchanged answer) fails like the library path, with a
+  warning that names the path and the status/code but never the token
 - Bundle workaround: `@deeplx/core` imports `node-fetch-native/proxy`, and `node-fetch-native` ships
   a conditional exports map whose `workerd`/`worker` branch points at `dist/native.mjs` (a file).
   Nitro's builder is still **Rollup based** (`nitropack@2.13.4` depends on `rollup@^4.60.2`; the app
@@ -79,8 +105,10 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 - Texts longer than the provider's 1500-character anonymous limit are split at safe
   boundaries (newline, `>`, space) and translated in parallel; a chunk that fails (timeout,
   rate limit) keeps its original text, so a long article never blocks the SSR
-- Each request uses `AbortSignal.timeout(4000)`; every page-level API call, GitHub request and
-  translation request also uses `retry: 0`, so the worst-case SSR latency stays inside one timeout
+- Provider requests carry their own `AbortSignal.timeout`: 8 s for `@deeplx/core` (a cold
+  isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
+  chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side
+  translation request use `retry: 0`, and ofetch does not retry the fallback POST by default
 - Only titles are prefetched during SSR: article bodies exceed the provider's per-request limit
   and are filled in on the client by the existing `tt()` path
 - `useI18n().prefetch()` resolves the DSL and requests the missing translations inside
@@ -100,6 +128,11 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   `GITHUB_TOKEN` only in `.env.local`, `/api/categories` returns **503**, so `.env` / `.env.local`
   never reach the worker runtime (they only matter for a plain node preset)
 - Production: secrets via `wrangler secret put <NAME>`. Non-secret overrides can be Worker variables (dashboard) or a `wrangler.jsonc` `vars` block, but a `vars` block requires a matching `previews.vars` (Workers Builds refuses a preview deploy without it), so the `GITHUB_REPOSITORY_*` values are deliberately left to their `nuxt.config.ts` defaults instead of being duplicated per environment
+- `DEEPLX_URL` / `DEEPLX_TOKEN` are optional and make a self-hosted DLX the `/api/translate`
+  fallback when the `@deeplx/core` path fails. Put them in the dashboard (Worker
+  variables/secrets) for **both** Production and Preview — **not** in a `wrangler.jsonc` `vars`
+  block, which would force a `previews.vars` copy and overwrite the dashboard values on every
+  deploy
 
 ### Cleanup (done)
 
@@ -196,7 +229,10 @@ Values to add with `wrangler secret put <NAME>` (or in the dashboard):
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app                                                                 |
 | `GITHUB_OAUTH_CALLBACK`                     | e.g. `https://blog.1stg.me/api/oauth`; locally `http://localhost:3000/api/oauth` |
 
-Translation needs no variable at all (`@deeplx/core`).
+Translation needs no variable at all (`@deeplx/core`). Optionally add `DEEPLX_URL`
+(e.g. `https://<your-dlx-host>`) and `DEEPLX_TOKEN` to fall back to a self-hosted DLX when
+`@deeplx/core` fails or declines a chunk; both scopes (Production and Preview) need them, and
+they must not go into `wrangler.jsonc` (see above).
 
 Custom domain: worker `blog` + `blog.1stg.me` (the removed `vercel.json` used to rewrite to Heroku;
 this should become a Cloudflare custom domain).
@@ -241,7 +277,9 @@ this should become a Cloudflare custom domain).
 Worker Previews do not inherit production settings. Add the runtime secrets to the
 Preview scope as well (the Worker -> Settings -> Variables and Secrets -> Preview),
 otherwise `/api/*` runs without credentials and login is unavailable:
-`GITHUB_TOKEN`, `APP_KEYS`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
+`GITHUB_TOKEN`, `APP_KEYS`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — plus
+`DEEPLX_URL` / `DEEPLX_TOKEN` when previews should use the self-hosted DLX fallback too
+(without them a preview sticks to `@deeplx/core`).
 
 Leave `GITHUB_OAUTH_CALLBACK` unset for previews: `/api/login` derives it from the
 origin of the incoming request. Register `https://jounqin.workers.dev/api/oauth` in

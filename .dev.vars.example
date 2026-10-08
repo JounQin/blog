@@ -26,6 +26,14 @@ GITHUB_CLIENT_SECRET=
 GITHUB_OAUTH_CALLBACK=http://localhost:3000/api/oauth
 
 # translations need no configuration: they use @deeplx/core (DeepL free endpoints)
+# optional fallback for real @deeplx/core failures (4xx/5xx), tried once against a self-hosted
+# DLX (https://github.com/OwO-Network/DLX); an identical output is reported as not translated
+# without a retry or a fallback.
+# The DLX answers POST <DEEPLX_URL>/translate (4s timeout; redirects are followed, but a
+# 301/302/303 drops the POST body, so serve /translate directly -- only a 307/308 keeps it)
+# with an optional `Authorization: Bearer <DEEPLX_TOKEN>` -- DEEPLX_URL alone enables the fallback
+# DEEPLX_URL=https://<your-dlx-host>
+# DEEPLX_TOKEN=
 
 # optional overrides (self-hosted GitHub / local stubs)
 # GITHUB_API_URL=https://api.github.com/graphql
