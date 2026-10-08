@@ -18,7 +18,7 @@ const DEEPL_LOCALES: Record<Locale, string> = {
 const MAX_CHARS = 1500
 // a cold isolate pays a cookie warm-up request first, so the budget is generous
 // (measured ~2 s per translation from node, including the session warm-up)
-const CHUNK_TIMEOUT = 4000
+const CHUNK_TIMEOUT = 8000
 
 type TargetLanguage = Parameters<typeof translate>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translate>[2]>
@@ -60,6 +60,34 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
   return chunks
 }
 
+/** Anonymous DeepL endpoints rate limit and need a session warm-up, so one
+ * retry with a fresh timeout removes most of the silent fallbacks. */
+const ATTEMPTS = 2
+
+const translateChunk = async (
+  chunk: string,
+  target: TargetLanguage,
+  source: SourceLanguage,
+): Promise<{ text: string; ok: boolean }> => {
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    try {
+      const text = await translate(chunk, target, source, {
+        signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+      })
+      return { text, ok: true }
+    } catch (error) {
+      // shows up in the Worker logs (observability is enabled in wrangler.jsonc)
+      console.warn(
+        `[translate] chunk failed (attempt ${attempt}/${ATTEMPTS})`,
+        String(error),
+        `length=${chunk.length}`,
+      )
+    }
+  }
+
+  return { text: chunk, ok: false }
+}
+
 export default defineEventHandler(async event => {
   const query = getQuery(event)
   const text = typeof query.SourceText === 'string' ? query.SourceText : ''
@@ -80,17 +108,14 @@ export default defineEventHandler(async event => {
   // chunks are translated in parallel, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   const chunks = splitText(text)
-  const translated = await Promise.all(
-    chunks.map(async chunk => {
-      try {
-        return await translate(chunk, target, source, {
-          signal: AbortSignal.timeout(CHUNK_TIMEOUT),
-        })
-      } catch {
-        return chunk
-      }
-    }),
+  const results = await Promise.all(
+    chunks.map(chunk => translateChunk(chunk, target, source)),
   )
 
-  return { text: translated.join('') }
+  return {
+    text: results.map(result => result.text).join(''),
+    // the client keeps reading `text`; this reports whether any chunk had to
+    // fall back to the source text (rate limit, timeout, endpoint error)
+    translated: results.every(result => result.ok),
+  }
 })
