@@ -41,7 +41,7 @@ export const useI18n = () => {
         params: {
           source: sourceLocale,
           sourceText: source,
-          ...(retry ? { retry: 2 } : {}),
+          ...(retry ? { retry: true } : {}),
         },
       })
       cache.value[key] = text

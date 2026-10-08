@@ -111,7 +111,7 @@ export default defineEventHandler(async event => {
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
-  const attempts = Math.min(Number(query.retry) || 1, MAX_ATTEMPTS)
+  const attempts = query.retry ? MAX_ATTEMPTS : 1
   const chunks = splitText(text)
   const results = await Promise.all(
     chunks.map(chunk => translateChunk(chunk, target, source, attempts)),
