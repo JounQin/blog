@@ -7,7 +7,7 @@ import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
  *
  * Powered by `@deeplx/core`, which talks to DeepL's free endpoints, so no API
  * key or other environment variable is required. `Source` is the locale of
- * `SourceText`; the target locale is the opposite one.
+ * `sourceText`; the target locale is the opposite one.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.EN]: 'EN',
@@ -18,7 +18,7 @@ const DEEPL_LOCALES: Record<Locale, string> = {
 const MAX_CHARS = 1500
 // a cold isolate pays a cookie warm-up request first, so the budget is generous
 // (measured ~2 s per translation from node, including the session warm-up)
-const CHUNK_TIMEOUT = 4000
+const CHUNK_TIMEOUT = 8000
 
 type TargetLanguage = Parameters<typeof translate>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translate>[2]>
@@ -60,17 +60,47 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
   return chunks
 }
 
+/** Client-triggered calls may retry once: the anonymous DeepL endpoints rate
+ * limit and need a session warm-up. The SSR prefetch never retries (see below),
+ * so a slow provider cannot multiply the render latency. */
+const MAX_ATTEMPTS = 2
+
+const translateChunk = async (
+  chunk: string,
+  target: TargetLanguage,
+  source: SourceLanguage,
+  attempts: number,
+): Promise<{ text: string; ok: boolean }> => {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const text = await translate(chunk, target, source, {
+        signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+      })
+      return { text, ok: true }
+    } catch (error) {
+      // shows up in the Worker logs (observability is enabled in wrangler.jsonc)
+      console.warn(
+        `[translate] chunk failed (attempt ${attempt}/${attempts})`,
+        String(error),
+        `length=${chunk.length}`,
+      )
+    }
+  }
+
+  return { text: chunk, ok: false }
+}
+
 export default defineEventHandler(async event => {
   const query = getQuery(event)
-  const text = typeof query.SourceText === 'string' ? query.SourceText : ''
+  const text = typeof query.sourceText === 'string' ? query.sourceText : ''
 
   if (!text) {
     return { text: '' }
   }
 
   const requested =
-    typeof query.Source === 'string' && query.Source
-      ? query.Source
+    typeof query.source === 'string' && query.source
+      ? query.source
       : getCookie(event, LOCALE_COOKIE)
   const locale = requested === Locale.ZH ? Locale.ZH : Locale.EN
 
@@ -79,18 +109,18 @@ export default defineEventHandler(async event => {
 
   // chunks are translated in parallel, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
+  // only a client-triggered call may retry: the SSR prefetch awaits this route
+  // before rendering, so retrying there would double the worst-case latency
+  const attempts = query.retry ? MAX_ATTEMPTS : 1
   const chunks = splitText(text)
-  const translated = await Promise.all(
-    chunks.map(async chunk => {
-      try {
-        return await translate(chunk, target, source, {
-          signal: AbortSignal.timeout(CHUNK_TIMEOUT),
-        })
-      } catch {
-        return chunk
-      }
-    }),
+  const results = await Promise.all(
+    chunks.map(chunk => translateChunk(chunk, target, source, attempts)),
   )
 
-  return { text: translated.join('') }
+  return {
+    text: results.map(result => result.text).join(''),
+    // the client keeps reading `text`; this reports whether any chunk had to
+    // fall back to the source text (rate limit, timeout, endpoint error)
+    translated: results.every(result => result.ok),
+  }
 })

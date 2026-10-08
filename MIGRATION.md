@@ -139,7 +139,7 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   `yarn lint` = `eslint .` → 0 problems; `lint-staged` runs `eslint --fix` on staged files
 - **TypeScript pinned to 6.0.3**: 5.2 cannot parse Vite/Vue `.d.mts` files (`TS1003`) and 7.0 is
   rejected by typescript-eslint (`typescript-eslint does not support TS 7.0`)
-- **CI** (`.github/workflows/nodejs.yml`): single job, Node 22, `yarn lint` + `yarn typecheck` +
+- **CI** (`.github/workflows/ci.yaml`): single job, Node from `.node-version`, `yarn lint` + `yarn typecheck` +
   `yarn build` (the Node 18/20 × macOS/ubuntu matrix is gone; Nuxt 4 needs Node 20.19+/22.12+)
 
 ## Verification
@@ -155,7 +155,7 @@ All of the following was executed in this repository against a real build:
   app, `/api/login` returns 302 to GitHub with the right `client_id`, `state` and `redirect_uri`,
   sets the session cookie, and an intentionally invalid `code` makes GitHub answer
   `The code passed is incorrect or expired.` — which proves the client id/secret are accepted
-- **Translation**: `/api/translate?Source=zh&SourceText=…` returns the stubbed translation, and the
+- **Translation**: `/api/translate?source=zh&sourceText=…` returns the stubbed translation, and the
   home page HTML contains the translated title instead of the placeholder
 - **Resilience**: pointing the translation URL at a server that accepts connections and never
   answers, the page still renders 200 in ~4.3 s (2.5 s budget after the timeout was lowered).
