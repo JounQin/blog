@@ -6,21 +6,15 @@ on:
 
 jobs:
   default:
-    strategy:
-      matrix:
-        node:
-          - 18
-          - 20
-        os:
-          - macOS-latest
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          # single source of truth for the Node version, shared with the
+          # Cloudflare Workers build image (which also reads .node-version)
+          node-version-file: .node-version
           cache: yarn
 
       - name: Enable Corepack
@@ -31,12 +25,18 @@ jobs:
         env:
           CI: true
 
-      - name: Lint, Build
-        run: |
-          yarn lint
-          yarn typecov
-          yarn build
+      # Node version comes from .node-version (lts/*); Nuxt 4 needs >= 20.19 / 22.12
+      - name: Lint
+        run: yarn lint
         env:
           CI: true
-          EFF_NO_LINK_RULES: true
-          PARSER_NO_WATCH: true
+
+      - name: Typecheck
+        run: yarn typecheck
+        env:
+          CI: true
+
+      - name: Build
+        run: yarn build
+        env:
+          CI: true

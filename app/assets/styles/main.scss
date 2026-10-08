@@ -1,0 +1,129 @@
+@import 'bootstrap-stack';
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+html {
+  font-size: 14px;
+}
+
+body {
+  font-family: Lato, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+button:focus {
+  outline: 0;
+}
+
+#skip a {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+#skip a:focus {
+  position: static;
+  width: auto;
+  height: auto;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.pointer,
+.clickable {
+  cursor: pointer;
+}
+
+.heading-link {
+  display: inline-block;
+  word-break: break-word;
+}
+
+@media (min-width: $grid-breakpoints-md + 1px) {
+  .heading-link:after {
+    content: '';
+    display: block;
+    margin: {
+      left: auto;
+      right: auto;
+    }
+
+    width: 0;
+    height: 2px;
+    background-color: $link-hover-color;
+    transition: width 0.5s ease;
+  }
+
+  .heading-link:hover:after {
+    width: 100%;
+  }
+}
+
+.brand-img,
+.user-avatar {
+  width: 30px;
+  height: 30px;
+}
+
+.avatar-img {
+  width: 50px;
+  height: 50px;
+}
+
+@media (max-width: $grid-breakpoints-md) {
+  .avatar-img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.comment-body {
+  font-size: 14px;
+}
+
+.media-body {
+  min-width: 0;
+}
+
+.markdown-body > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+.quote {
+  position: relative;
+  text-align: center;
+  padding: 20px 0;
+
+  &:before,
+  &:after {
+    position: absolute;
+    z-index: -1;
+    width: 100%;
+    left: 0;
+    font-size: 24px;
+    color: lightgray;
+  }
+
+  &:before {
+    content: '“';
+    top: 0;
+    text-align: left;
+    border-top: 1px solid lightgray;
+  }
+
+  &:after {
+    content: '”';
+    bottom: 0;
+    text-align: right;
+    border-bottom: 1px solid lightgray;
+    line-height: 0;
+  }
+}

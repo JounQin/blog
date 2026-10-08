@@ -1,0 +1,7 @@
+// Injected into every scss block (equivalent of the legacy style-resources-loader).
+// `functions`, `variables` and `mixins` resolve from node_modules/bootstrap/scss.
+@import 'pre-variables';
+@import 'functions';
+@import 'variables';
+@import 'mixins';
+@import 'post-variables';

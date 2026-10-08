@@ -1,7 +1,10 @@
-const config = require('@1stg/postcss-config')()
+import createPostcssConfig from '@1stg/postcss-config'
+import pxtorem from 'postcss-pxtorem'
+
+const config = createPostcssConfig()
 
 config.plugins.push(
-  require('postcss-pxtorem', {
+  pxtorem({
     rootValue: 14,
     propList: ['*'],
     selectorBlackList: ['html'],
@@ -9,4 +12,4 @@ config.plugins.push(
   }),
 )
 
-module.exports = config
+export default config

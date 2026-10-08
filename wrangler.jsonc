@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blog",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2025-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".output/public",
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  // `previews` is required by `npx wrangler preview` (Workers Builds runs it for
+  // preview deployments) and may stay empty: assets, compatibility settings and
+  // migrations live at the top level, and we have no preview-specific vars or
+  // bindings. Keeping the app constants out of `vars` is why nothing has to be
+  // duplicated here -- GITHUB_REPOSITORY_OWNER / _NAME / _OWNER_TYPE have their
+  // defaults in nuxt.config.ts (runtimeConfig.github) and are only overridden
+  // when an environment variable is set. If a value ever needs to differ per
+  // environment, add `vars` plus the matching `previews.vars`.
+  "previews": {},
+}
