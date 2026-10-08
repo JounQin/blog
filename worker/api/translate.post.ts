@@ -19,11 +19,10 @@ import { getEnv } from '../utils/env'
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
  * behaviour is exactly the library-only one, which keeps the fallback reversible.
  *
- * `GET ?sourceText=…` keeps the original contract; `POST` with a JSON body
- * (`{ text | sourceText, source?, target?, retry? }`) is what the client uses, so
- * a long article body never has to fit into a URL.
+ * `POST` only, with a JSON body `{ text | sourceText, source?, target?, retry? }`,
+ * so a long article body never has to fit into a URL.
  *
- * `source` (the language of `sourceText`) is passed to both providers when the
+ * `source` (the language of the text) is passed to both providers when the
  * caller gives it. When it is missing the provider detects the language itself
  * -- that is how untagged text is translated -- and `target` then says which
  * language to produce; without `target` it is derived from `source`, or from the
@@ -308,18 +307,16 @@ const translateChunk = async (
 }
 
 export default defineEventHandler(async event => {
-  // GET keeps the original `?sourceText=` contract (and manual calls / probes);
-  // POST takes the same parameters as a JSON body so a long article body never
-  // has to fit into a URL:
+  // POST only (the file is `translate.post.ts`): the text travels in the JSON
+  // body so a long article body never has to fit into a URL:
   //   { "text" | "sourceText": "...", "source"?: "en"|"zh", "target"?: "en"|"zh",
   //     "retry"?: true }
-  const isPost = getMethod(event) === 'POST'
-  const params: Record<string, unknown> = isPost
-    ? ((await readBody(event).catch(() => null)) as Record<
-        string,
-        unknown
-      > | null) ?? {}
-    : getQuery(event)
+  // A malformed/empty body degrades to `{}`, i.e. an empty translation, not a 500.
+  const params: Record<string, unknown> =
+    ((await readBody(event).catch(() => null)) as Record<
+      string,
+      unknown
+    > | null) ?? {}
 
   const text =
     typeof params.text === 'string'

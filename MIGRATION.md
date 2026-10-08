@@ -75,11 +75,11 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   derived from `source`, and with neither from the locale cookie, exactly as before. Note that the
   anonymous endpoint mirrors a given `source_lang` as `detected_source_language` whenever its own
   detection is not confident, so an accurate tag helps and a wrong one can cause an echo
-- The endpoint accepts `GET ?sourceText=…` (unchanged) and, as what the client uses, `POST` with a
-  JSON body `{ text | sourceText, source?, target?, retry? }` — a long article body must not have
-  to fit into a URL. A failed request caches the source text, and an untagged template renders its
-  original text while the translation is pending and after it fails, so neither case can show the
-  "Translating…" placeholder
+- `/api/translate` is `POST` only (`translate.post.ts`): the client sends a JSON body
+  `{ text | sourceText, source?, target?, retry? }`, so a long article body never has to fit into a
+  URL, and a malformed body degrades to an empty translation rather than a 500. A failed request
+  caches the source text, and an untagged template renders its original text while the translation
+  is pending and after it fails, so neither case can show the "Translating…" placeholder
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
   chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
   (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
@@ -203,8 +203,8 @@ All of the following was executed in this repository against a real build:
   app, `/api/login` returns 302 to GitHub with the right `client_id`, `state` and `redirect_uri`,
   sets the session cookie, and an intentionally invalid `code` makes GitHub answer
   `The code passed is incorrect or expired.` — which proves the client id/secret are accepted
-- **Translation**: `/api/translate?source=zh&sourceText=…` returns the stubbed translation, and the
-  home page HTML contains the translated title instead of the placeholder
+- **Translation**: `POST /api/translate` with `{"source":"zh","sourceText":"…"}` returns the stubbed
+  translation, and the home page HTML contains the translated title instead of the placeholder
 - **Resilience**: pointing the translation URL at a server that accepts connections and never
   answers, the page still renders 200 in ~4.3 s (2.5 s budget after the timeout was lowered).
   The original 8.4 s was caused by nitro's `$fetch` defaulting to one retry, hence `retry: 0`
@@ -270,7 +270,7 @@ this should become a Cloudflare custom domain).
   `nuxt prepare` first, because `nuxt build` leaves `.nuxt/types` without the auto-import globals
 - Fixed along the way: indexed access in `parseAcceptLanguage`, `indexes[i+1]` in the translation
   DSL, the implicit `any` in the archives loop, the `worker/error.ts` handler signature, the
-  relative import and indexed access in `translate.get.ts`, and the loop type in
+  relative import and indexed access in `translate.post.ts`, and the loop type in
   `worker/api/archives.get.ts`
 
 ## Open items
