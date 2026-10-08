@@ -11,9 +11,10 @@
   "observability": {
     "enabled": true,
   },
-  "vars": {
-    "GITHUB_REPOSITORY_OWNER": "JounQin",
-    "GITHUB_REPOSITORY_NAME": "blog",
-    "GITHUB_REPOSITORY_OWNER_TYPE": "user",
-  },
+  // No `vars` on purpose: GITHUB_REPOSITORY_OWNER / _NAME / _OWNER_TYPE are app
+  // constants, not per-environment configuration -- their defaults live in
+  // nuxt.config.ts (runtimeConfig.github) and are used when no environment
+  // variable overrides them. Without top-level `vars` a `previews` block is not
+  // required either, so nothing has to be duplicated per environment. If a value
+  // ever needs to differ per environment, add `vars` + a matching `previews.vars`.
 }

@@ -12,7 +12,7 @@ app/             Nuxt application (srcDir): app.vue, layouts/, pages/, component
 worker/          nitro routes (nitro.srcDir): api/, utils/, error.ts
 shared/          code shared by app and worker: types/blog.ts, utils/{locale,translate}.ts
 nuxt.config.ts   nitro preset cloudflare_module, scss injection, head, PWA, routeRules, runtimeConfig
-wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_compat, vars
+wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_compat
 ```
 
 ## What was done
@@ -99,7 +99,7 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   and the worker runtime reads `.dev.vars` plus the `vars` of `wrangler.jsonc`. With
   `GITHUB_TOKEN` only in `.env.local`, `/api/categories` returns **503**, so `.env` / `.env.local`
   never reach the worker runtime (they only matter for a plain node preset)
-- Production: secrets via `wrangler secret put <NAME>`, non-secret values in `wrangler.jsonc` `vars`
+- Production: secrets via `wrangler secret put <NAME>`. Non-secret overrides can be Worker variables (dashboard) or a `wrangler.jsonc` `vars` block, but a `vars` block requires a matching `previews.vars` (Workers Builds refuses a preview deploy without it), so the `GITHUB_REPOSITORY_*` values are deliberately left to their `nuxt.config.ts` defaults instead of being duplicated per environment
 
 ### Cleanup (done)
 
@@ -182,11 +182,9 @@ All of the following was executed in this repository against a real build:
 `wrangler deploy --dry-run` on the current build:
 
 ```
-Total Upload: 742.72 KiB / gzip: 186.25 KiB    (80 static assets)
-env.ASSETS                       Assets
-env.GITHUB_REPOSITORY_OWNER      "JounQin"      (wrangler.jsonc vars)
-env.GITHUB_REPOSITORY_NAME       "blog"
-env.GITHUB_REPOSITORY_OWNER_TYPE "user"
+Total Upload: 753.21 KiB / gzip: 189.22 KiB    (66 static assets)
+env.ASSETS   Assets
+(no vars: GITHUB_REPOSITORY_* are app constants, see nuxt.config.ts)
 ```
 
 Values to add with `wrangler secret put <NAME>` (or in the dashboard):
