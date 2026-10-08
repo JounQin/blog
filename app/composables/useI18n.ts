@@ -26,7 +26,11 @@ export const useI18n = () => {
     () => ({}),
   )
 
-  const request = async (key: string, source: string, sourceLocale?: string) => {
+  const request = async (
+    key: string,
+    source: string,
+    sourceLocale?: string,
+  ) => {
     try {
       const { text } = await $fetch<{ text: string }>('/api/translate', {
         // no retry: a slow provider must not multiply the SSR latency

@@ -22,12 +22,15 @@ export default defineEventHandler(async event => {
   let after: string | null = null
 
   for (let page = 0; page < MAX_PAGES; page++) {
-    const data: { repository: { issues: ArchivesPage } } =
-      await githubGraphql(event, ARCHIVES_QUERY, {
+    const data: { repository: { issues: ArchivesPage } } = await githubGraphql(
+      event,
+      ARCHIVES_QUERY,
+      {
         ...repository,
         after,
         labels,
-      })
+      },
+    )
 
     const issues = data.repository.issues
 

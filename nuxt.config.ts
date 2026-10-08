@@ -105,7 +105,10 @@ export default defineNuxtConfig({
         scss: {
           // sass needs the extra load paths for the bootstrap partials,
           // `additionalData` replaces the legacy style-resources-loader injection
-          loadPaths: [resolve('./app/assets/styles'), resolve('./node_modules/bootstrap/scss')],
+          loadPaths: [
+            resolve('./app/assets/styles'),
+            resolve('./node_modules/bootstrap/scss'),
+          ],
           additionalData: "@import 'pre-bootstrap';\n",
           // Bootstrap 5.3 still uses @import, global builtins and the if()
           // syntax: quietDeps silences warnings raised from node_modules, and

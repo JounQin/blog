@@ -11,17 +11,11 @@ import type { H3Event } from 'h3'
  * (used by `nuxt dev`, Node presets and also populated from the Worker bindings
  * when `nodejs_compat` is enabled).
  */
-export const getCloudflareEnv = (
-  event: H3Event,
-): Record<string, unknown> =>
+export const getCloudflareEnv = (event: H3Event): Record<string, unknown> =>
   (event.context as { cloudflare?: { env?: Record<string, unknown> } })
     .cloudflare?.env ?? {}
 
-export const getEnv = (
-  event: H3Event,
-  name: string,
-  fallback = '',
-): string => {
+export const getEnv = (event: H3Event, name: string, fallback = ''): string => {
   const fromCloudflare = getCloudflareEnv(event)[name]
 
   if (typeof fromCloudflare === 'string' && fromCloudflare) {

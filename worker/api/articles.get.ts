@@ -25,7 +25,7 @@ export default defineEventHandler(async event => {
     : await getDefaultLabels(event)
 
   // same paging rules as the Vue 2 implementation
-  const first = (!(before || after) || after) ? PAGE_SIZE : null
+  const first = !(before || after) || after ? PAGE_SIZE : null
   const last = before ? PAGE_SIZE : null
 
   if (search) {

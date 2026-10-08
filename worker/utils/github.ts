@@ -66,7 +66,6 @@ export async function githubGraphql<T>(
   }
 
   if (message) {
-     
     console.warn(
       `[github] partial GraphQL response (${body.errors?.length ?? 1} errors): ${
         body.errors?.[0]?.message ?? message

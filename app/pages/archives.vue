@@ -41,11 +41,21 @@ useHead(() => ({ title: t('archives') }))
       <h6 class="archives-item archives-title">
         {{ t('total_archives_count', [archives.length]) }}
       </h6>
-      <p v-if="error" class="muted">
-        Could not load archives ({{ error.statusCode }} {{ error.statusMessage }})
+      <p
+        v-if="error"
+        class="muted"
+      >
+        Could not load archives ({{ error.statusCode }}
+        {{ error.statusMessage }})
       </p>
-      <ol v-else class="list-unstyled">
-        <li v-for="group of archivesMap" :key="group.year">
+      <ol
+        v-else
+        class="list-unstyled"
+      >
+        <li
+          v-for="group of archivesMap"
+          :key="group.year"
+        >
           <h5 class="mt-5 my-3 archives-item">{{ group.year }}</h5>
           <ol class="list-unstyled">
             <li

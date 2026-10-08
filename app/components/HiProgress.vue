@@ -5,7 +5,10 @@ defineProps<{
 </script>
 
 <template>
-  <div class="hi-progress" :style="{ width: `${progress}%` }" />
+  <div
+    class="hi-progress"
+    :style="{ width: `${progress}%` }"
+  />
 </template>
 
 <style lang="scss" scoped>

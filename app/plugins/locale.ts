@@ -1,5 +1,4 @@
-import type {
-  Locale} from '#shared/utils/locale';
+import type { Locale } from '#shared/utils/locale'
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,

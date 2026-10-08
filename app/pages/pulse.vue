@@ -30,7 +30,9 @@ const { data, error } = await useAsyncData('pulse', () =>
   $fetch<PulseResponse>('/api/pulse', { retry: 0 }),
 )
 
-const pullRequests = ref<PullRequestItem[]>(data.value?.pullRequests.nodes ?? [])
+const pullRequests = ref<PullRequestItem[]>(
+  data.value?.pullRequests.nodes ?? [],
+)
 const issues = ref<PulseIssue[]>(data.value?.issues.nodes ?? [])
 const prPageInfo = ref(data.value?.pullRequests.pageInfo)
 const iPageInfo = ref(data.value?.issues.pageInfo)
@@ -121,7 +123,11 @@ useHead(() => ({ title: t('pulse') }))
             </div>
             <div>
               <h5 class="font-weight-bold">
-                <a class="heading-link" :href="item.url">{{ item.title }}</a>
+                <a
+                  class="heading-link"
+                  :href="item.url"
+                  >{{ item.title }}</a
+                >
                 <small class="text-muted ml-2">
                   {{ t('created_at') }}: {{ dateFormat(item.createdAt) }}
                 </small>
@@ -140,22 +146,34 @@ useHead(() => ({ title: t('pulse') }))
                   {{ dateFormat((item as PulseIssue).closedAt as string) }}
                 </small>
               </h5>
-              <a :href="item.repository.url">{{ item.repository.nameWithOwner }}</a>
+              <a :href="item.repository.url">{{
+                item.repository.nameWithOwner
+              }}</a>
             </div>
           </li>
         </ol>
-        <p v-if="error" class="muted text-center">
-          Could not load pulse ({{ error.statusCode }} {{ error.statusMessage }})
+        <p
+          v-if="error"
+          class="muted text-center"
+        >
+          Could not load pulse ({{ error.statusCode }}
+          {{ error.statusMessage }})
         </p>
         <div
           v-if="prPageInfo?.hasNextPage || iPageInfo?.hasNextPage"
           class="text-center"
         >
           <div class="d-inline-flex align-items-center">
-            <span class="text-muted clickable" @click="loadMore">
+            <span
+              class="text-muted clickable"
+              @click="loadMore"
+            >
               {{ t('load_more') }}
             </span>
-            <HiLoading v-if="loading" class="ml-2" />
+            <HiLoading
+              v-if="loading"
+              class="ml-2"
+            />
           </div>
         </div>
       </div>

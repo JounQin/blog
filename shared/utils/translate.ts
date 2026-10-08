@@ -114,7 +114,9 @@ export const parseTranslation = (
     const itemIndex = item.index + item.value.length
     const nextIndex = indexes[index + 1]?.index
     const translation =
-      nextIndex == null ? main.slice(itemIndex) : main.slice(itemIndex, nextIndex)
+      nextIndex == null
+        ? main.slice(itemIndex)
+        : main.slice(itemIndex, nextIndex)
 
     if (!index) {
       firstLocale = item.locale

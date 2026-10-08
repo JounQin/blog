@@ -60,20 +60,20 @@ for the package root.
 {
   "exports": {
     ".": {
-      "workerd": "./dist/native.mjs",   // ← the root resolves to a FILE under this condition
-      "worker":  "./dist/native.mjs",
+      "workerd": "./dist/native.mjs", // ← the root resolves to a FILE under this condition
+      "worker": "./dist/native.mjs",
       // …other runtime conditions…
       "node": { "import": "./dist/index.mjs", "require": "./lib/index.cjs" },
-      "default": "./dist/native.mjs"
+      "default": "./dist/native.mjs",
     },
     "./proxy": {
       "node": { "default": "./dist/proxy.cjs" },
       "default": {
         "import": { "default": "./dist/proxy-stub.mjs" },
-        "require": { "default": "./dist/proxy-stub.cjs" }
-      }
-    }
-  }
+        "require": { "default": "./dist/proxy-stub.cjs" },
+      },
+    },
+  },
 }
 ```
 
@@ -99,7 +99,9 @@ nitro: {
 The stub is the intended implementation for runtimes without proxy support:
 
 ```js
-function createProxy() { return { agent: undefined, dispatcher: undefined } }
+function createProxy() {
+  return { agent: undefined, dispatcher: undefined }
+}
 ```
 
 so the behaviour is unchanged (a `proxyUrl` passed on such a runtime is a no-op anyway).

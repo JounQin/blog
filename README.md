@@ -16,22 +16,22 @@ A blog system built on the GitHub GraphQL API, with Nuxt 4 SSR running on Cloudf
 ## Local development
 
 ```sh
-cp .dev.vars.example .dev.vars   # fill in GITHUB_TOKEN etc. — one file is enough locally
-yarn dev                         # http://localhost:3000 (the OAuth callback is registered on port 3000)
+cp .dev.vars.example .dev.vars # fill in GITHUB_TOKEN etc. — one file is enough locally
+yarn dev                       # http://localhost:3000 (the OAuth callback is registered on port 3000)
 ```
 
 `yarn dev` runs nitro through the Cloudflare dev emulation, so the runtime reads `.dev.vars` and the `vars` block of `wrangler.jsonc`; `.env` / `.env.local` are not used by this setup.
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `yarn dev` | Nuxt dev server (port 3000) |
-| `yarn build` | Production build into `.output/` |
-| `yarn worker:dev` | Run the build output inside a local workerd through wrangler (port 8787) |
-| `yarn deploy` | `wrangler deploy` (Cloudflare Workers) |
-| `yarn lint` / `yarn lint:fix` | ESLint (flat config) |
-| `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared) |
+| Command                                    | Description                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------ |
+| `yarn dev`                                 | Nuxt dev server (port 3000)                                              |
+| `yarn build`                               | Production build into `.output/`                                         |
+| `yarn worker:dev`                          | Run the build output inside a local workerd through wrangler (port 8787) |
+| `yarn deploy`                              | `wrangler deploy` (Cloudflare Workers)                                   |
+| `yarn lint` / `yarn lint:fix`              | ESLint (flat config)                                                     |
+| `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared)                                    |
 
 ## Layout
 

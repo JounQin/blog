@@ -40,7 +40,7 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 - The token only ever lives in the Worker; queries were ported verbatim from `src/queries.gql`
 - HTTP client: Nuxt/ofetch `$fetch` (global `fetch` underneath). **axios was removed** —
   its Node http adapter was one of the original portability blockers
-- `githubGraphql` tolerates partial responses: when GitHub returns data *and* errors (for
+- `githubGraphql` tolerates partial responses: when GitHub returns data _and_ errors (for
   example nodes the token cannot read) it logs a warning and returns the partial data;
   API routes filter `null` nodes, so pages degrade instead of failing
 - Per-node `null` filtering in `/api/pulse`, and `pinnedItems` filtered in `/api/about`
@@ -189,12 +189,12 @@ env.ASSETS   Assets
 
 Values to add with `wrangler secret put <NAME>` (or in the dashboard):
 
-| Variable | Purpose |
-| --- | --- |
-| `GITHUB_TOKEN` | GraphQL reads (classic PAT, or a fine-grained PAT with an expiry ≤ 366 days) |
-| `APP_KEYS` | Session signing (comma-separated; without it login is disabled) |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app |
-| `GITHUB_OAUTH_CALLBACK` | e.g. `https://blog.1stg.me/api/oauth`; locally `http://localhost:3000/api/oauth` |
+| Variable                                    | Purpose                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------- |
+| `GITHUB_TOKEN`                              | GraphQL reads (classic PAT, or a fine-grained PAT with an expiry ≤ 366 days)     |
+| `APP_KEYS`                                  | Session signing (comma-separated; without it login is disabled)                  |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app                                                                 |
+| `GITHUB_OAUTH_CALLBACK`                     | e.g. `https://blog.1stg.me/api/oauth`; locally `http://localhost:3000/api/oauth` |
 
 Translation needs no variable at all (`@deeplx/core`).
 

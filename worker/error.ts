@@ -13,7 +13,6 @@ const errorHandler = (
   event: H3Event,
   { defaultHandler }: NitroErrorHandlerOptions,
 ) => {
-   
   console.error(
     `[nitro] ${event.method} ${event.path} -> ${error.statusCode || 500}`,
     error.stack || error,

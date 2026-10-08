@@ -1,6 +1,7 @@
 {
   "name": "@1stg/blog",
   "version": "0.0.0",
+  "type": "module",
   "description": "a Blog system built on GitHub GraphQL API, Nuxt 4 SSR on Cloudflare Workers",
   "repository": "git@github.com:JounQin/blog.git",
   "author": "JounQin <admin@1stg.me>",
@@ -9,15 +10,15 @@
   "packageManager": "yarn@4.18.1",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
-    "preview": "nuxt preview",
     "deploy": "wrangler deploy",
-    "worker:dev": "wrangler dev",
+    "dev": "nuxt dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepare": "nuxt prepare && simple-git-hooks",
+    "preview": "nuxt preview",
     "typecheck": "nuxt prepare && tsc --noEmit -p .nuxt/tsconfig.app.json",
-    "typecheck:server": "nuxt prepare && tsc --noEmit -p .nuxt/tsconfig.server.json"
+    "typecheck:server": "nuxt prepare && tsc --noEmit -p .nuxt/tsconfig.server.json",
+    "worker:dev": "wrangler dev"
   },
   "dependencies": {
     "@deeplx/core": "^0.2.2",
@@ -50,14 +51,14 @@
   "browserslist": [
     "extends @1stg/browserslist-config/modern"
   ],
-  "renovate": {
-    "extends": [
-      "@1stg"
-    ]
-  },
   "commitlint": {
     "extends": [
       "@1stg/commitlint-config"
+    ]
+  },
+  "renovate": {
+    "extends": [
+      "@1stg"
     ]
   }
 }

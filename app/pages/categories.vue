@@ -19,11 +19,17 @@ useHead(() => ({ title: t('categories') }))
     <h4 class="my-5 text-center">
       {{ t('total_categories_count', [labels.length]) }}
     </h4>
-    <p v-if="error" class="muted">
+    <p
+      v-if="error"
+      class="muted"
+    >
       Could not load categories ({{ error.statusCode }}
       {{ error.statusMessage }})
     </p>
-    <ul v-else class="list-unstyled">
+    <ul
+      v-else
+      class="list-unstyled"
+    >
       <li
         v-for="label of labels"
         :key="label.id"

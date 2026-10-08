@@ -64,7 +64,10 @@ useHead(() => ({ title: t('home') }))
 </script>
 
 <template>
-  <main v-if="articles.length" class="home-main">
+  <main
+    v-if="articles.length"
+    class="home-main"
+  >
     <ul class="list-unstyled">
       <li
         v-for="issue of articles"
@@ -72,7 +75,10 @@ useHead(() => ({ title: t('home') }))
         class="border-b my-4"
       >
         <h5>
-          <NuxtLink class="heading-link" :to="`/article/${issue.number}`">
+          <NuxtLink
+            class="heading-link"
+            :to="`/article/${issue.number}`"
+          >
             {{ tt(issue.title) }}
           </NuxtLink>
         </h5>
@@ -99,21 +105,39 @@ useHead(() => ({ title: t('home') }))
     </ul>
     <nav v-if="pageInfo?.hasPreviousPage || pageInfo?.hasNextPage">
       <ul class="pagination justify-content-end">
-        <li class="page-item" :class="{ disabled: !pageInfo?.hasPreviousPage }">
-          <NuxtLink class="page-link" :to="prevRoute">
+        <li
+          class="page-item"
+          :class="{ disabled: !pageInfo?.hasPreviousPage }"
+        >
+          <NuxtLink
+            class="page-link"
+            :to="prevRoute"
+          >
             {{ t('previous_page') }}
           </NuxtLink>
         </li>
-        <li class="page-item" :class="{ disabled: !pageInfo?.hasNextPage }">
-          <NuxtLink class="page-link" :to="nextRoute">
+        <li
+          class="page-item"
+          :class="{ disabled: !pageInfo?.hasNextPage }"
+        >
+          <NuxtLink
+            class="page-link"
+            :to="nextRoute"
+          >
             {{ t('next_page') }}
           </NuxtLink>
         </li>
       </ul>
     </nav>
   </main>
-  <main v-else class="py-5 text-center text-muted">
-    <p v-if="error" class="muted">
+  <main
+    v-else
+    class="py-5 text-center text-muted"
+  >
+    <p
+      v-if="error"
+      class="muted"
+    >
       Could not load articles ({{ error.statusCode }} {{ error.statusMessage }})
     </p>
     <template v-else>{{ emptyTip }}</template>

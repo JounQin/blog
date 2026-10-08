@@ -128,11 +128,17 @@ function preventGesture(event: Event) {
 </script>
 
 <template>
-  <div id="app" class="container-fluid">
+  <div
+    id="app"
+    class="container-fluid"
+  >
     <HiProgress :progress="progress" />
     <nav class="fixed-top navbar navbar-expand-md navbar-light bg-light">
       <div class="container">
-        <NuxtLink class="navbar-brand" to="/">
+        <NuxtLink
+          class="navbar-brand"
+          to="/"
+        >
           <img
             class="brand-img"
             src="/logo-30.png"
@@ -166,20 +172,33 @@ function preventGesture(event: Event) {
                   (!item.link || item.link === 'pulse') && locale === 'en',
               }"
             >
-              <NuxtLink class="nav-link" :to="`/${item.link}`" @click="toggleShow">
-                <i class="fa mr-2" :class="`fa-${item.icon}`" />
+              <NuxtLink
+                class="nav-link"
+                :to="`/${item.link}`"
+                @click="toggleShow"
+              >
+                <i
+                  class="fa mr-2"
+                  :class="`fa-${item.icon}`"
+                />
                 {{ t(item.link || 'home') }}
               </NuxtLink>
             </li>
           </ul>
-          <form class="form-inline my-2 my-md-0" @submit.prevent="submit">
+          <form
+            class="form-inline my-2 my-md-0"
+            @submit.prevent="submit"
+          >
             <input
               v-model.trim="search"
               class="form-control mr-2 flex-1"
               type="search"
               :placeholder="t('search_all_articles')"
             >
-            <button class="btn btn-outline-success" type="submit">
+            <button
+              class="btn btn-outline-success"
+              type="submit"
+            >
               {{ t('search') }}
             </button>
             <a
@@ -210,14 +229,22 @@ function preventGesture(event: Event) {
     </nav>
     <div class="app-main">
       <div class="container py-4"><slot /></div>
-      <button v-if="showScrollBtn" class="top-btn text-muted" @click="scrollToTop">
+      <button
+        v-if="showScrollBtn"
+        class="top-btn text-muted"
+        @click="scrollToTop"
+      >
         Top
       </button>
     </div>
     <footer class="row py-4 bg-light">
       <div class="container d-flex">
         <div class="flex-1">
-          <a class="ml-2" href="https://www.1stg.me">© 1stg.me</a>
+          <a
+            class="ml-2"
+            href="https://www.1stg.me"
+            >© 1stg.me</a
+          >
           <a
             class="text-secondary ml-2"
             :href="`https://GitHub.com/${REPOSITORY.owner}/${REPOSITORY.name}`"
@@ -225,7 +252,10 @@ function preventGesture(event: Event) {
             <span class="sr-only">
               {{ `${REPOSITORY.owner}/${REPOSITORY.name}` }}
             </span>
-            <i class="fa fa-github" aria-hidden="true" />
+            <i
+              class="fa fa-github"
+              aria-hidden="true"
+            />
           </a>
           <span
             class="text-secondary ml-2 pointer"
@@ -233,12 +263,19 @@ function preventGesture(event: Event) {
             @click="toggleLocale"
           >
             <span class="sr-only">{{ t('toggle_locale') }}</span>
-            <i class="fa fa-globe" aria-hidden="true" />
+            <i
+              class="fa fa-globe"
+              aria-hidden="true"
+            />
           </span>
         </div>
         <div>
           <i class="fa fa-code mr-2" />by
-          <a class="mx-2" href="https://GitHub.com/JounQin">JounQin</a>with
+          <a
+            class="mx-2"
+            href="https://GitHub.com/JounQin"
+            >JounQin</a
+          >with
           <i class="fa fa-heart ml-2" />
         </div>
       </div>

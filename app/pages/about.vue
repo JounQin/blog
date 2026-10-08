@@ -7,9 +7,7 @@ const { data: owner, error } = await useAsyncData('about', () =>
   $fetch<OwnerProfile>('/api/about', { retry: 0 }),
 )
 
-const login = computed(
-  () => owner.value?.resourcePath?.split('/').pop() ?? '',
-)
+const login = computed(() => owner.value?.resourcePath?.split('/').pop() ?? '')
 
 const pinnedItems = computed(() =>
   (owner.value?.pinnedItems?.nodes ?? []).filter(Boolean),
@@ -78,7 +76,10 @@ useHead(() => ({ title: t('about') }))
       </li>
     </ul>
   </main>
-  <main v-else-if="error" class="py-5 text-center text-muted">
+  <main
+    v-else-if="error"
+    class="py-5 text-center text-muted"
+  >
     Could not load profile ({{ error.statusCode }} {{ error.statusMessage }})
   </main>
 </template>
