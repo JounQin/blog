@@ -248,3 +248,13 @@ origin of the incoming request. Register `https://jounqin.workers.dev/api/oauth`
 the GitHub OAuth app with "Allow wildcard matching" so every preview host (and the
 workers.dev URL itself) is accepted, and keep the explicit value for development
 (`http://localhost:3000/api/oauth`) and production (`https://blog.1stg.me/api/oauth`).
+
+## Known GraphQL noise
+
+Some organisations refuse classic personal access tokens, for example
+`web-infra-dev` forbids access via a personal access token (classic). GitHub then
+returns a partial response with per-node errors; the client in
+`worker/utils/github.ts` tolerates partial data and drops the null nodes, so the
+pages still render (verified: `/pulse` logs 2 and 23 per-node errors and answers
+200). Use a fine-grained token or a GitHub App if those repositories have to be
+included.
