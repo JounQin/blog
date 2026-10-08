@@ -6,17 +6,16 @@
   "author": "JounQin <admin@1stg.me>",
   "license": "MIT",
   "private": true,
-  "packageManager": "yarn@4.0.2",
+  "packageManager": "yarn@4.18.1",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
     "deploy": "wrangler deploy",
     "worker:dev": "wrangler dev",
-    "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "simple-git-hooks",
+    "prepare": "nuxt prepare && simple-git-hooks",
     "typecheck": "nuxt prepare && tsc --noEmit -p .nuxt/tsconfig.app.json",
     "typecheck:server": "nuxt prepare && tsc --noEmit -p .nuxt/tsconfig.server.json"
   },
@@ -30,7 +29,7 @@
     "vue-router": "^4"
   },
   "devDependencies": {
-    "@1stg/app-config": "^9.0.0",
+    "@1stg/app-config": "^15.0.0",
     "@nuxt/eslint": "^1.17.0",
     "@types/node": "^20.9.0",
     "@types/prettier": "^2.7.3",
