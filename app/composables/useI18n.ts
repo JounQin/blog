@@ -35,21 +35,25 @@ export const useI18n = () => {
   ) => {
     try {
       const { text } = await $fetch<{ text: string }>('/api/translate', {
-        // no transport retry: `Retry=1` only allows one retry inside the route,
-        // and only for client-triggered calls -- the SSR prefetch stays within a
-        // single attempt so a slow provider cannot multiply the render latency
+        // POST: a long article body must not have to fit into a URL. No
+        // transport retry either -- `retry` in the body only allows one retry
+        // inside the route, and only for client-triggered calls; the SSR
+        // prefetch stays within a single attempt so a slow provider cannot
+        // multiply the render latency
+        method: 'POST',
         retry: 0,
-        params: {
+        body: {
+          text: source,
           source: sourceLocale,
           // the language to produce: the route auto-detects the source itself
           target: targetLocale,
-          sourceText: source,
           ...(retry ? { retry: true } : {}),
         },
       })
       cache.value[key] = text
     } catch {
-      // keep the placeholder, the page still renders
+      // a failed translation degrades to the source text, never to a placeholder
+      cache.value[key] = source
     }
   }
 
@@ -113,6 +117,13 @@ export const useI18n = () => {
       ).finally(() => {
         pending.value[key] = false
       })
+    }
+
+    // untagged text (no markers) is readable as-is: never hold it behind the
+    // "translating" placeholder while the request is in flight, or after it
+    // failed (`request` caches the source text on failure)
+    if (parsed.sourceLocale == null) {
+      return parsed.text
     }
 
     return buildTranslatedText(parsed, t('translating') + t('ellipsis'))

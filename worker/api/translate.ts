@@ -19,6 +19,10 @@ import { getEnv } from '../utils/env'
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
  * behaviour is exactly the library-only one, which keeps the fallback reversible.
  *
+ * `GET ?sourceText=…` keeps the original contract; `POST` with a JSON body
+ * (`{ text | sourceText, source?, target?, retry? }`) is what the client uses, so
+ * a long article body never has to fit into a URL.
+ *
  * `source` (the language of `sourceText`) is passed to both providers when the
  * caller gives it. When it is missing the provider detects the language itself
  * -- that is how untagged text is translated -- and `target` then says which
@@ -304,15 +308,32 @@ const translateChunk = async (
 }
 
 export default defineEventHandler(async event => {
-  const query = getQuery(event)
-  const text = typeof query.sourceText === 'string' ? query.sourceText : ''
+  // GET keeps the original `?sourceText=` contract (and manual calls / probes);
+  // POST takes the same parameters as a JSON body so a long article body never
+  // has to fit into a URL:
+  //   { "text" | "sourceText": "...", "source"?: "en"|"zh", "target"?: "en"|"zh",
+  //     "retry"?: true }
+  const isPost = getMethod(event) === 'POST'
+  const params: Record<string, unknown> = isPost
+    ? ((await readBody(event).catch(() => null)) as Record<
+        string,
+        unknown
+      > | null) ?? {}
+    : getQuery(event)
+
+  const text =
+    typeof params.text === 'string'
+      ? params.text
+      : typeof params.sourceText === 'string'
+        ? params.sourceText
+        : ''
 
   if (!text) {
     return { text: '' }
   }
 
-  const sourceLocale = isLocale(query.source) ? query.source : undefined
-  const targetLocale = isLocale(query.target) ? query.target : undefined
+  const sourceLocale = isLocale(params.source) ? params.source : undefined
+  const targetLocale = isLocale(params.target) ? params.target : undefined
   const cookie = getCookie(event, LOCALE_COOKIE)
   const cookieLocale = isLocale(cookie) ? cookie : Locale.EN
 
@@ -332,7 +353,7 @@ export default defineEventHandler(async event => {
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
-  const attempts = query.retry ? MAX_ATTEMPTS : 1
+  const attempts = params.retry ? MAX_ATTEMPTS : 1
   // read per request: Worker bindings are not available at module scope. Both
   // variables are optional and read independently, so a token alone configures
   // nothing and a URL alone already enables the fallback (without the header).

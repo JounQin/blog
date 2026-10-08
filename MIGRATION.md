@@ -75,6 +75,11 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   derived from `source`, and with neither from the locale cookie, exactly as before. Note that the
   anonymous endpoint mirrors a given `source_lang` as `detected_source_language` whenever its own
   detection is not confident, so an accurate tag helps and a wrong one can cause an echo
+- The endpoint accepts `GET ?sourceText=…` (unchanged) and, as what the client uses, `POST` with a
+  JSON body `{ text | sourceText, source?, target?, retry? }` — a long article body must not have
+  to fit into a URL. A failed request caches the source text, and an untagged template renders its
+  original text while the translation is pending and after it fails, so neither case can show the
+  "Translating…" placeholder
 - `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
   chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
   (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
