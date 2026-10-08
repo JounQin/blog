@@ -81,10 +81,11 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
   `{ text, source_lang, target_lang }`, for a self-hosted
   [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
-  default), so an `http` -> `https` or path-prefixed endpoint keeps working; only the **final**
-  response is judged — HTTP 200, `code` 200, a non-empty `data` and `data !== chunk`. A chunk
-  the library translates never reaches DLX, and with `DEEPLX_URL` unset nothing changes at all
-  (the route stays library-only)
+  default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
+  GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
+  the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
+  `data !== chunk`. A chunk the library translates never reaches DLX, and with `DEEPLX_URL`
+  unset nothing changes at all (the route stays library-only)
 - The library signal is the value `translateByDeepLX` returns: a 4xx `code` short-circuits to the
   fallback, any other non-200 shape (5xx, empty payload) spends the remaining attempts, and a
   200 carries `data` plus the `sourceLang` used for the decline check — no error parsing, cause

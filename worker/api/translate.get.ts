@@ -16,10 +16,10 @@ import { getEnv } from '../utils/env'
  * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a chunk
  * whose library attempts all failed gets one request to `<DEEPLX_URL>/translate`
  * with an optional `DEEPLX_TOKEN` bearer header and a shorter 4 s budget. The
- * endpoint may redirect and we follow it, so an `http` -> `https` (or a path
- * prefix) deployment keeps working; the token only ever goes to the configured
- * origin on that first request. With `DEEPLX_URL` unset the behaviour is exactly
- * the library-only one, which keeps the fallback reversible.
+ * endpoint should serve `/translate` directly: redirects are followed, but a
+ * 301/302/303 becomes a GET and drops the body, so only a method-preserving
+ * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
+ * behaviour is exactly the library-only one, which keeps the fallback reversible.
  * `Source` is the locale of `sourceText`; the target locale is the opposite one.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
@@ -151,10 +151,10 @@ const translateWithLibrary = (
  * and any path prefix) comes from `DEEPLX_URL` verbatim and only `/translate`
  * is appended, so nothing here is host or port specific.
  *
- * Redirects are followed (the runtime default), so an endpoint that redirects
- * `http` -> `https` or sits behind a path prefix keeps working. That is not a
- * credential leak: the bearer token already goes to the configured origin on the
- * first request, so a hostile or compromised endpoint could read it anyway.
+ * Redirects are followed (the runtime default), but the endpoint should serve
+ * `/translate` directly: a 301/302/303 is re-issued as a GET and drops the JSON
+ * body, so only a method-preserving redirect (307/308) still translates. The
+ * `authorization` header goes to the configured origin on the first request.
  * `ignoreResponseError` keeps ofetch from throwing on a non-2xx, so the status of
  * the final response can be inspected here.
  *
