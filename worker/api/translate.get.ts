@@ -1,7 +1,4 @@
-import {
-  translateByDeepLX,
-  type DeepLXTranslationSuccessResult,
-} from '@deeplx/core'
+import { translateByDeepLX } from '@deeplx/core'
 import { $fetch } from 'ofetch'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
@@ -45,10 +42,6 @@ const DEEPLX_PATH = '/translate'
 
 type TargetLanguage = Parameters<typeof translateByDeepLX>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
-
-/** `zh` matches `zh-Hans`, `EN` matches `en`; only the primary subtag counts. */
-const samePrimarySubtag = (a: string, b: string): boolean =>
-  a.toLowerCase().split('-')[0] === b.toLowerCase().split('-')[0]
 
 /** Self-hosted DLX. Both env vars are optional: `DEEPLX_URL` alone already
  * enables the fallback, and no `authorization` header is sent without a token. */
@@ -107,30 +100,9 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
 const MAX_ATTEMPTS = 2
 
 /**
- * Whether an unchanged answer is a decline rather than a chunk that already is
- * in the target language. DeepL refuses to translate when it detects the
- * language it was asked to translate *from* (`sourceLang` matches `source`, or
- * -- with an auto source -- is anything but the target); a chunk already in the
- * target language comes back unchanged with a different `sourceLang`. Measured
- * against 0.2.4: `sourceLang` is the detected language, but the anonymous
- * endpoint echoes the requested `source_lang` when its detection is not
- * confident, so a short echo can still be reported as the requested source.
- */
-const isDecline = (
-  chunk: string,
-  result: DeepLXTranslationSuccessResult,
-  source: SourceLanguage | undefined,
-  target: TargetLanguage,
-): boolean =>
-  result.data === chunk &&
-  (source
-    ? samePrimarySubtag(result.sourceLang, source)
-    : !samePrimarySubtag(result.sourceLang, target))
-
-/**
  * One primary attempt through `@deeplx/core`, which talks to DeepL's anonymous
  * oneshot endpoint. `translateByDeepLX` reports failures as values
- * (`{ code, message }`), so there is nothing to catch here.
+ * (`{ code, message }`), so the retry decision is a plain check on the result.
  */
 const translateWithLibrary = (
   chunk: string,
@@ -228,56 +200,69 @@ const translateChunk = async (
   // primary: the `@deeplx/core` library, up to `attempts` tries. It reports its
   // outcome as a value, so the retry decision is a plain check on `code`
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const result = await translateWithLibrary(chunk, target, source)
+    try {
+      const result = await translateWithLibrary(chunk, target, source)
 
-    // a 200 with a non-empty string is a real response
-    if (
-      result.code === 200 &&
-      'data' in result &&
-      typeof result.data === 'string' &&
-      result.data
-    ) {
-      if (isDecline(chunk, result, source, target)) {
-        // DeepL answers 200 with the input text when it declines to translate.
-        // Count it as a failed attempt so an allowed retry still runs, and fall
-        // back to the source text once the attempts are exhausted.
-        console.warn(
-          '[translate] library declined to translate the chunk',
-          `attempt=${attempt}/${attempts}`,
-          `length=${chunk.length}`,
-          `source=${source} target=${target}`,
-          `sourceLang=${result.sourceLang}`,
-        )
-        continue
+      // a 200 with a non-empty string is a real response
+      if (
+        result.code === 200 &&
+        'data' in result &&
+        typeof result.data === 'string' &&
+        result.data
+      ) {
+        if (result.data === chunk) {
+          // The anonymous endpoint mirrors the requested `source_lang` as
+          // `detected_source_language` whenever its detection is not confident, so
+          // an identical output usually means the chunk had nothing to translate
+          // rather than a decline. Retrying it, or asking the self-hosted DLX,
+          // would not change that and would spend the operator's own DeepL quota
+          // for nothing, so this is reported as not translated instead.
+          console.warn(
+            '[translate] library returned the source text unchanged, not retrying',
+            `attempt=${attempt}/${attempts}`,
+            `length=${chunk.length}`,
+            `source=${source} target=${target}`,
+          )
+          return { text: chunk, ok: false }
+        }
+
+        return { text: result.data, ok: true }
       }
 
-      return { text: result.data, ok: true }
-    }
-
-    // no usable response: log it (observability is enabled in wrangler.jsonc)
-    // and decide whether another attempt is worth it
-    console.warn(
-      `[translate] library chunk failed (attempt ${attempt}/${attempts})`,
-      `code=${result.code}`,
-      `message=${'message' in result ? result.message : 'none'}`,
-      `length=${chunk.length}`,
-    )
-
-    if (result.code >= 400 && result.code < 500) {
-      // 4xx: DeepL rejected this request/profile, so a repeated call would be
-      // rejected the same way; stop retrying and let the fallback try instead
+      // no usable response: log it (observability is enabled in wrangler.jsonc)
+      // and decide whether another attempt is worth it
       console.warn(
-        '[translate] library rejected the request (4xx), not retrying',
+        `[translate] library chunk failed (attempt ${attempt}/${attempts})`,
         `code=${result.code}`,
+        `message=${'message' in result ? result.message : 'none'}`,
         `length=${chunk.length}`,
       )
-      break
+
+      if (result.code >= 400 && result.code < 500) {
+        // 4xx: DeepL rejected this request/profile, so a repeated call would be
+        // rejected the same way; stop retrying and let the fallback try instead
+        console.warn(
+          '[translate] library rejected the request (4xx), not retrying',
+          `code=${result.code}`,
+          `length=${chunk.length}`,
+        )
+        break
+      }
+    } catch (error) {
+      // `translateByDeepLX` reports failures as values, so this should not happen;
+      // treat an unexpected throw like a retryable failure rather than failing the
+      // whole route
+      console.warn(
+        `[translate] library threw (attempt ${attempt}/${attempts})`,
+        String(error),
+        `length=${chunk.length}`,
+      )
     }
   }
 
-  // fallback: a single self-hosted DLX request, and only when it is configured.
-  // It is lazy on purpose: a chunk the library translated never reaches it, so
-  // the public service stays out of the hot path while it is being validated.
+  // fallback: one self-hosted DLX request, and only when it is configured. It runs
+  // for real failures only (a 4xx above, or a 5xx/unusable result that used up the
+  // attempts); a translated or unchanged chunk never reaches it.
   if (service.url) {
     console.warn(
       '[translate] library path exhausted, falling back to the self-hosted DLX',
