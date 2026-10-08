@@ -27,7 +27,7 @@
     "invert-color": "^3.0.0",
     "nuxt": "^4",
     "vue": "^3",
-    "vue-router": "^4"
+    "vue-router": "^5.0.0"
   },
   "devDependencies": {
     "@1stg/app-config": "^15.0.0",
