@@ -9202,19 +9202,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cssnano@npm:^7.1.9 || ^8.0.1":
-  version: 8.0.10
-  resolution: "cssnano@npm:8.0.10"
-  dependencies:
-    cssnano-preset-default: "npm:^8.0.10"
-    lilconfig: "npm:^3.1.3"
-  peerDependencies:
-    postcss: ^8.5.26
-  checksum: 10/fd30c4d49b4289a5174c0bbb3b42fd5cc3ca86cceed31894150bb688b02edea3bc6e8ba9968612a9fadfec5ca5f84a029ef143cfd7b97c622debe92cd612e7d2
-  languageName: node
-  linkType: hard
-
-"cssnano@npm:^9.2.2":
+"cssnano@npm:^9.3.2":
   version: 9.3.2
   resolution: "cssnano@npm:9.3.2"
   dependencies:
@@ -13672,13 +13660,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lilconfig@npm:^3.1.3":
-  version: 3.1.3
-  resolution: "lilconfig@npm:3.1.3"
-  checksum: 10/b932ce1af94985f0efbe8896e57b1f814a48c8dbd7fc0ef8469785c6303ed29d0090af3ccad7e36b626bfca3a4dc56cc262697e9a8dd867623cf09a39d54e4c3
-  languageName: node
-  linkType: hard
-
 "lines-and-columns@npm:^1.1.6":
   version: 1.1.6
   resolution: "lines-and-columns@npm:1.1.6"
@@ -17479,18 +17460,6 @@ __metadata:
     cssesc: "npm:^3.0.0"
     util-deprecate: "npm:^1.0.2"
   checksum: 10/8b00b63c8ae9eab8567bebf2710971dcd832a7a20a9cae7059d92aee3df38fbcd13ce454bdc09c54e777dbddd0df38966227000091c88002741b8575f3878f05
-  languageName: node
-  linkType: hard
-
-"postcss-svgo@npm:^8.0.6":
-  version: 8.0.6
-  resolution: "postcss-svgo@npm:8.0.6"
-  dependencies:
-    postcss-value-parser: "npm:^4.2.0"
-    svgo: "npm:^4.1.0"
-  peerDependencies:
-    postcss: ^8.5.26
-  checksum: 10/c1c985c87678b25cd9a81d26599738a28241641a2519cc350f6a768053e3b0732a2dc9ec174515d376e5564f4d1f7dd633c1e1c34bd5857e69ea73c5017db687
   languageName: node
   linkType: hard
 

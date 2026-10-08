@@ -60,5 +60,9 @@
     "extends": [
       "@1stg"
     ]
+  },
+  "resolutions": {
+    "cssnano": "^9.3.2",
+    "postcss-svgo": "^9.0.4"
   }
 }
