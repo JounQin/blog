@@ -1,5 +1,7 @@
 import { translate } from '@deeplx/core'
 
+import { warmDeepLCookies } from '../utils/deeplx'
+
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE } from '../../shared/utils/locale'
 
 /**
@@ -70,11 +72,16 @@ const translateChunk = async (
   target: TargetLanguage,
   source: SourceLanguage,
   attempts: number,
+  cookies: string,
 ): Promise<{ text: string; ok: boolean }> => {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const text = await translate(chunk, target, source, {
         signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+        cookies,
+        // the library's own warm-up reads Set-Cookie via headers.get(), which the
+        // Workers runtime never exposes -- warmDeepLCookies uses getSetCookie()
+        skipWarm: true,
       })
       return { text, ok: true }
     } catch (error) {
@@ -112,9 +119,12 @@ export default defineEventHandler(async event => {
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
   const attempts = query.retry ? MAX_ATTEMPTS : 1
+  const cookies = await warmDeepLCookies()
   const chunks = splitText(text)
   const results = await Promise.all(
-    chunks.map(chunk => translateChunk(chunk, target, source, attempts)),
+    chunks.map(chunk =>
+      translateChunk(chunk, target, source, attempts, cookies),
+    ),
   )
 
   return {
