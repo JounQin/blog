@@ -18,6 +18,48 @@ const resolve = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 
 const TITLE = '1stG Blog'
 
+// Minimal shape of a PostCSS node, so this config does not have to depend on
+// `postcss` types directly (Vite ships it transitively)
+interface PostCssNode {
+  type: string
+  prop?: string
+}
+
+// `github-markdown-css` declares its design tokens on `.markdown-body` (and on
+// `[data-theme="…"]`, but only *inside* its own `prefers-color-scheme` queries).
+// Custom properties only inherit downwards, so nothing outside the article body
+// — `:root`, the navbar, the footer, cards — can read `--bgColor-*`,
+// `--fgColor-*` or `--borderColor-*`. Adding `:root` to those token rules lifts
+// them to the document root, so the rest of the app can consume the very same
+// palette instead of keeping a second, hand-maintained copy of GitHub's colors.
+const hoistGithubMarkdownTokens = {
+  postcssPlugin: 'hoist-github-markdown-tokens',
+  Rule(rule: { selectors: string[]; nodes: PostCssNode[] }) {
+    const isTokenRule =
+      rule.selectors.length > 0 &&
+      rule.selectors.every(
+        selector =>
+          selector === '.markdown-body' || /^\[data-theme\s*=/.test(selector),
+      ) &&
+      // `.markdown-body` is not only used for tokens: the base rule carries
+      // `font-size: 16px`, the font stack and `line-height`, and `:root` would
+      // out-specify `html { font-size: 14px }`, scaling every rem on the page in
+      // both colour schemes. Only the token rules qualify — they declare nothing
+      // but custom properties, plus the `color-scheme` marker, which belongs on
+      // `:root` anyway.
+      rule.nodes.every(
+        node =>
+          node.type !== 'decl' ||
+          node.prop?.startsWith('--') ||
+          node.prop === 'color-scheme',
+      )
+
+    if (isTokenRule && !rule.selectors.includes(':root')) {
+      rule.selectors = [':root', ...rule.selectors]
+    }
+  },
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   // Nuxt 4 layout: UI lives in app/, the Cloudflare/nitro routes live in worker/
@@ -80,11 +122,19 @@ export default defineNuxtConfig({
         { charset: 'UTF-8' },
         { 'http-equiv': 'X-UA-Compatible', content: 'IE=edge,chrome=1' },
         { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'viewport', content: 'width=device-width,initial-scale=1,shrink-to-fit=no' },
+        // follow the same `prefers-color-scheme` switch as the stylesheets so
+        // the browser chrome matches the rendered surface
         {
-          name: 'viewport',
-          content: 'width=device-width,initial-scale=1,shrink-to-fit=no',
+          name: 'theme-color',
+          content: '#f8f9fa',
+          media: '(prefers-color-scheme: light)',
         },
-        { name: 'theme-color', content: '#6c757d' },
+        {
+          name: 'theme-color',
+          content: '#151b23',
+          media: '(prefers-color-scheme: dark)',
+        },
       ],
       link: [
         { rel: 'apple-touch-icon', sizes: '120x120', href: '/logo-120.png' },
@@ -101,6 +151,12 @@ export default defineNuxtConfig({
 
   vite: {
     css: {
+      // Nuxt builds `css.postcss.plugins` from this config alone and never reads
+      // `.postcssrc.js`, while Vite concatenates the arrays it is given, so this
+      // runs alongside whatever Nuxt resolved on its own
+      postcss: {
+        plugins: [hoistGithubMarkdownTokens],
+      },
       preprocessorOptions: {
         scss: {
           // sass needs the extra load paths for the bootstrap partials,

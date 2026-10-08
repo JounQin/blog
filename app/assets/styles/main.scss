@@ -1,5 +1,24 @@
 @import 'bootstrap-stack';
 
+// The palette is owned by `github-markdown-css`: `nuxt.config.ts` hoists its
+// design tokens to `:root`, so point Bootstrap's theme variables at them rather
+// than keeping a second, hand-written copy of GitHub's colors. Only the dark
+// scheme is bridged — the light theme keeps Bootstrap's own defaults.
+@include color-mode(dark) {
+  :root {
+    --bs-body-bg: var(--bgColor-default);
+    --bs-body-color: var(--fgColor-default);
+    --bs-emphasis-color: var(--fgColor-default);
+    --bs-secondary-color: var(--fgColor-muted);
+    --bs-tertiary-color: var(--fgColor-muted);
+    --bs-secondary-bg: var(--bgColor-muted);
+    --bs-tertiary-bg: var(--bgColor-muted);
+    --bs-border-color: var(--borderColor-default);
+    --bs-link-color: var(--fgColor-default);
+    --bs-link-hover-color: var(--fgColor-accent);
+  }
+}
+
 html,
 body,
 #app {
@@ -58,7 +77,7 @@ button:focus {
 
     width: 0;
     height: 2px;
-    background-color: $link-hover-color;
+    background-color: var(--bs-link-hover-color);
     transition: width 0.5s ease;
   }
 
@@ -125,5 +144,41 @@ button:focus {
     text-align: right;
     border-bottom: 1px solid lightgray;
     line-height: 0;
+  }
+
+  // `lightgray` is far too bright on the GitHub dark canvas
+  @include color-mode(dark) {
+    &:before,
+    &:after {
+      color: var(--fgColor-muted);
+    }
+
+    &:before {
+      border-top-color: var(--borderColor-default);
+    }
+
+    &:after {
+      border-bottom-color: var(--borderColor-default);
+    }
+  }
+}
+
+// Bootstrap never re-tints outline buttons for dark mode, so the navbar search
+// button would keep the (too dark) light-theme `$success` green. Rebuild the
+// variant from the GitHub tokens — `button-outline-variant()` cannot be reused
+// here because it feeds the color to `to-rgb()` for the focus shadow, and that
+// needs a real Sass color rather than a `var()`.
+@include color-mode(dark) {
+  .btn-outline-success {
+    --bs-btn-color: var(--fgColor-success);
+    --bs-btn-border-color: var(--fgColor-success);
+    --bs-btn-hover-color: var(--bgColor-default);
+    --bs-btn-hover-bg: var(--fgColor-success);
+    --bs-btn-hover-border-color: var(--fgColor-success);
+    --bs-btn-active-color: var(--bgColor-default);
+    --bs-btn-active-bg: var(--fgColor-success);
+    --bs-btn-active-border-color: var(--fgColor-success);
+    --bs-btn-disabled-color: var(--fgColor-success);
+    --bs-btn-disabled-border-color: var(--fgColor-success);
   }
 }

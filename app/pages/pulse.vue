@@ -203,4 +203,37 @@ useHead(() => ({ title: t('pulse') }))
     }
   }
 }
+
+// `.btn-light` and the state colors above are fixed light-theme values, so
+// remap them onto the GitHub tokens for a dark color scheme.
+@include color-mode(dark) {
+  .btn-light {
+    --bs-btn-color: var(--fgColor-default);
+    --bs-btn-bg: var(--bgColor-default);
+    --bs-btn-border-color: var(--borderColor-default);
+    --bs-btn-hover-color: var(--fgColor-default);
+    --bs-btn-hover-bg: var(--bgColor-muted);
+    --bs-btn-hover-border-color: var(--borderColor-default);
+    --bs-btn-active-color: var(--fgColor-default);
+    --bs-btn-active-bg: var(--bgColor-muted);
+    --bs-btn-active-border-color: var(--borderColor-default);
+    --bs-btn-disabled-color: var(--fgColor-muted);
+    --bs-btn-disabled-bg: var(--bgColor-default);
+    --bs-btn-disabled-border-color: var(--borderColor-default);
+  }
+
+  .pulse-list > li :deep(.fa) {
+    &.open {
+      color: var(--fgColor-success);
+    }
+
+    &.merged {
+      color: var(--fgColor-done);
+    }
+
+    &.closed {
+      color: var(--fgColor-danger);
+    }
+  }
+}
 </style>
