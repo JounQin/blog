@@ -1,35 +1,84 @@
 import type { Locale } from './locale'
 
-import { DEFAULT_LOCALE, LOCALES } from './locale'
+import { DEFAULT_LOCALE } from './locale'
 
 export enum Placeholder {
   TITLE = 'title',
   CONTENT = 'content',
 }
 
-interface Candidate {
+/** A section marker: the locale it opens and the span it occupies. */
+interface Marker {
   locale: string
-  value: string
+  index: number
+  length: number
 }
 
-const titlePlaceholder = (locale: string): Candidate => ({
-  locale,
-  value: `[${locale}]`,
-})
-
-const contentPlaceholder = (locale: string): Candidate => ({
-  locale,
-  value: `<p>[${locale}]</p>`,
-})
-
-const candidates: Record<Placeholder, Candidate[]> = {
-  [Placeholder.TITLE]: LOCALES.map(locale => titlePlaceholder(locale)),
-  [Placeholder.CONTENT]: LOCALES.map(locale => contentPlaceholder(locale)),
+/**
+ * GitHub renders a marker that sits on its own line as a paragraph, and adds
+ * attributes to it (`<p dir="auto">[zh]</p>`), so matching the literal
+ * `<p>[zh]</p>` used to miss the marker and leak it into the rendered text. A
+ * marker is therefore recognized either wrapped in a paragraph (whatever its
+ * attributes) or alone on its own line, with any surrounding whitespace and
+ * casing.
+ */
+const SECTION_PATTERN: Record<Placeholder, RegExp> = {
+  [Placeholder.TITLE]: /\[\s*(en|zh)\s*\]/gi,
+  [Placeholder.CONTENT]:
+    /<p\b[^>]*>\s*\[\s*(en|zh)\s*\]\s*<\/p>|(?<=^|\n)[ \t]*\[\s*(en|zh)\s*\][ \t]*(?=\r?\n|$)/gi,
 }
 
-const endPlaceholders: Record<Placeholder, string> = {
-  [Placeholder.TITLE]: titlePlaceholder('_end_').value,
-  [Placeholder.CONTENT]: contentPlaceholder('<em>end</em>').value,
+/** `[_end_]` closes a title; content uses `<p><em>end</em></p>` or `[_end_]`. */
+const END_PATTERN: Record<Placeholder, RegExp> = {
+  [Placeholder.TITLE]: /\[\s*_end_\s*\]/gi,
+  [Placeholder.CONTENT]:
+    /<p\b[^>]*>\s*(?:<em>\s*end\s*<\/em>|\[\s*_end_\s*\])\s*<\/p>|\[\s*_end_\s*\]/gi,
+}
+
+/** Any end marker that survived parsing; no marker may reach the reader. */
+const stripEndMarkers = (text: string): string =>
+  text
+    .replace(/<p\b[^>]*>\s*<em>\s*end\s*<\/em>\s*<\/p>/gi, '')
+    .replace(/\[\s*_end_\s*\]/gi, '')
+
+/**
+ * The cache/state key derived from the marked section. It keeps the locale names
+ * (so two templates that only differ by their markers cannot collide) but drops
+ * the brackets, because the key is serialized into the page payload and a marker
+ * must not appear there either.
+ */
+const keyOf = (main: string): string =>
+  main.replace(/\[\s*(en|zh|_end_)\s*\]/gi, '$1:')
+
+const findSections = (template: string, type: boolean): Marker[] => {
+  const pattern = SECTION_PATTERN[type ? Placeholder.TITLE : Placeholder.CONTENT]
+  const markers: Marker[] = []
+
+  for (const match of template.matchAll(pattern)) {
+    const locale = (match[1] ?? match[2] ?? '').toLowerCase()
+
+    if (locale) {
+      markers.push({
+        locale,
+        index: match.index,
+        length: match[0].length,
+      })
+    }
+  }
+
+  return markers
+}
+
+const findEnd = (
+  template: string,
+  type: boolean,
+  from: number,
+): { index: number; length: number } | undefined => {
+  const pattern = END_PATTERN[type ? Placeholder.TITLE : Placeholder.CONTENT]
+  pattern.lastIndex = from
+  const match = pattern.exec(template)
+
+  return match ? { index: match.index, length: match[0].length } : undefined
 }
 
 export interface ParsedTranslation {
@@ -78,46 +127,48 @@ export const parseTranslation = (
   locale: Locale,
   type = true,
 ): ParsedTranslation => {
-  const placeholder = type ? Placeholder.TITLE : Placeholder.CONTENT
-  const items = candidates[placeholder]
+  const markers = findSections(template, type)
+  // the section opens at the first marker in the string; the valid DSL puts `[en]`
+  // first, so this is the same marker as before, and it also cannot leave an
+  // earlier marker inside `start`
+  const first = markers[0]
 
-  let startIndex = -1
-
-  for (const { value } of items) {
-    startIndex = template.indexOf(value)
-    if (startIndex !== -1) {
-      break
-    }
-  }
-
-  if (startIndex === -1) {
+  if (!first) {
     // No locale markers at all: the text may be in either language, so it is sent
     // as-is and the provider detects the source. The `auto:` prefix can never be
     // the start of a marked template's key (`main` always begins with `[en]`,
     // `[zh]` or `<p>[…]</p>`), so an untagged entry can never collide with a
     // marked one; the locale is part of the key because the same untagged text is
-    // translated differently per target.
+    // translated differently per target. A stray end marker means nothing on its
+    // own, so it is dropped rather than rendered.
+    const source = stripEndMarkers(template)
+
     return {
-      text: template,
-      needsRemote: true,
-      key: `auto:${locale}:${template}`,
-      source: template,
+      text: source,
+      needsRemote: Boolean(source),
+      key: `auto:${locale}:${source}`,
+      source,
       targetLocale: locale,
     }
   }
 
+  const startIndex = first.index
   const start = template.slice(0, Math.max(0, startIndex))
-  const endPlaceholder = endPlaceholders[placeholder]
-  const endIndex = template.indexOf(endPlaceholder)
-  const hasEnd = endIndex !== -1
-  const end = hasEnd ? template.slice(endIndex + endPlaceholder.length) : ''
-  const main = hasEnd
-    ? template.slice(startIndex, endIndex)
-    : template.slice(startIndex)
+  const endMarker = findEnd(template, type, startIndex)
+  const end = endMarker
+    ? template.slice(endMarker.index + endMarker.length)
+    : ''
+  const main = template.slice(
+    startIndex,
+    endMarker ? endMarker.index : undefined,
+  )
 
-  const indexes = items
-    .map(item => ({ ...item, index: main.indexOf(item.value) }))
-    .filter(({ index }) => index !== -1)
+  const indexes = markers
+    .filter(
+      marker =>
+        marker.index >= startIndex &&
+        marker.index < startIndex + main.length,
+    )
     .sort((a, b) => a.index - b.index)
 
   const translations: Partial<Record<string, string>> = {}
@@ -125,37 +176,37 @@ export const parseTranslation = (
   let firstLocale: string | undefined
   let firstTranslation: string | undefined
 
-  indexes.forEach((item, index) => {
-    const itemIndex = item.index + item.value.length
+  indexes.forEach((marker, index) => {
+    const itemIndex = marker.index + marker.length - startIndex
     const nextIndex = indexes[index + 1]?.index
     const translation =
       nextIndex == null
         ? main.slice(itemIndex)
-        : main.slice(itemIndex, nextIndex)
+        : main.slice(itemIndex, nextIndex - startIndex)
 
     if (!index) {
-      firstLocale = item.locale
+      firstLocale = marker.locale
       firstTranslation = translation
     }
 
-    translations[item.locale] = translation
+    translations[marker.locale] = translation
   })
 
   const body = translations[locale] || translations[DEFAULT_LOCALE]
 
   if (body != null) {
-    return { text: start + body + end, needsRemote: false }
+    return { text: stripEndMarkers(start + body + end), needsRemote: false }
   }
 
   const source = firstTranslation || ''
 
   return {
-    text: start + source + end,
+    text: stripEndMarkers(start + source + end),
     // an empty first section has nothing to translate: staying remote would show
     // the "translating" placeholder forever, because the composable never fires a
     // request for an empty source
     needsRemote: Boolean(source),
-    key: main,
+    key: keyOf(main),
     source,
     sourceLocale: firstLocale,
     // the section of `locale` is missing, so the first one is translated into it
@@ -168,4 +219,5 @@ export const parseTranslation = (
 export const buildTranslatedText = (
   parsed: ParsedTranslation,
   body: string,
-): string => (parsed.start || '') + body + (parsed.end || '')
+): string =>
+  stripEndMarkers((parsed.start || '') + body + (parsed.end || ''))
