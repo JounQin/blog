@@ -8,6 +8,12 @@
  *
  * Warm the cookies with the runtime's own accessor and hand them to the library,
  * which accepts them via `cookies` (and `skipWarm`, to bypass its own attempt).
+ *
+ * un-ts/deeplx#56 ("optimize warmCookies for ephemeral environments") added exactly
+ * these two options -- plus `setSharedCookies` -- because the in-memory warm-up dies
+ * between executions in runtimes like Workers: injecting cookies from outside is the
+ * intended design, the network half stays with the caller. The published 0.2.2 only
+ * exports `getSharedCookies`, so the cookies are passed per call here.
  */
 let cookies = ''
 let warming: Promise<string> | undefined
