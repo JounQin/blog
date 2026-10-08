@@ -51,6 +51,45 @@ const FALLBACK_TIMEOUT = 4000
 /** Appended to `DEEPLX_URL`, which itself must not carry a trailing slash. */
 const DEEPLX_PATH = '/translate'
 
+/**
+ * `caches.default` is the only shared cache this Worker already has, so a
+ * translated payload is stored there under a synthetic GET key (the endpoint
+ * itself is POST) and served from the edge cache on the next render. A
+ * `translated: true` result lives for a day; a result that fell back to the
+ * source text is kept for five minutes only, so a transient provider outage
+ * cannot stick for a day.
+ */
+const CACHE_TTL = 60 * 60 * 24
+const CACHE_FAILURE_TTL = 60 * 5
+/** A reserved TLD, so the synthetic key can never collide with a real site. */
+const CACHE_ORIGIN = 'https://translate-cache.internal'
+
+/** `caches.default` is not typed without the Workers types; stay structural. */
+interface TranslationCache {
+  match: (request: Request) => Promise<Response | undefined>
+  put: (request: Request, response: Response) => Promise<void>
+}
+
+const translationCache = (
+  globalThis as { caches?: { default?: TranslationCache } }
+).caches?.default
+
+interface TranslatePayload {
+  text: string
+  translated: boolean
+}
+
+/** SHA-256 hex of the text, so a long body still gets a short cache key. */
+const digest = async (value: string): Promise<string> => {
+  const bytes = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(value),
+  )
+  return [...new Uint8Array(bytes)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 type TargetLanguage = Parameters<typeof translateByDeepLX>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
 
@@ -346,6 +385,33 @@ export default defineEventHandler(async event => {
     targetLocale ?? TOGGLE_LOCALE[sourceLocale ?? cookieLocale]
   ] as TargetLanguage
 
+  // the SSR prefetch runs on every render, so a translated payload is cached in
+  // the Worker's own cache (`caches.default`) under the target locale, the source
+  // mode and a hash of the text; the first render pays, the next ones hit it
+  const cacheKey = translationCache
+    ? new Request(
+        `${CACHE_ORIGIN}/?source=${source ?? 'auto'}&target=${target}&hash=${await digest(text)}`,
+      )
+    : undefined
+
+  if (translationCache && cacheKey) {
+    const hit = await translationCache.match(cacheKey).catch(() => undefined)
+    const cached = hit
+      ? ((await hit.json().catch(() => null)) as TranslatePayload | null)
+      : null
+
+    if (cached && typeof cached.text === 'string') {
+      // visible in the Worker logs, so a repeated SSR render can be traced back
+      // to the cache instead of the provider
+      console.warn(
+        '[translate] cache hit',
+        `target=${target}`,
+        `length=${text.length}`,
+      )
+      return cached
+    }
+  }
+
   // chunks are translated in parallel, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   // only a client-triggered call may retry: the SSR prefetch awaits this route
@@ -365,10 +431,34 @@ export default defineEventHandler(async event => {
     ),
   )
 
-  return {
+  const payload: TranslatePayload = {
     text: results.map(result => result.text).join(''),
     // the client keeps reading `text`; this reports whether any chunk had to
     // fall back to the source text (rate limit, timeout, endpoint error)
     translated: results.every(result => result.ok),
   }
+
+  if (translationCache && cacheKey) {
+    await translationCache
+      .put(
+        cacheKey,
+        new Response(JSON.stringify(payload), {
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': `public, max-age=${
+              payload.translated ? CACHE_TTL : CACHE_FAILURE_TTL
+            }`,
+          },
+        }),
+      )
+      .catch(() => undefined)
+    console.warn(
+      '[translate] cache stored',
+      `target=${target}`,
+      `translated=${payload.translated}`,
+      `length=${text.length}`,
+    )
+  }
+
+  return payload
 })

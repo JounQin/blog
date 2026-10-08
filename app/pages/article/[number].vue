@@ -16,9 +16,11 @@ const { data: article, error } = await useAsyncData(
       { retry: 0 },
     )
 
-    // only the title is prefetched during SSR: article bodies easily exceed the
-    // translation provider's per-request limit and are filled in on the client
-    await prefetch([payload.title])
+    // both the title and the body are translated before the HTML is rendered, so
+    // the first paint is already translated; the values land in the `translate-
+    // cache` state, which Nuxt serializes into the payload, so the client reuses
+    // them instead of requesting the same strings again
+    await Promise.all([prefetch([payload.title]), prefetch([payload.bodyHTML], false)])
 
     return payload
   },
