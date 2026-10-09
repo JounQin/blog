@@ -25,28 +25,42 @@ export const useI18n = () => {
     'translate-pending',
     () => ({}),
   )
+  // a cached value that equals its source is a fallback, not a translation: the
+  // client may retry such an entry once (the route's `retry` bypasses its own
+  // cached failure), and this records that the one retry already happened
+  const retried = useState<Record<string, boolean>>(
+    'translate-retried',
+    () => ({}),
+  )
 
   const request = async (
     key: string,
     source: string,
     sourceLocale?: string,
+    targetLocale?: string,
     retry = false,
   ) => {
     try {
       const { text } = await $fetch<{ text: string }>('/api/translate', {
-        // no transport retry: `Retry=1` only allows one retry inside the route,
-        // and only for client-triggered calls -- the SSR prefetch stays within a
-        // single attempt so a slow provider cannot multiply the render latency
+        // POST: a long article body must not have to fit into a URL. No
+        // transport retry either -- `retry` in the body only allows one retry
+        // inside the route, and only for client-triggered calls; the SSR
+        // prefetch stays within a single attempt so a slow provider cannot
+        // multiply the render latency
+        method: 'POST',
         retry: 0,
-        params: {
+        body: {
+          text: source,
           source: sourceLocale,
-          sourceText: source,
+          // the language to produce: the route auto-detects the source itself
+          target: targetLocale,
           ...(retry ? { retry: true } : {}),
         },
       })
       cache.value[key] = text
     } catch {
-      // keep the placeholder, the page still renders
+      // a failed translation degrades to the source text, never to a placeholder
+      cache.value[key] = source
     }
   }
 
@@ -73,7 +87,9 @@ export const useI18n = () => {
         continue
       }
 
-      tasks.push(request(key, parsed.source, parsed.sourceLocale))
+      tasks.push(
+        request(key, parsed.source, parsed.sourceLocale, parsed.targetLocale),
+      )
     }
 
     await Promise.all(tasks)
@@ -92,16 +108,47 @@ export const useI18n = () => {
 
     const key = parsed.key as string
     const cached = cache.value[key]
+    // `request` stores the source text when a translation fails, so a cache entry
+    // equal to the source is a fallback: it renders (never a placeholder) but it
+    // does not count as a successful hit
+    const fallback = cached != null && cached === parsed.source
+
+    if (cached && !fallback) {
+      return buildTranslatedText(parsed, cached)
+    }
+
+    if (
+      import.meta.client &&
+      parsed.source &&
+      !pending.value[key] &&
+      // a fallback is retried once; a successful entry is never re-requested
+      (!cached || !retried.value[key])
+    ) {
+      if (fallback) {
+        retried.value[key] = true
+      }
+
+      pending.value[key] = true
+      void request(
+        key,
+        parsed.source,
+        parsed.sourceLocale,
+        parsed.targetLocale,
+        true,
+      ).finally(() => {
+        pending.value[key] = false
+      })
+    }
 
     if (cached) {
       return buildTranslatedText(parsed, cached)
     }
 
-    if (import.meta.client && parsed.source && !pending.value[key]) {
-      pending.value[key] = true
-      void request(key, parsed.source, parsed.sourceLocale, true).finally(() => {
-        pending.value[key] = false
-      })
+    // untagged text (no markers) is readable as-is: never hold it behind the
+    // "translating" placeholder while the request is in flight, or after it
+    // failed (`request` caches the source text on failure)
+    if (parsed.sourceLocale == null) {
+      return parsed.text
     }
 
     return buildTranslatedText(parsed, t('translating') + t('ellipsis'))

@@ -358,7 +358,12 @@ function preventGesture(event: Event) {
 
 .app-main {
   min-height: 100%;
-  margin: 0 -15px -63px;
+  // The wrapper spans the full width so its inner `.container` can re-centre the
+  // content, so it has to bleed by exactly the parent container's gutter. That
+  // gutter is Bootstrap's `--bs-gutter-x` (1.5rem), which is 10.5px — not 15px —
+  // at the 14px root font size, so the old hard-coded `-15px` pushed the wrapper
+  // 4.5px past the viewport on both sides and the page always scrolled sideways.
+  margin: 0 calc(var(--bs-gutter-x) * -0.5) -63px;
   padding: {
     top: 53px;
     bottom: 63px;
