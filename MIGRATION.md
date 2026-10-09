@@ -124,8 +124,9 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
   chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side
   translation request use `retry: 0`, and ofetch does not retry the fallback POST by default
-- Only titles are prefetched during SSR: article bodies exceed the provider's per-request limit
-  and are filled in on the client by the existing `tt()` path
+- Titles and the article body are prefetched during SSR: the provider's 1500-character limit is
+  handled by chunking, and the translated strings are written to the payload state, so the first
+  paint is already translated and the client never re-requests them
 - `useI18n().prefetch()` resolves the DSL and requests the missing translations inside
   `useAsyncData`, writing them to `useState('translate-cache')` (serialized into the payload),
   so the SSR HTML already contains the translated text instead of the `Translating…` placeholder

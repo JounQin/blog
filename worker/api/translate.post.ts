@@ -400,12 +400,20 @@ export default defineEventHandler(async event => {
       ? ((await hit.json().catch(() => null)) as TranslatePayload | null)
       : null
 
-    if (cached && typeof cached.text === 'string') {
+    // a failure is cached too, so that a page degrades to the source text; a
+    // client-triggered retry must not be answered with that cached failure, only
+    // a successful translation may short-circuit it
+    if (
+      cached &&
+      typeof cached.text === 'string' &&
+      (cached.translated || !params.retry)
+    ) {
       // visible in the Worker logs, so a repeated SSR render can be traced back
       // to the cache instead of the provider
       console.warn(
         '[translate] cache hit',
         `target=${target}`,
+        `translated=${cached.translated}`,
         `length=${text.length}`,
       )
       return cached

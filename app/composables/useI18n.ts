@@ -25,6 +25,13 @@ export const useI18n = () => {
     'translate-pending',
     () => ({}),
   )
+  // a cached value that equals its source is a fallback, not a translation: the
+  // client may retry such an entry once (the route's `retry` bypasses its own
+  // cached failure), and this records that the one retry already happened
+  const retried = useState<Record<string, boolean>>(
+    'translate-retried',
+    () => ({}),
+  )
 
   const request = async (
     key: string,
@@ -101,12 +108,26 @@ export const useI18n = () => {
 
     const key = parsed.key as string
     const cached = cache.value[key]
+    // `request` stores the source text when a translation fails, so a cache entry
+    // equal to the source is a fallback: it renders (never a placeholder) but it
+    // does not count as a successful hit
+    const fallback = cached != null && cached === parsed.source
 
-    if (cached) {
+    if (cached && !fallback) {
       return buildTranslatedText(parsed, cached)
     }
 
-    if (import.meta.client && parsed.source && !pending.value[key]) {
+    if (
+      import.meta.client &&
+      parsed.source &&
+      !pending.value[key] &&
+      // a fallback is retried once; a successful entry is never re-requested
+      (!cached || !retried.value[key])
+    ) {
+      if (fallback) {
+        retried.value[key] = true
+      }
+
       pending.value[key] = true
       void request(
         key,
@@ -117,6 +138,10 @@ export const useI18n = () => {
       ).finally(() => {
         pending.value[key] = false
       })
+    }
+
+    if (cached) {
+      return buildTranslatedText(parsed, cached)
     }
 
     // untagged text (no markers) is readable as-is: never hold it behind the
