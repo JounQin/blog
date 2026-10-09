@@ -1014,17 +1014,21 @@ interface OneshotResponse {
 const instanceId = crypto.randomUUID()
 const sessionId = crypto.randomUUID()
 
-let warmCookies: string | undefined
-
-/**
- * One best-effort warm-up per isolate, exactly like the library does. It reports
- * whether *this* call made the request, so the caller can count that subrequest
- * against its budget; later calls in the same isolate are free.
- */
-const warmOneshot = async (): Promise<{
+/** The warm-up's outcome: the cookies it obtained and whether it fetched at all. */
+interface WarmResult {
   cookies?: string
   fetched: boolean
-}> => {
+}
+
+let warmCookies: string | undefined
+/** The one in-flight warm-up, shared by every caller that races into it. */
+let warmPromise: Promise<WarmResult> | undefined
+
+/**
+ * The actual warm-up request, exactly like the library does. It only runs when
+ * neither this isolate's cookies nor the library's own are already known.
+ */
+const doWarmOneshot = async (): Promise<WarmResult> => {
   if (warmCookies !== undefined || getSharedCookies()) {
     return {
       cookies: warmCookies ?? getSharedCookies() ?? undefined,
@@ -1032,22 +1036,45 @@ const warmOneshot = async (): Promise<{
     }
   }
 
-  try {
-    const response = await fetch('https://www.deepl.com/translator', {
-      signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
-    })
-    const setCookie = response.headers.get('set-cookie') ?? ''
-    const cookies = [
-      /userCountry=[^;]+/.exec(setCookie)?.[0],
-      /verifiedBot=[^;]+/.exec(setCookie)?.[0],
-    ].filter(Boolean)
+  const response = await fetch('https://www.deepl.com/translator', {
+    signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
+  })
+  const setCookie = response.headers.get('set-cookie') ?? ''
+  const cookies = [
+    /userCountry=[^;]+/.exec(setCookie)?.[0],
+    /verifiedBot=[^;]+/.exec(setCookie)?.[0],
+  ].filter(Boolean)
 
-    warmCookies = cookies.length ? cookies.join('; ') : ''
-  } catch {
-    warmCookies = ''
+  warmCookies = cookies.length ? cookies.join('; ') : ''
+  return { cookies: warmCookies || undefined, fetched: true }
+}
+
+/**
+ * One best-effort warm-up per isolate, exactly like the library does. Concurrent
+ * callers share a single in-flight promise, so a cold isolate makes one request
+ * however many renders race into it; the resolved cookies are cached, so a later
+ * call makes no request at all. It reports whether *this* call made the request,
+ * so the caller can count that subrequest against its budget.
+ *
+ * A rejected warm-up is not fatal: the caller gets no cookies and no throw, and
+ * the in-flight promise is cleared so the next call can try again instead of
+ * being stuck with a permanently rejected promise.
+ */
+const warmOneshot = (): Promise<WarmResult> => {
+  if (warmCookies !== undefined || getSharedCookies()) {
+    return Promise.resolve({
+      cookies: warmCookies ?? getSharedCookies() ?? undefined,
+      fetched: false,
+    })
   }
 
-  return { cookies: warmCookies || undefined, fetched: true }
+  warmPromise ??= doWarmOneshot().catch(error => {
+    console.warn('[translate] warm-up failed', String(error))
+    warmPromise = undefined
+    return { cookies: undefined, fetched: true }
+  })
+
+  return warmPromise
 }
 
 /**
