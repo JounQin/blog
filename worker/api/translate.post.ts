@@ -275,7 +275,22 @@ interface ProseUnit {
   result?: string
   /** true when a source-prose run survived every attempt */
   suspect?: boolean
+  /** true when `result` was improved but the per-piece answers no longer match it */
+  stale?: boolean
 }
+
+/**
+ * Whether every piece of a unit has an answer. `Array.from` is essential: the
+ * answers array is built with `new Array(n)` and filled by index, and
+ * `Array.prototype.every` skips holes, so an unanswered piece would look
+ * answered. A gap means the piece was never answered and has to stay
+ * `remaining` instead of being validated as a finished translation.
+ */
+const isAnswered = (unit: ProseUnit): boolean =>
+  unit.answers.length === unit.pieces.length &&
+  Array.from(unit.answers).every(
+    answer => answer !== undefined && answer !== null,
+  )
 
 /**
  * `<pre>` is a hard segment: a block of code is passed through verbatim and is
@@ -1023,6 +1038,10 @@ interface WarmResult {
 let warmCookies: string | undefined
 /** The one in-flight warm-up, shared by every caller that races into it. */
 let warmPromise: Promise<WarmResult> | undefined
+/** When the last warm-up failed, so a failure is not retried on every render. */
+let warmFailedAt = 0
+/** How long a failed warm-up is left alone before one request tries it again. */
+const WARM_COOLDOWN = 60_000
 
 /**
  * The actual warm-up request, exactly like the library does. It only runs when
@@ -1064,8 +1083,8 @@ const doWarmOneshot = async (): Promise<WarmResult> => {
  * so the caller can count that subrequest against its budget.
  *
  * A rejected warm-up is not fatal: the caller gets no cookies and no throw, and
- * the in-flight promise is cleared so the next call can try again instead of
- * being stuck with a permanently rejected promise.
+ * the in-flight promise is cleared so a later call can try again -- but only after
+ * a short cooldown, or every render would pay the timeout again.
  */
 const warmOneshot = (): Promise<WarmResult> => {
   if (warmCookies !== undefined || getSharedCookies()) {
@@ -1075,8 +1094,14 @@ const warmOneshot = (): Promise<WarmResult> => {
     })
   }
 
+  // a recent failure is left alone: no request, and no budget slot either
+  if (warmFailedAt && Date.now() - warmFailedAt < WARM_COOLDOWN) {
+    return Promise.resolve({ cookies: undefined, fetched: false })
+  }
+
   warmPromise ??= doWarmOneshot().catch(error => {
     console.warn('[translate] warm-up failed', String(error))
+    warmFailedAt = Date.now()
     warmPromise = undefined
     return { cookies: undefined, fetched: true }
   })
@@ -1614,7 +1639,24 @@ export default defineEventHandler(async event => {
       await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
         const task = misses[job.index]
 
-        if (!task || !service.url || !reserve()) {
+        if (!task) {
+          return
+        }
+
+        if (!service.url) {
+          // no fallback configured: the piece keeps its source text and is a
+          // failure, not unfinished work -- a later request would only send it to
+          // the same provider again, so `remaining` (which promises a continuation)
+          // would be wrong. Only the budget path below leaves a piece `remaining`.
+          task.unit.answers[task.piece] = {
+            text: task.text,
+            ok: false,
+            translated: false,
+          }
+          return
+        }
+
+        if (!reserve()) {
           return
         }
 
@@ -1712,7 +1754,7 @@ export default defineEventHandler(async event => {
   const suspects = allUnits.filter(
     unit =>
       unit.result !== undefined &&
-      unit.answers.every((answer, index) => answer || unit.pieces[index]?.fixed) &&
+      isAnswered(unit) &&
       unit.answers.some(answer => answer?.translated) &&
       // a piece the provider said already is the target language stays verbatim
       // by design, so its text is not untranslated prose
@@ -1765,6 +1807,27 @@ export default defineEventHandler(async event => {
       ) {
         unit.result = restored
         improved++
+
+        // Cache the better answer so a continuation or a later request reuses it
+        // instead of the half-translated provider answer. A piece-level cache entry
+        // has to hold the *masked* answer (the one still carrying the tokens), so
+        // only a unit whose whole masked text is exactly one piece can be stored;
+        // anything else marks the unit stale so its partial answers are not cached
+        // with the one-day TTL at all.
+        const open = unit.pieces
+          .map((piece, position) => (piece.fixed ? -1 : position))
+          .filter(position => position >= 0)
+        const only = open[0]
+
+        if (
+          open.length === 1 &&
+          only !== undefined &&
+          unit.pieces[only]?.text === entry.masked
+        ) {
+          unit.answers[only] = { text: answer, ok: true, translated: true }
+        } else {
+          unit.stale = true
+        }
       }
     })
 
@@ -1775,9 +1838,14 @@ export default defineEventHandler(async event => {
     )
   }
 
-  for (const unit of suspects) {
-    if (unit.result !== undefined && isSuspect(unit.text, unit.result)) {
-      unit.suspect = true
+  // without a DLX fallback a suspect cannot be retried, so it is not reported as
+  // `remaining` (which promises a continuation): an echoed piece is already a
+  // `failedChunk`, and a partly translated one has nothing better to fall back to
+  if (service.url) {
+    for (const unit of suspects) {
+      if (unit.result !== undefined && isSuspect(unit.text, unit.result)) {
+        unit.suspect = true
+      }
     }
   }
 
@@ -1786,6 +1854,7 @@ export default defineEventHandler(async event => {
       piece,
       answer: unit.answers[index],
       suspect: unit.suspect,
+      stale: unit.stale,
     })),
   )
   const remainingPieces = pieces.filter(
@@ -1801,9 +1870,17 @@ export default defineEventHandler(async event => {
   // partial answer is not served for a day and the next request retries it.
   if (translationCache) {
     await Promise.all(
-      pieces.map(async ({ piece, answer, suspect }) => {
-        // only a real answer is worth keeping, so a decline is retried next time
-        if (piece.fixed || suspect || !answer || (!answer.ok && !answer.translated)) {
+      pieces.map(async ({ piece, answer, suspect, stale }) => {
+        // only a real answer is worth keeping, so a decline is retried next time;
+        // a still-suspect or stale answer is not the final text, so it is not
+        // cached with the one-day TTL
+        if (
+          piece.fixed ||
+          suspect ||
+          stale ||
+          !answer ||
+          (!answer.ok && !answer.translated)
+        ) {
           return
         }
 
