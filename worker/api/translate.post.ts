@@ -313,7 +313,7 @@ const splitBlocks = (text: string): string[] => {
  * The end of a clause: any final punctuation, in whatever script, so an
  * oversized block is cut at a clause boundary. A Unicode general category is
  * used rather than a list of characters, so nothing here is tied to a language
- * (and CJK prose, which has no spaces, still gets a boundary).
+ * (and prose that has no spaces still gets a boundary).
  */
 const CLAUSE_END = /\p{Po}/gu
 
