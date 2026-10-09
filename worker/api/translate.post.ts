@@ -1039,7 +1039,14 @@ const doWarmOneshot = async (): Promise<WarmResult> => {
   const response = await fetch('https://www.deepl.com/translator', {
     signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
   })
-  const setCookie = response.headers.get('set-cookie') ?? ''
+  // `Set-Cookie` is a forbidden response-header name, so `get('set-cookie')` is
+  // only a compatibility fallback: `getSetCookie()` is the accessor the current
+  // spec requires (workerd gates it behind a flag while `get()` happens to return
+  // the joined value), so prefer it whenever the runtime provides it.
+  const setCookie =
+    response.headers.getSetCookie?.().join('; ') ??
+    response.headers.get('set-cookie') ??
+    ''
   const cookies = [
     /userCountry=[^;]+/.exec(setCookie)?.[0],
     /verifiedBot=[^;]+/.exec(setCookie)?.[0],
