@@ -40,15 +40,20 @@ import { getEnv } from '../utils/env'
  * given `source_lang` as `detected_source_language` whenever its own detection is
  * not confident, so an accurate tag helps and a wrong one can cause an echo.
  *
- * Only prose is ever sent: `<pre>`/`<code>` spans are lifted out of the body and
- * spliced back byte-for-byte, and the prose is split into block-level units
- * (paragraphs, list items, headings, table cells) that are translated one by one,
- * so a provider sees a whole paragraph rather than an arbitrary slice of one. A
- * unit that comes back unchanged -- compared with markup, code and whitespace
- * removed, and with the provider's own `sourceLang`/`source_lang` taken into
- * account when it says the source already is the target language -- keeps its
- * source text, is counted in `failedChunks`, and is tried once against the DLX
- * fallback. No signal in this file depends on a particular language or script.
+ * Only prose is ever sent: `<pre>` blocks are lifted out of the body and spliced
+ * back byte-for-byte, and the prose is split into block-level units (paragraphs,
+ * list items, headings, table cells) that are translated one by one, so a provider
+ * sees a whole paragraph rather than an arbitrary slice of one. Inline `<code>`
+ * inside a unit is masked with a numbered token -- it is never sent either -- and
+ * the original span is spliced back on return; when a token is not preserved the
+ * unit falls back to translating its prose fragments separately. A unit whose
+ * answer still shares a meaningful run of source prose is retried once through a
+ * batched DLX request and, if that does not improve it, is reported as
+ * `remaining` instead of as translated. A unit that comes back unchanged --
+ * compared with markup, code and whitespace removed, and with the provider's own
+ * `sourceLang`/`source_lang` taken into account when it says the source already is
+ * the target language -- keeps its source text and is counted in `failedChunks`.
+ * No signal in this file depends on a particular language or script.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.EN]: 'EN',
@@ -234,35 +239,82 @@ interface DlxService {
 
 /** A body split into what a translator may see and what it may not. */
 interface Segment {
-  /** a `<pre>`/`<code>` span, spliced back byte-for-byte */
+  /** a `<pre>` span, spliced back byte-for-byte */
   code: boolean
   text: string
+}
+
+/** One piece of a block: prose to send, or code passed through untouched. */
+interface UnitPiece {
+  text: string
+  /** code: never sent to a provider, always spliced back byte-for-byte */
+  fixed?: boolean
+}
+
+/** What one piece's translation produced: the text plus how it came back. */
+interface PieceResult {
+  text: string
+  /** false when nothing translated the piece and it kept its source text */
+  ok: boolean
+  /** true only when a provider actually changed the prose */
+  translated: boolean
 }
 
 /** One block-level unit of prose, and the pieces it is actually sent as. */
 interface ProseUnit {
   text: string
-  /** empty when the unit has no letters and nothing has to be translated */
-  pieces: string[]
+  /** the pieces of the pass that is running; empty when nothing is translatable */
+  pieces: UnitPiece[]
+  /** every inline `<code>` span a token stands for, in order */
+  codeSpans: string[]
+  /** what each piece came back as, position-aligned with `pieces` */
+  answers: Array<PieceResult | undefined>
+  /** the per-fragment attempt, kept in case a token does not survive */
+  fragments?: UnitPiece[]
+  /** the unit's final text; `undefined` means the masked attempt is unusable */
+  result?: string
+  /** true when a source-prose run survived every attempt */
+  suspect?: boolean
 }
 
 /**
- * `<pre>` is listed first so a block that contains `<code>` is one code segment;
- * the non-greedy body then stops at the matching closer. Attributes are part of
- * the match, so the segment is restored with them.
+ * `<pre>` is a hard segment: a block of code is passed through verbatim and is
+ * never sent to a provider. Inline `<code>` is deliberately **not** a segment
+ * boundary -- the block around it stays one unit, and every inline span is masked
+ * with a short token instead, so a provider is asked to translate a whole
+ * paragraph and the code is spliced back byte-for-byte afterwards.
  */
-const CODE_SPAN = /<pre\b[^>]*>[\s\S]*?<\/pre>|<code\b[^>]*>[\s\S]*?<\/code>/gi
+const CODE_SPAN = /<pre\b[^>]*>[\s\S]*?<\/pre>/gi
 
-/** Something a translation could actually change; ` / ` between two code spans
- * has no letters and is passed through instead of being sent and echoed. */
-const TRANSLATABLE = /\p{L}/u
+/** Inline code inside a block: masked with a token rather than split on. */
+const INLINE_CODE = /<code\b[^>]*>[\s\S]*?<\/code>/gi
+
+/**
+ * The placeholder that stands in for the `index`-th inline code span. Braces and
+ * digits carry no `\p{Po}`, no whitespace and no `>`, so the over-cap splitter can
+ * never cut one in half, and there is no word inside for a provider to translate.
+ * Measured against the anonymous endpoint, `{{0}}` and `{{1}}` come back in place,
+ * in order; when a provider does not preserve them the unit falls back to its own
+ * prose fragments, so a mangled token can never corrupt the body.
+ */
+const codeToken = (index: number): string => `{{${index}}}`
+
+const CODE_TOKEN = /\{\{(\d+)\}\}/g
+
+/** Text a provider could actually change: markup, code tokens and entities out. */
+const hasProse = (value: string): boolean =>
+  /\p{L}/u.test(
+    value
+      .replace(/<[^>]*>/g, ' ')
+      .replace(CODE_TOKEN, ' ')
+      .replace(/&[a-z#0-9]{1,31};/gi, ' '),
+  )
 
 /**
  * Splits a body into ordered prose and code segments. Code is never sent to a
  * provider -- it is spliced back exactly as it arrived -- so an identifier,
- * a regex or a shell snippet cannot be rewritten, and no placeholder has to
- * survive a round trip through the provider (which is what makes this safer than
- * masking the code with a token).
+ * a regex or a shell snippet cannot be rewritten. Inline code is left in its
+ * block and masked per unit instead, so a paragraph still travels as one piece.
  */
 const splitSegments = (text: string): Segment[] => {
   const segments: Segment[] = []
@@ -344,9 +396,59 @@ const lastClauseCut = (window: string): number => {
 }
 
 /**
+ * Offsets at which a cut would split a tag, an HTML entity or a code token, and
+ * so corrupt the markup. `splitText` keeps `text.slice(0, cut)` on the left, so a
+ * cut just *after* a closed tag or entity is safe while any offset inside one is
+ * not. `&`, `;`, `"`, `'`, `/`, `:`, `.`, `#` and `%` are all `\p{Po}` or
+ * separators, so without this a cut could land in the middle of `<a href="…">` or
+ * `&amp;` -- measured before this guard.
+ */
+const unsafeCuts = (window: string): boolean[] => {
+  const unsafe = new Array<boolean>(window.length + 1).fill(false)
+
+  const mark = (from: number, to: number) => {
+    for (let index = Math.max(from, 0); index <= to && index < unsafe.length; index++) {
+      unsafe[index] = true
+    }
+  }
+
+  // a tag, from just after `<` through its closing `>`; an unterminated tag runs
+  // to the end of the window
+  for (const match of window.matchAll(/<[^>]*>?/g)) {
+    mark(match.index + 1, match.index + match[0].length - 1)
+  }
+
+  // an entity, from just after `&` through its `;`
+  for (const match of window.matchAll(/&[a-z#0-9]{1,31};/gi)) {
+    mark(match.index + 1, match.index + match[0].length - 1)
+  }
+
+  // a code token, from just after `{` through its `}`
+  for (const match of window.matchAll(CODE_TOKEN)) {
+    mark(match.index + 1, match.index + match[0].length - 1)
+  }
+
+  // a tag or an entity that opens inside the window but only closes beyond the
+  // cap: the window cannot see its `>`/`;`, so everything after the opener is
+  // unsafe and the cut moves back to before it
+  const lastOpen = window.lastIndexOf('<')
+  if (lastOpen > window.lastIndexOf('>')) {
+    mark(lastOpen + 1, window.length)
+  }
+
+  const lastAmp = window.lastIndexOf('&')
+  if (lastAmp > window.lastIndexOf(';')) {
+    mark(lastAmp + 1, window.length)
+  }
+
+  return unsafe
+}
+
+/**
  * Splits a block that exceeds the provider's per-request limit at a sentence,
- * newline or tag boundary, so a piece is never cut in the middle of a sentence
- * when a boundary exists at all.
+ * newline, tag or space boundary, and only where the cut cannot land inside a
+ * tag, an entity or a token. Re-joining the pieces therefore restores every
+ * attribute and entity byte-for-byte.
  */
 const splitText = (text: string, size = MAX_CHARS): string[] => {
   if ([...text].length <= size) {
@@ -358,17 +460,36 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
 
   while ([...rest].length > size) {
     const window = [...rest].slice(0, size).join('')
+    const unsafe = unsafeCuts(window)
     // every candidate is already an exclusive end offset
-    let cut = Math.max(
+    let cut = -1
+
+    for (const candidate of [
       lastClauseCut(window),
       window.lastIndexOf('\n') + 1,
       window.lastIndexOf('>') + 1,
       window.lastIndexOf(' ') + 1,
-    )
+    ]) {
+      if (candidate > cut && candidate <= window.length && !unsafe[candidate]) {
+        cut = candidate
+      }
+    }
 
     if (cut <= 0) {
-      // a single 1500-character word: nothing to break on
-      cut = window.length
+      // no boundary is usable: take the furthest safe offset instead, which still
+      // keeps every tag and entity whole
+      for (let index = window.length; index > 0; index--) {
+        if (!unsafe[index]) {
+          cut = index
+          break
+        }
+      }
+    }
+
+    if (cut <= 0) {
+      // the whole window is one tag, entity or token: cutting would corrupt it,
+      // so the block is left whole and the provider's own cap decides
+      return [text]
     }
 
     chunks.push(rest.slice(0, cut))
@@ -380,6 +501,104 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
   }
 
   return chunks
+}
+
+/** Masks every inline `<code>` span of a block with a numbered token. */
+const maskCode = (block: string): { masked: string; codeSpans: string[] } => {
+  const codeSpans: string[] = []
+
+  const masked = block.replace(INLINE_CODE, match => {
+    codeSpans.push(match)
+    return codeToken(codeSpans.length - 1)
+  })
+
+  return { masked, codeSpans }
+}
+
+/**
+ * The pieces of a block once inline code is separated out again: the fallback for
+ * a unit whose tokens did not survive, where each prose fragment is sent on its
+ * own -- the behaviour before tokens existed -- and every code span is fixed.
+ */
+const fragmentPieces = (block: string): UnitPiece[] => {
+  const pieces: UnitPiece[] = []
+  let last = 0
+
+  for (const match of block.matchAll(INLINE_CODE)) {
+    if (match.index > last) {
+      for (const piece of splitText(block.slice(last, match.index))) {
+        pieces.push({ text: piece })
+      }
+    }
+    pieces.push({ text: match[0], fixed: true })
+    last = match.index + match[0].length
+  }
+
+  if (last < block.length) {
+    for (const piece of splitText(block.slice(last))) {
+      pieces.push({ text: piece })
+    }
+  }
+
+  return pieces
+}
+
+/** Builds one block-level unit: inline code is masked with tokens, not split on. */
+const makeUnit = (block: string): ProseUnit => {
+  const { masked, codeSpans } = maskCode(block)
+  const unit: ProseUnit = { text: block, pieces: [], codeSpans, answers: [] }
+
+  // only markup, code or entities: there is no prose to send
+  if (!hasProse(masked)) {
+    return unit
+  }
+
+  unit.pieces = splitText(masked).map(text => ({ text }))
+  unit.answers = new Array<PieceResult | undefined>(unit.pieces.length)
+
+  if (codeSpans.length) {
+    unit.fragments = fragmentPieces(block)
+  }
+
+  return unit
+}
+
+/**
+ * Slices the code spans back in. Every token has to appear exactly once and in
+ * order: a missing, duplicated, reordered or invented token means the provider
+ * did not preserve the placeholders, the answer is unusable, and the caller falls
+ * back to translating the block's prose fragments separately.
+ */
+const unmask = (answer: string, codeSpans: string[]): string | undefined => {
+  const matches = [...answer.matchAll(CODE_TOKEN)]
+
+  if (matches.length !== codeSpans.length) {
+    return undefined
+  }
+
+  for (let index = 0; index < matches.length; index++) {
+    const match = matches[index]
+
+    if (!match || Number(match[1]) !== index) {
+      return undefined
+    }
+  }
+
+  let result = answer
+
+  for (let index = matches.length - 1; index >= 0; index--) {
+    const match = matches[index]
+    const code = codeSpans[index]
+
+    if (!match || code === undefined) {
+      return undefined
+    }
+
+    const at = match.index ?? 0
+    result = result.slice(0, at) + code + result.slice(at + match[0].length)
+  }
+
+  return result
 }
 
 /** Client-triggered calls may retry once (warm-up, transient 5xx, timeouts).
@@ -493,6 +712,75 @@ const translateWithDlx = async (
   }
 
   return { text: data, detected }
+}
+
+/**
+ * One batched request to the self-hosted DLX: an array of texts in, one answer
+ * per input out, in order. It is used only to re-ask for the units whose first
+ * answer still looked partly translated. The endpoint answers `data` as an array
+ * for an array input; anything else (a non-200, a `code` other than 200, a
+ * mismatched length or a non-string entry) makes that position unusable and the
+ * caller keeps what it already had. The token is never logged or sent anywhere but
+ * the configured origin.
+ */
+const translateBatchWithDlx = async (
+  texts: string[],
+  target: TargetLanguage,
+  source: SourceLanguage | undefined,
+  service: DlxService,
+): Promise<Array<string | undefined>> => {
+  const url = service.url
+
+  if (!url) {
+    return texts.map(() => undefined)
+  }
+
+  try {
+    const response = await $fetch.raw<DlxResponse>(`${url}${DEEPLX_PATH}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(service.token && { authorization: `Bearer ${service.token}` }),
+      },
+      body: {
+        text: texts,
+        // omitted for auto-detection: JSON.stringify drops an undefined value
+        source_lang: source,
+        target_lang: target,
+      },
+      redirect: 'follow',
+      ignoreResponseError: true,
+      signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
+    })
+
+    if (response.status !== 200) {
+      console.warn(
+        '[translate] DLX batch answered with a non-200 status',
+        `status=${response.status}`,
+        `texts=${texts.length}`,
+      )
+      return texts.map(() => undefined)
+    }
+
+    const payload: DlxResponse | undefined = response._data
+    const data = payload?.data
+
+    if (payload?.code !== 200 || !Array.isArray(data) || data.length !== texts.length) {
+      console.warn(
+        '[translate] DLX batch did not line up',
+        `texts=${texts.length}`,
+        `data=${Array.isArray(data) ? data.length : typeof data}`,
+      )
+      return texts.map(() => undefined)
+    }
+
+    return data.map(value =>
+      typeof value === 'string' && value ? value : undefined,
+    )
+  } catch (error) {
+    console.warn('[translate] DLX batch threw', String(error), `texts=${texts.length}`)
+    return texts.map(() => undefined)
+  }
 }
 
 /** What one unit's translation produced: the text plus how it came back. */
@@ -683,12 +971,12 @@ const BATCH_MAX_TEXTS = 16
 /** A sensible ceiling for one request body, on top of the per-text limit. */
 const BATCH_MAX_CHARS = 8000
 /**
- * How many provider subrequests one request may spend. The Workers free plan
- * caps subrequests per request at 50, and a render also talks to the GitHub API,
- * so 16 leaves a wide margin (34 of the 50 stay for the GitHub calls and the
- * rest of the request) while still covering a code-dense article: `/article/323`
- * is 102 units, which is 7 batches, and a fallback for the units a batch did not
- * answer still fits. Whatever does not fit keeps its source text, is reported as
+ * How many provider subrequests one request may spend, the cookie warm-up
+ * included. The Workers free plan caps subrequests per request at 50, and a render
+ * also talks to the GitHub API, so 16 leaves a wide margin (34 of the 50 stay for
+ * the GitHub calls and the rest of the request). Every outbound call reserves its
+ * slot *before* it starts, so a batch and its fallbacks can never push the total
+ * over this cap; whatever is left over keeps its source text, is reported as
  * `remaining`, and a follow-up request picks it up -- the unit cache below means
  * that follow-up only pays for the units still missing.
  */
@@ -700,11 +988,18 @@ interface BatchJob {
   text: string
 }
 
-/** A translation result for one unit: what came back, and whether it is one. */
-interface UnitResult {
+/** One piece waiting for a provider, addressed inside the plan. */
+interface UnitTask {
+  unit: ProseUnit
+  piece: number
   text: string
-  ok: boolean
-  translated: boolean
+}
+
+/** A segment of the plan: code passes through, prose carries its units. */
+interface PlanSegment {
+  code: boolean
+  text: string
+  units: ProseUnit[]
 }
 
 interface OneshotTranslation {
@@ -721,10 +1016,20 @@ const sessionId = crypto.randomUUID()
 
 let warmCookies: string | undefined
 
-/** One best-effort warm-up per isolate, exactly like the library does. */
-const warmOneshot = async (): Promise<string | undefined> => {
+/**
+ * One best-effort warm-up per isolate, exactly like the library does. It reports
+ * whether *this* call made the request, so the caller can count that subrequest
+ * against its budget; later calls in the same isolate are free.
+ */
+const warmOneshot = async (): Promise<{
+  cookies?: string
+  fetched: boolean
+}> => {
   if (warmCookies !== undefined || getSharedCookies()) {
-    return warmCookies ?? getSharedCookies() ?? undefined
+    return {
+      cookies: warmCookies ?? getSharedCookies() ?? undefined,
+      fetched: false,
+    }
   }
 
   try {
@@ -742,22 +1047,22 @@ const warmOneshot = async (): Promise<string | undefined> => {
     warmCookies = ''
   }
 
-  return warmCookies || undefined
+  return { cookies: warmCookies || undefined, fetched: true }
 }
 
 /**
  * Translates a batch of units in one request. Every answer is returned position
  * by position, so the caller can still tell which unit failed; a status other
  * than 200, or a response whose `translations` do not line up with the input,
- * fails the whole batch and sends each unit to the fallback.
+ * fails the whole batch and sends each unit to the fallback. The cookies come from
+ * a warm-up the caller already counted, so this never warms up on its own.
  */
 const translateBatchWithLibrary = async (
   texts: string[],
   target: TargetLanguage,
   source: SourceLanguage | undefined,
+  cookies?: string,
 ): Promise<(OneshotAnswer | undefined)[]> => {
-  const cookies = await warmOneshot()
-
   const response = await fetch(ONESHOT_FREE_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -885,6 +1190,158 @@ const batchUnits = (jobs: BatchJob[]): BatchJob[][] => {
   return batches
 }
 
+/** The smallest shared run that counts as source prose a translation left behind. */
+const SHARED_RUN = 12
+/** The share of the answer that has to be such prose before the unit is a suspect. */
+const SHARED_SHARE = 0.3
+/** A run this much covered by verbatim terms is a kept identifier, not prose. */
+const KEEP_FRACTION = 0.5
+
+/**
+ * The shape of something a translation legitimately keeps verbatim: a digit, a
+ * URL/identifier separator, an inner case change (`devDependency`) or an acronym.
+ * This is shape only -- no script and no language is named -- so the same rule
+ * discounts a package name, a URL or an acronym on either side. The trailing `.`
+ * and `,` cover a repeated fragment (`reload, reload…`) that is already in the
+ * answer's own language.
+ */
+const VERBATIM =
+  /[\p{N}@/:#_\-~+=%?&.,]|[\p{Ll}][\p{Lu}]|[\p{Lu}][\p{Ll}]|^[\p{Lu}\p{N}]{2,}$/u
+
+/** The words of `source` a translation may keep as they are, longest first. */
+const verbatimTerms = (source: string): string[] => {
+  const terms = new Set<string>()
+
+  // markup, attributes included, is never prose
+  for (const match of source.matchAll(/<[^>]+>/g)) {
+    terms.add(match[0])
+  }
+
+  for (const match of visibleText(source).matchAll(/\S+/g)) {
+    if (VERBATIM.test(match[0])) {
+      terms.add(match[0])
+    }
+  }
+
+  return [...terms].sort((left, right) => right.length - left.length)
+}
+
+/** Marks every character of `text` that falls inside one of `terms`. */
+const verbatimMask = (text: string, terms: string[]): boolean[] => {
+  const mask = new Array<boolean>(text.length).fill(false)
+
+  for (const term of terms) {
+    let from = 0
+
+    for (;;) {
+      const at = text.indexOf(term, from)
+
+      if (at === -1) {
+        break
+      }
+
+      for (let index = at; index < at + term.length; index++) {
+        mask[index] = true
+      }
+
+      from = at + term.length
+    }
+  }
+
+  return mask
+}
+
+/**
+ * The maximal runs of `answer` that also occur in `source`, in order. A run can
+ * only start where a `SHARED_RUN`-gram already exists, so the common case costs
+ * one set lookup per offset.
+ */
+const sharedRuns = (answer: string, source: string): Array<[number, number]> => {
+  const openers = new Set<string>()
+
+  for (let index = 0; index + SHARED_RUN <= source.length; index++) {
+    openers.add(source.slice(index, index + SHARED_RUN))
+  }
+
+  const runs: Array<[number, number]> = []
+  let index = 0
+
+  while (index + SHARED_RUN <= answer.length) {
+    if (!openers.has(answer.slice(index, index + SHARED_RUN))) {
+      index++
+      continue
+    }
+
+    let end = index + SHARED_RUN
+
+    while (end < answer.length && source.includes(answer.slice(index, end + 1))) {
+      end++
+    }
+
+    runs.push([index, end])
+    index = end
+  }
+
+  return runs
+}
+
+/**
+ * How much source prose an answer still carries: the longest and the total length
+ * of the shared runs that are *not* dominated by verbatim terms, relative to the
+ * answer's own visible length. Language-agnostic by construction -- it compares
+ * text with text and only discounts runs whose shape says "identifier, URL,
+ * markup".
+ */
+const sharedProse = (
+  source: string,
+  answer: string,
+): { longest: number; cover: number } => {
+  const sourceText = visibleText(source)
+  const answerText = visibleText(answer)
+
+  if (answerText.length < SHARED_RUN) {
+    return { longest: 0, cover: 0 }
+  }
+
+  const mask = verbatimMask(answerText, verbatimTerms(source))
+  let prose = 0
+  let longest = 0
+
+  for (const [start, end] of sharedRuns(answerText, sourceText)) {
+    let verbatim = 0
+
+    for (let index = start; index < end; index++) {
+      if (mask[index]) {
+        verbatim++
+      }
+    }
+
+    // mostly an identifier, a URL or an acronym the translation kept: not prose
+    if (verbatim / (end - start) >= KEEP_FRACTION) {
+      continue
+    }
+
+    prose += end - start
+    longest = Math.max(longest, end - start)
+  }
+
+  return { longest, cover: prose / answerText.length }
+}
+
+/**
+ * Whether an answer still holds a meaningful piece of its source's prose. A long
+ * shared run that verbatim terms do not explain -- and that makes up a real share
+ * of the answer -- is source text the provider did not translate, so the unit is
+ * retried and, if that does not help, reported as `remaining` rather than as
+ * translated. The two conditions together are what keeps a link-heavy or
+ * identifier-heavy unit from being a false positive.
+ */
+const isSuspect = (source: string, answer: string): boolean => {
+  const { longest, cover } = sharedProse(source, answer)
+
+  return longest >= SHARED_RUN && cover >= SHARED_SHARE
+}
+
 export default defineEventHandler(async event => {
   // POST only (the file is `translate.post.ts`): the text travels in the JSON
   // body so a long article body never has to fit into a URL:
@@ -972,159 +1429,358 @@ export default defineEventHandler(async event => {
     url: getEnv(event, 'DEEPLX_URL').replace(/\/+$/, ''),
     token: getEnv(event, 'DEEPLX_TOKEN'),
   }
-  // The body is first split into code and prose: `<pre>`/`<code>` spans are never
-  // sent to a provider and are spliced back byte-for-byte, so an identifier, a
-  // regex or a shell snippet cannot be rewritten and no placeholder has to survive
-  // a round trip. The prose is then split into block-level units (paragraphs, list
-  // items, headings, table cells), and each unit is its own request: the provider
-  // sees whole paragraphs instead of 1500-character slices, and a unit that comes
-  // back unchanged is a clear signal rather than a fragment of one.
+  // Code and prose are separated first, but only `<pre>` is a hard boundary: a
+  // whole block (`<p>`, `<li>`, a heading, a table cell) is one unit, so a provider
+  // is asked to translate a complete paragraph instead of an arbitrary slice.
+  // Inline `<code>` inside a unit is masked with a numbered token rather than split
+  // on -- the code is still never sent -- and the original span is spliced back on
+  // return; a token a provider did not preserve makes the unit fall back to its
+  // prose fragments, exactly as it translated before tokens existed.
   const segments = splitSegments(text)
-  const plan = segments.map(segment => {
+  const plan: PlanSegment[] = segments.map(segment => {
     if (segment.code) {
-      return { code: true, text: segment.text, units: [] as ProseUnit[] }
+      return { code: true, text: segment.text, units: [] }
     }
 
     return {
       code: false,
       text: segment.text,
-      units: splitBlocks(segment.text).map(unit => ({
-        text: unit,
-        // punctuation and whitespace between two code spans has no letters and
-        // nothing to translate, so it is passed through instead of being sent
-        // (and coming back as an echo)
-        pieces: TRANSLATABLE.test(unit) ? splitText(unit) : [],
-      })),
+      units: splitBlocks(segment.text).map(makeUnit),
     }
   })
 
-  const jobs = plan.flatMap((segment, segmentIndex) =>
-    segment.units.flatMap((unit, unitIndex) =>
-      unit.pieces.map((piece, pieceIndex) => ({
-        segment: segmentIndex,
-        unit: unitIndex,
-        piece: pieceIndex,
-        text: piece,
-      })),
-    ),
-  )
+  const allUnits = plan.flatMap(segment => segment.units)
 
-  // One subrequest budget for the whole request. Every unit first gets a chance
-  // to come out of the per-unit cache, which costs no subrequest at all, so a
-  // render that is cut short by the budget makes progress on the next one
-  // instead of repeating itself.
+  // One subrequest budget for the whole request, the cookie warm-up included.
+  // Every outbound call reserves its slot *before* it starts, so the batches and
+  // their fallbacks can never push the total past `MAX_SUBREQUESTS`; whatever is
+  // left keeps its source text and is reported as `remaining`. Every piece first
+  // gets a chance to come out of the per-piece cache, which costs no subrequest at
+  // all, so a render cut short by the budget still makes progress on the next one.
   let spent = 0
-  const results = new Array<UnitResult | undefined>(jobs.length)
+  const reserve = (): boolean => {
+    if (spent >= MAX_SUBREQUESTS) {
+      return false
+    }
+
+    spent++
+    return true
+  }
 
   const unitKeyOf = async (unit: string) =>
     new Request(
       `${CACHE_ORIGIN}/?v=${CACHE_VERSION}&unit=1&source=${source ?? 'auto'}&target=${target}&hash=${await digest(unit)}`,
     )
 
-  if (translationCache) {
-    await Promise.all(
-      jobs.map(async (job, index) => {
-        const key = await unitKeyOf(job.text)
-        const hit = await translationCache
-          .match(key)
-          .catch(() => undefined)
-        const cached = hit
-          ? ((await hit.json().catch(() => null)) as UnitResult | null)
-          : null
+  let batchCount = 0
+  let cachedPieces = 0
 
-        if (cached && typeof cached.text === 'string') {
-          results[index] = cached
-        }
-      }),
-    )
-  }
+  /** Every piece of `units` that still needs a provider. */
+  const tasksOf = (units: ProseUnit[]): UnitTask[] => {
+    const tasks: UnitTask[] = []
 
-  const misses = jobs
-    .map((job, index) => ({ index, text: job.text }))
-    .filter(job => !results[job.index])
-
-  // at most `MAX_SUBREQUESTS` batch requests, and a batch carries up to
-  // `BATCH_MAX_TEXTS` units, so a code-dense article fits in a single render
-  const batches = batchUnits(misses).slice(0, MAX_SUBREQUESTS)
-
-  await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
-    spent++
-    const answers = await translateBatchWithLibrary(
-      batch.map(job => job.text),
-      target,
-      source,
-    ).catch(() => batch.map(() => undefined))
-
-    const failed: BatchJob[] = []
-
-    answers.forEach((answer, position) => {
-      const job = batch[position]
-
-      if (!job) {
-        return
-      }
-
-      const detected = detectedFor(answer?.sourceLang, source)
-
-      if (answer && !isUntranslated(job.text, answer.data, target, detected)) {
-        results[job.index] = {
-          text: answer.data,
-          ok: true,
-          translated: !isAlreadyTarget(job.text, answer.data, target, detected),
-        }
-        return
-      }
-
-      failed.push(job)
-    })
-
-    // one fallback request per unit it could not translate; the budget covers it
-    // and anything left over is reported as `remaining`
-    await Promise.all(
-      failed.map(async job => {
-        // no fallback configured, or the budget is used up: leave the unit alone
-        // so it is reported as `remaining` and a follow-up request can finish it
-        // (counting it as a failure would hide it from the continuation)
-        if (!service.url || spent >= MAX_SUBREQUESTS) {
+    for (const unit of units) {
+      unit.pieces.forEach((piece, index) => {
+        if (piece.fixed) {
+          // code is answered by itself: never sent, always spliced back
+          unit.answers[index] = { text: piece.text, ok: true, translated: false }
           return
         }
 
-        spent++
-        const result = await translateChunk({
-          chunk: job.text,
+        tasks.push({ unit, piece: index, text: piece.text })
+      })
+    }
+
+    return tasks
+  }
+
+  /**
+   * Translates every task that is not already cached, spending the shared
+   * subrequest budget. An answer is written straight onto its unit, so a unit
+   * whose pieces were all answered needs no index bookkeeping.
+   */
+  const runTasks = async (
+    tasks: UnitTask[],
+    cookies?: string,
+  ): Promise<void> => {
+    if (!tasks.length) {
+      return
+    }
+
+    if (translationCache) {
+      await Promise.all(
+        tasks.map(async task => {
+          const key = await unitKeyOf(task.text)
+          const hit = await translationCache
+            .match(key)
+            .catch(() => undefined)
+          const cached = hit
+            ? ((await hit.json().catch(() => null)) as PieceResult | null)
+            : null
+
+          if (cached && typeof cached.text === 'string') {
+            task.unit.answers[task.piece] = cached
+            cachedPieces++
+          }
+        }),
+      )
+    }
+
+    const misses = tasks.filter(task => !task.unit.answers[task.piece])
+    const batches = batchUnits(
+      misses.map((task, index) => ({ index, text: task.text })),
+    )
+
+    await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
+      // one batch is one subrequest, reserved before it is sent; when the budget
+      // is used up the batch is skipped and its pieces stay `remaining`
+      if (!reserve()) {
+        return
+      }
+
+      batchCount++
+
+      const answers = await translateBatchWithLibrary(
+        batch.map(job => job.text),
+        target,
+        source,
+        cookies,
+      ).catch(() => batch.map(() => undefined))
+
+      const failed: BatchJob[] = []
+
+      answers.forEach((answer, position) => {
+        const job = batch[position]
+
+        if (!job) {
+          return
+        }
+
+        const task = misses[job.index]
+        const detected = detectedFor(answer?.sourceLang, source)
+
+        if (!task) {
+          return
+        }
+
+        if (answer && !isUntranslated(task.text, answer.data, target, detected)) {
+          task.unit.answers[task.piece] = {
+            text: answer.data,
+            ok: true,
+            translated: !isAlreadyTarget(task.text, answer.data, target, detected),
+          }
+          return
+        }
+
+        failed.push(job)
+      })
+
+      // one fallback request per piece the batch could not translate, each one
+      // reserved first so the cap holds even with several batches in flight
+      await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
+        const task = misses[job.index]
+
+        if (!task || !service.url || !reserve()) {
+          return
+        }
+
+        task.unit.answers[task.piece] = await translateChunk({
+          chunk: task.text,
           index: job.index,
-          total: jobs.length,
+          total: misses.length,
           target,
           source,
           attempts,
           service,
           skipLibrary: true,
         })
-        results[job.index] = result
-      }),
+      })
+    })
+  }
+
+  // the warm-up is an outbound request too, so it comes out of the budget; later
+  // batches reuse the cookies and are not charged again
+  const warm = await warmOneshot()
+
+  if (warm.fetched) {
+    reserve()
+  }
+
+  await runTasks(tasksOf(allUnits), warm.cookies)
+
+  /**
+   * Rebuilds a unit's text from its answers, splicing masked code back in.
+   * `undefined` means the provider did not preserve the tokens, which sends the
+   * unit to its fragment fallback instead of risking a corrupted body.
+   */
+  const rebuild = (unit: ProseUnit): string | undefined => {
+    if (!unit.pieces.length) {
+      return unit.text
+    }
+
+    const joined = unit.pieces
+      .map((piece, index) =>
+        piece.fixed ? piece.text : (unit.answers[index]?.text ?? piece.text),
+      )
+      .join('')
+
+    if (!unit.codeSpans.length) {
+      return joined
+    }
+
+    return unmask(joined, unit.codeSpans)
+  }
+
+  for (const unit of allUnits) {
+    unit.result = rebuild(unit)
+  }
+
+  // a token that did not survive: translate the block's prose fragments on their
+  // own, exactly as before tokens existed, so the code is still never sent and the
+  // answer still cannot corrupt it
+  const fragmented = allUnits.filter(
+    unit => unit.result === undefined && unit.fragments,
+  )
+
+  if (fragmented.length) {
+    console.warn(
+      '[translate] inline code tokens did not survive, falling back to fragments',
+      `units=${fragmented.length}`,
     )
-  })
 
-  const remaining = results.filter(result => !result).length
+    for (const unit of fragmented) {
+      unit.pieces = unit.fragments as UnitPiece[]
+      unit.fragments = undefined
+      // the code spans are pieces of their own now, so there is nothing to unmask
+      unit.codeSpans = []
+      unit.answers = new Array<PieceResult | undefined>(unit.pieces.length)
+    }
 
+    await runTasks(tasksOf(fragmented), warm.cookies)
+
+    for (const unit of fragmented) {
+      unit.result = rebuild(unit) ?? unit.text
+    }
+  }
+
+  // a piece the budget did not reach keeps its source text and stays `remaining`
+  for (const unit of allUnits) {
+    if (unit.result === undefined) {
+      unit.result = unit.text
+    }
+  }
+
+  /**
+   * A unit is worth retrying only when it produced a real translation, every one
+   * of its pieces was answered, and its answer still carries a meaningful run of
+   * source prose.
+   */
+  const suspects = allUnits.filter(
+    unit =>
+      unit.result !== undefined &&
+      unit.answers.every((answer, index) => answer || unit.pieces[index]?.fixed) &&
+      unit.answers.some(answer => answer?.translated) &&
+      // a piece the provider said already is the target language stays verbatim
+      // by design, so its text is not untranslated prose
+      !unit.answers.some(answer => answer?.ok && !answer.translated) &&
+      isSuspect(unit.text, unit.result),
+  )
+
+  if (suspects.length) {
+    console.warn(
+      '[translate] units look partly translated',
+      `suspects=${suspects.length}`,
+      `budget=${spent}/${MAX_SUBREQUESTS}`,
+    )
+  }
+
+  // one batched DLX request for all of them, reserved like every other call; the
+  // answer that shares less source prose wins, so a retry can never make a unit
+  // worse, and a unit that still shares a meaningful run is not reported as
+  // translated. The batch is bounded like the provider batch above, so a
+  // pathological body cannot build one enormous request.
+  const retried = suspects.slice(0, BATCH_MAX_TEXTS)
+
+  if (retried.length && service.url && reserve()) {
+    const masked = retried.map(unit => maskCode(unit.text))
+    const answers = await translateBatchWithDlx(
+      masked.map(entry => entry.masked),
+      target,
+      source,
+      service,
+    )
+    let improved = 0
+
+    retried.forEach((unit, index) => {
+      const answer = answers[index]
+      const entry = masked[index]
+      const current = unit.result
+
+      if (answer === undefined || entry === undefined || current === undefined) {
+        return
+      }
+
+      const restored = entry.codeSpans.length
+        ? unmask(answer, entry.codeSpans)
+        : answer
+
+      if (
+        restored !== undefined &&
+        sharedProse(unit.text, restored).cover <
+          sharedProse(unit.text, current).cover
+      ) {
+        unit.result = restored
+        improved++
+      }
+    })
+
+    console.warn(
+      '[translate] DLX batch retry finished',
+      `suspects=${retried.length}`,
+      `improved=${improved}`,
+    )
+  }
+
+  for (const unit of suspects) {
+    if (unit.result !== undefined && isSuspect(unit.text, unit.result)) {
+      unit.suspect = true
+    }
+  }
+
+  const pieces = allUnits.flatMap(unit =>
+    unit.pieces.map((piece, index) => ({
+      piece,
+      answer: unit.answers[index],
+      suspect: unit.suspect,
+    })),
+  )
+  const remainingPieces = pieces.filter(
+    entry => !entry.piece.fixed && !entry.answer,
+  ).length
+  const suspectUnits = allUnits.filter(unit => unit.suspect).length
+  const remaining = remainingPieces + suspectUnits
+
+  // cache every piece that produced a real answer, even when the request as a
+  // whole was cut short: that is what lets a follow-up request finish the rest
+  // instead of re-translating what is already there. A unit that is still
+  // suspected of holding source prose is deliberately not cached, so a known
+  // partial answer is not served for a day and the next request retries it.
   if (translationCache) {
     await Promise.all(
-      jobs.map(async (job, index) => {
-        const result = results[index]
-
+      pieces.map(async ({ piece, answer, suspect }) => {
         // only a real answer is worth keeping, so a decline is retried next time
-        if (!result || (!result.ok && !result.translated) || remaining) {
+        if (piece.fixed || suspect || !answer || (!answer.ok && !answer.translated)) {
           return
         }
 
         await translationCache
           .put(
-            await unitKeyOf(job.text),
-            new Response(JSON.stringify(result), {
+            await unitKeyOf(piece.text),
+            new Response(JSON.stringify(answer), {
               headers: {
                 'content-type': 'application/json',
                 'cache-control': `public, max-age=${
-                  result.translated ? CACHE_TTL : CACHE_FAILURE_TTL
+                  answer.translated ? CACHE_TTL : CACHE_FAILURE_TTL
                 }`,
               },
             }),
@@ -1134,52 +1790,29 @@ export default defineEventHandler(async event => {
     )
   }
 
-  const translatedUnits = new Map<string, string>()
-  results.forEach((result, index) => {
-    const job = jobs[index]
-
-    if (job) {
-      translatedUnits.set(
-        `${job.segment}:${job.unit}:${job.piece}`,
-        result?.text ?? job.text,
-      )
-    }
-  })
-
-  const failedChunks = results.filter(result => result && !result.ok).length
-  const translated = results.filter(result => result?.translated).length
+  const failedChunks = pieces.filter(
+    entry => entry.answer && !entry.answer.ok,
+  ).length
+  const translatedPieces = pieces.filter(entry => entry.answer?.translated).length
 
   const payload: TranslatePayload = {
-    // code segments keep their bytes; a unit without jobs is passed through as
+    // code segments keep their bytes; a unit without pieces is passed through as
     // well; everything else is its (possibly partial) translation
     text: plan
-      .map((segment, segmentIndex) =>
+      .map(segment =>
         segment.code
           ? segment.text
-          : segment.units
-              .map((unit, unitIndex) =>
-                unit.pieces.length
-                  ? unit.pieces
-                      .map(
-                        (_, pieceIndex) =>
-                          translatedUnits.get(
-                            `${segmentIndex}:${unitIndex}:${pieceIndex}`,
-                          ) ?? '',
-                      )
-                      .join('')
-                  : unit.text,
-              )
-              .join(''),
+          : segment.units.map(unit => unit.result ?? unit.text).join(''),
       )
       .join(''),
-    // the client keeps reading `text`; this reports whether the request produced
-    // a translation at all. A body that came back whole but unchanged (or that is
-    // only code) is complete, yet nothing was translated, so it is not reported
-    // as one; a unit that had to fall back is a failure either way, and units the
-    // budget did not reach are reported as `remaining` so a follow-up request can
-    // finish them.
+    // the client keeps reading `text`; this reports whether the request produced a
+    // translation at all. A body that came back whole but unchanged (or that is
+    // only code) is complete, yet nothing was translated, so it is not reported as
+    // one; a piece that had to fall back is a failure either way, and pieces the
+    // budget did not reach -- or that still hold source prose -- are reported as
+    // `remaining` so a follow-up request can finish them.
     translated:
-      !failedChunks && !remaining && (translated > 0 || !jobs.length),
+      !failedChunks && !remaining && (translatedPieces > 0 || !pieces.length),
     failedChunks,
     remaining,
     subrequests: spent,
@@ -1192,15 +1825,14 @@ export default defineEventHandler(async event => {
     '[translate] chunks processed',
     `segments=${segments.length}`,
     `code=${plan.filter(segment => segment.code).length}`,
-    `units=${plan.reduce((total, segment) => total + segment.units.length, 0)}`,
-    `chunks=${jobs.length}`,
-    ...(jobs.length <= 12
-      ? [`lengths=${jobs.map(job => job.text.length).join(',')}`]
-      : []),
-    `batches=${batches.length}`,
+    `units=${allUnits.length}`,
+    `chunks=${pieces.filter(entry => !entry.piece.fixed).length}`,
+    `batches=${batchCount}`,
+    `cached=${cachedPieces}`,
     `subrequests=${spent}`,
     `remaining=${remaining}`,
-    `translatedUnits=${translated}`,
+    `suspects=${suspectUnits}`,
+    `translatedPieces=${translatedPieces}`,
     `failed=${failedChunks}`,
     `translated=${payload.translated}`,
     `target=${target}`,
