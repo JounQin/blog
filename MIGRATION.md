@@ -235,12 +235,22 @@ optional KV namespace and read by the GraphQL client:
   a shell snippet cannot be rewritten and no placeholder has to survive a round trip through the
   provider
 - The remaining prose is split into block-level units — a `<p>`, `<li>`, heading, blockquote or
-  table cell each — and every unit is its own request, so the provider is asked for a whole
-  paragraph instead of an arbitrary 1500-character slice. A unit that exceeds the provider's
-  1500-character limit is split at a sentence, newline or tag boundary and the pieces are joined
-  back; nothing is cut in the middle of a sentence when a boundary exists. Units are translated up
-  to six at a time (the runtime's simultaneous-connection budget), and a unit that fails keeps its
-  original text, so a long article never blocks the SSR
+  table cell each — so the provider is asked for a whole paragraph instead of an arbitrary
+  1500-character slice. A unit that exceeds the provider's 1500-character limit is split at a
+  clause, newline or tag boundary and the pieces are joined back; nothing is cut in the middle of a
+  sentence when a boundary exists
+- Units travel to the provider **in batches**: the anonymous oneshot endpoint takes an array of
+  texts and answers with one translation per input, in order (`text: [...]` →
+  `translations[i]`), so up to `BATCH_MAX_TEXTS` (16) units of at most `BATCH_MAX_CHARS` (8000)
+  characters are one subrequest. The single-text `@deeplx/core` helper stays as the fallback for a
+  unit the batch did not answer, one unit at a time. Batches run six at a time, the runtime's
+  simultaneous-connection budget
+- A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests. The Workers free plan caps
+  subrequests per request at 50, so 16 leaves 34 for the GitHub calls and the rest of the request,
+  while a 102-unit article like `/article/323` is 7 batches and fits in one render. Units the budget
+  does not reach keep their source text and are reported as `remaining`; each unit's result is also
+  cached on its own (`caches.default`, a cache read costs no subrequest), so a follow-up request
+  pays only for the units still missing and the client finishes the page in the background
 - A provider answer only counts as a translation when it actually changed the text: the check
   removes markup, `<pre>`/`<code>` content and whitespace before comparing, so the echo that only
   inserted a space inside a `<code>` block is still an echo. The provider's own detected language

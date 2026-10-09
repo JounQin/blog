@@ -1,4 +1,14 @@
-import { translateByDeepLX } from '@deeplx/core'
+import {
+  IOS_APP_BUILD,
+  IOS_APP_VERSION,
+  IOS_CFNETWORK_VERSION,
+  IOS_DARWIN_VERSION,
+  IOS_OS_VERSION,
+  MAX_FREE_TEXT_LENGTH,
+  ONESHOT_FREE_ENDPOINT,
+  getSharedCookies,
+  translateByDeepLX,
+} from '@deeplx/core'
 import { $fetch } from 'ofetch'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE, isLocale } from '../../shared/utils/locale'
@@ -45,8 +55,9 @@ const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.ZH]: 'ZH',
 }
 
-/** `@deeplx/core` rejects anything longer than the anonymous oneshot limit. */
-const MAX_CHARS = 1500
+/** The provider rejects anything longer than its anonymous oneshot limit, so the
+ * splitting cap is that limit itself rather than a copy of the number. */
+const MAX_CHARS = MAX_FREE_TEXT_LENGTH
 // a cold isolate pays a cookie warm-up request first, so the budget is generous
 // (measured ~2 s per translation from node, including the session warm-up)
 const CHUNK_TIMEOUT = 8000
@@ -97,6 +108,10 @@ interface TranslatePayload {
   translated: boolean
   /** how many chunks had to keep their source text; for observability only */
   failedChunks?: number
+  /** units the subrequest budget did not reach; a follow-up request finishes them */
+  remaining?: number
+  /** provider subrequests this request spent, for observability */
+  subrequests?: number
 }
 
 /** SHA-256 hex of the text, so a long body still gets a short cache key. */
@@ -498,6 +513,8 @@ interface ChunkTask {
   source: SourceLanguage | undefined
   attempts: number
   service: DlxService
+  /** the batch path already asked the library, so only the fallback is left */
+  skipLibrary?: boolean
 }
 
 const translateChunk = async ({
@@ -508,6 +525,7 @@ const translateChunk = async ({
   source,
   attempts,
   service,
+  skipLibrary,
 }: ChunkTask): Promise<ChunkResult> => {
   // every log line names the chunk, so a partly translated body can be traced to
   // the chunks that failed instead of being invisible
@@ -515,7 +533,7 @@ const translateChunk = async ({
 
   // primary: the `@deeplx/core` library, up to `attempts` tries. It reports its
   // outcome as a value, so the retry decision is a plain check on `code`
-  for (let attempt = 1; attempt <= attempts; attempt++) {
+  for (let attempt = 1; !skipLibrary && attempt <= attempts; attempt++) {
     try {
       const result = await translateWithLibrary(chunk, target, source)
 
@@ -654,14 +672,167 @@ const translateChunk = async ({
  */
 const CHUNK_CONCURRENCY = 6
 
+/**
+ * The oneshot endpoint takes an **array** of texts and answers with one
+ * translation per input, in order, so a batch is a single subrequest however many
+ * units it carries. `@deeplx/core` only exposes a single-text helper, so the
+ * batch request is built here from the constants the library itself uses; the
+ * helper stays the fallback for a single unit.
+ */
+const BATCH_MAX_TEXTS = 16
+/** A sensible ceiling for one request body, on top of the per-text limit. */
+const BATCH_MAX_CHARS = 8000
+/**
+ * How many provider subrequests one request may spend. The Workers free plan
+ * caps subrequests per request at 50, and a render also talks to the GitHub API,
+ * so 16 leaves a wide margin (34 of the 50 stay for the GitHub calls and the
+ * rest of the request) while still covering a code-dense article: `/article/323`
+ * is 102 units, which is 7 batches, and a fallback for the units a batch did not
+ * answer still fits. Whatever does not fit keeps its source text, is reported as
+ * `remaining`, and a follow-up request picks it up -- the unit cache below means
+ * that follow-up only pays for the units still missing.
+ */
+const MAX_SUBREQUESTS = 16
+
+/** One unit waiting to be translated, with the batch it belongs to. */
+interface BatchJob {
+  index: number
+  text: string
+}
+
+/** A translation result for one unit: what came back, and whether it is one. */
+interface UnitResult {
+  text: string
+  ok: boolean
+  translated: boolean
+}
+
+interface OneshotTranslation {
+  text?: string
+  detected_source_language?: string
+}
+
+interface OneshotResponse {
+  translations?: OneshotTranslation[]
+}
+
+const instanceId = crypto.randomUUID()
+const sessionId = crypto.randomUUID()
+
+let warmCookies: string | undefined
+
+/** One best-effort warm-up per isolate, exactly like the library does. */
+const warmOneshot = async (): Promise<string | undefined> => {
+  if (warmCookies !== undefined || getSharedCookies()) {
+    return warmCookies ?? getSharedCookies() ?? undefined
+  }
+
+  try {
+    const response = await fetch('https://www.deepl.com/translator', {
+      signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
+    })
+    const setCookie = response.headers.get('set-cookie') ?? ''
+    const cookies = [
+      /userCountry=[^;]+/.exec(setCookie)?.[0],
+      /verifiedBot=[^;]+/.exec(setCookie)?.[0],
+    ].filter(Boolean)
+
+    warmCookies = cookies.length ? cookies.join('; ') : ''
+  } catch {
+    warmCookies = ''
+  }
+
+  return warmCookies || undefined
+}
+
+/**
+ * Translates a batch of units in one request. Every answer is returned position
+ * by position, so the caller can still tell which unit failed; a status other
+ * than 200, or a response whose `translations` do not line up with the input,
+ * fails the whole batch and sends each unit to the fallback.
+ */
+const translateBatchWithLibrary = async (
+  texts: string[],
+  target: TargetLanguage,
+  source: SourceLanguage | undefined,
+): Promise<(OneshotAnswer | undefined)[]> => {
+  const cookies = await warmOneshot()
+
+  const response = await fetch(ONESHOT_FREE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      accept: '*/*',
+      'accept-language': 'en-US,en;q=0.9',
+      authorization: 'None',
+      'user-agent': `DeepL/${IOS_APP_VERSION} CFNetwork/${IOS_CFNETWORK_VERSION} Darwin/${IOS_DARWIN_VERSION}`,
+      'x-app-os-version': IOS_OS_VERSION,
+      'x-app-instance-id': instanceId,
+      'x-app-session-id': sessionId,
+      ...(cookies ? { cookie: cookies } : {}),
+    },
+    body: JSON.stringify({
+      text: texts,
+      target_lang: target,
+      // JSON drops an undefined source, which is what auto-detection wants
+      source_lang: source,
+      usage_type: 'translate',
+      app_information: {
+        os: 'iOS',
+        os_version: IOS_OS_VERSION,
+        app_version: IOS_APP_VERSION,
+        app_build: IOS_APP_BUILD,
+        instance_id: instanceId,
+      },
+    }),
+    signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+  })
+
+  if (response.status !== 200) {
+    console.warn(
+      '[translate] batch request failed',
+      `status=${response.status}`,
+      `texts=${texts.length}`,
+    )
+    return texts.map(() => undefined)
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | OneshotResponse
+    | null
+  const translations = payload?.translations
+
+  if (!Array.isArray(translations) || translations.length !== texts.length) {
+    console.warn(
+      '[translate] batch response did not line up',
+      `texts=${texts.length}`,
+      `translations=${Array.isArray(translations) ? translations.length : 'none'}`,
+    )
+    return texts.map(() => undefined)
+  }
+
+  return translations.map(translation =>
+    typeof translation?.text === 'string' && translation.text
+      ? {
+          data: translation.text,
+          sourceLang: translation.detected_source_language,
+        }
+      : undefined,
+  )
+}
+
+/**
+ * Runs the batches a few at a time: each batch is one subrequest, and the runtime
+ * caps how many connections may be in flight at once.
+ */
 const mapConcurrent = async <Item, Result>(
   items: Item[],
   limit: number,
   task: (item: Item, index: number) => Promise<Result>,
 ): Promise<Result[]> => {
   const results = new Array<Result>(items.length)
-  // one shared iterator: `next()` is synchronous, so two workers can never take
-  // the same item
+  // one shared iterator: next() is synchronous, so two workers never take the
+  // same item
   const queue = items.entries()
 
   const worker = async () => {
@@ -675,6 +846,43 @@ const mapConcurrent = async <Item, Result>(
   )
 
   return results
+}
+
+/** One unit's raw answer, whoever produced it. */
+interface OneshotAnswer {
+  data: string
+  sourceLang?: string
+}
+
+/**
+ * Groups units into requests: at most `BATCH_MAX_TEXTS` texts and
+ * `BATCH_MAX_CHARS` characters each, so a batch never has to be split at the
+ * provider and every text stays inside the per-text limit on its own.
+ */
+const batchUnits = (jobs: BatchJob[]): BatchJob[][] => {
+  const batches: BatchJob[][] = []
+  let batch: BatchJob[] = []
+  let chars = 0
+
+  for (const job of jobs) {
+    if (
+      batch.length &&
+      (batch.length >= BATCH_MAX_TEXTS || chars + job.text.length > BATCH_MAX_CHARS)
+    ) {
+      batches.push(batch)
+      batch = []
+      chars = 0
+    }
+
+    batch.push(job)
+    chars += job.text.length
+  }
+
+  if (batch.length) {
+    batches.push(batch)
+  }
+
+  return batches
 }
 
 export default defineEventHandler(async event => {
@@ -801,20 +1009,130 @@ export default defineEventHandler(async event => {
     ),
   )
 
-  const results = await mapConcurrent(
-    jobs,
-    CHUNK_CONCURRENCY,
-    (job, index) =>
-      translateChunk({
-        chunk: job.text,
-        index,
-        total: jobs.length,
-        target,
-        source,
-        attempts,
-        service,
+  // One subrequest budget for the whole request. Every unit first gets a chance
+  // to come out of the per-unit cache, which costs no subrequest at all, so a
+  // render that is cut short by the budget makes progress on the next one
+  // instead of repeating itself.
+  let spent = 0
+  const results = new Array<UnitResult | undefined>(jobs.length)
+
+  const unitKeyOf = async (unit: string) =>
+    new Request(
+      `${CACHE_ORIGIN}/?v=${CACHE_VERSION}&unit=1&source=${source ?? 'auto'}&target=${target}&hash=${await digest(unit)}`,
+    )
+
+  if (translationCache) {
+    await Promise.all(
+      jobs.map(async (job, index) => {
+        const key = await unitKeyOf(job.text)
+        const hit = await translationCache
+          .match(key)
+          .catch(() => undefined)
+        const cached = hit
+          ? ((await hit.json().catch(() => null)) as UnitResult | null)
+          : null
+
+        if (cached && typeof cached.text === 'string') {
+          results[index] = cached
+        }
       }),
-  )
+    )
+  }
+
+  const misses = jobs
+    .map((job, index) => ({ index, text: job.text }))
+    .filter(job => !results[job.index])
+
+  // at most `MAX_SUBREQUESTS` batch requests, and a batch carries up to
+  // `BATCH_MAX_TEXTS` units, so a code-dense article fits in a single render
+  const batches = batchUnits(misses).slice(0, MAX_SUBREQUESTS)
+
+  await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
+    spent++
+    const answers = await translateBatchWithLibrary(
+      batch.map(job => job.text),
+      target,
+      source,
+    ).catch(() => batch.map(() => undefined))
+
+    const failed: BatchJob[] = []
+
+    answers.forEach((answer, position) => {
+      const job = batch[position]
+
+      if (!job) {
+        return
+      }
+
+      const detected = detectedFor(answer?.sourceLang, source)
+
+      if (answer && !isUntranslated(job.text, answer.data, target, detected)) {
+        results[job.index] = {
+          text: answer.data,
+          ok: true,
+          translated: !isAlreadyTarget(job.text, answer.data, target, detected),
+        }
+        return
+      }
+
+      failed.push(job)
+    })
+
+    // one fallback request per unit it could not translate; the budget covers it
+    // and anything left over is reported as `remaining`
+    await Promise.all(
+      failed.map(async job => {
+        // no fallback configured, or the budget is used up: leave the unit alone
+        // so it is reported as `remaining` and a follow-up request can finish it
+        // (counting it as a failure would hide it from the continuation)
+        if (!service.url || spent >= MAX_SUBREQUESTS) {
+          return
+        }
+
+        spent++
+        const result = await translateChunk({
+          chunk: job.text,
+          index: job.index,
+          total: jobs.length,
+          target,
+          source,
+          attempts,
+          service,
+          skipLibrary: true,
+        })
+        results[job.index] = result
+      }),
+    )
+  })
+
+  const remaining = results.filter(result => !result).length
+
+  if (translationCache) {
+    await Promise.all(
+      jobs.map(async (job, index) => {
+        const result = results[index]
+
+        // only a real answer is worth keeping, so a decline is retried next time
+        if (!result || (!result.ok && !result.translated) || remaining) {
+          return
+        }
+
+        await translationCache
+          .put(
+            await unitKeyOf(job.text),
+            new Response(JSON.stringify(result), {
+              headers: {
+                'content-type': 'application/json',
+                'cache-control': `public, max-age=${
+                  result.translated ? CACHE_TTL : CACHE_FAILURE_TTL
+                }`,
+              },
+            }),
+          )
+          .catch(() => undefined)
+      }),
+    )
+  }
 
   const translatedUnits = new Map<string, string>()
   results.forEach((result, index) => {
@@ -823,13 +1141,13 @@ export default defineEventHandler(async event => {
     if (job) {
       translatedUnits.set(
         `${job.segment}:${job.unit}:${job.piece}`,
-        result.text,
+        result?.text ?? job.text,
       )
     }
   })
 
-  const failedChunks = results.filter(result => !result.ok).length
-  const translated = results.filter(result => result.translated).length
+  const failedChunks = results.filter(result => result && !result.ok).length
+  const translated = results.filter(result => result?.translated).length
 
   const payload: TranslatePayload = {
     // code segments keep their bytes; a unit without jobs is passed through as
@@ -857,9 +1175,14 @@ export default defineEventHandler(async event => {
     // the client keeps reading `text`; this reports whether the request produced
     // a translation at all. A body that came back whole but unchanged (or that is
     // only code) is complete, yet nothing was translated, so it is not reported
-    // as one; a unit that had to fall back is a failure either way.
-    translated: !failedChunks && (translated > 0 || !jobs.length),
+    // as one; a unit that had to fall back is a failure either way, and units the
+    // budget did not reach are reported as `remaining` so a follow-up request can
+    // finish them.
+    translated:
+      !failedChunks && !remaining && (translated > 0 || !jobs.length),
     failedChunks,
+    remaining,
+    subrequests: spent,
   }
 
   // one line per request, so a partly translated body is visible as a count
@@ -874,6 +1197,9 @@ export default defineEventHandler(async event => {
     ...(jobs.length <= 12
       ? [`lengths=${jobs.map(job => job.text.length).join(',')}`]
       : []),
+    `batches=${batches.length}`,
+    `subrequests=${spent}`,
+    `remaining=${remaining}`,
     `translatedUnits=${translated}`,
     `failed=${failedChunks}`,
     `translated=${payload.translated}`,
