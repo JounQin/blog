@@ -231,12 +231,25 @@ optional KV namespace and read by the GraphQL client:
   subpath to the package's own proxy stub (`dist/proxy-stub.mjs`), which is exactly the "no proxy in
   this runtime" implementation — see the alias in [nuxt.config.ts](nuxt.config.ts)
 - Texts longer than the provider's 1500-character anonymous limit are split at safe
-  boundaries (newline, `>`, space) and translated in parallel; a chunk that fails (timeout,
-  rate limit) keeps its original text, so a long article never blocks the SSR
+  boundaries (newline, `>`, space) and translated up to six chunks at a time; a chunk that fails
+  (timeout, rate limit) keeps its original text, so a long article never blocks the SSR. The cap
+  matches the runtime's simultaneous-connection budget: a normal body (measured: 1-5 chunks,
+  2-6 subrequests) still runs in one round, and only a pathological body is spread over several
+  rounds instead of firing every chunk at once
+- A provider answer only counts as a translation when it actually changed the text: the check
+  ignores markup, code and whitespace, so an echo that only inserted a space in a `<code>` block
+  is still an echo, and a zh→en answer that keeps most of the source's Han characters is
+  rejected too. The answer is then handed to the DLX fallback, and the request reports
+  `translated: false` (with `failedChunks`) if that fails as well, instead of caching an
+  untranslated body as a success
 - Provider requests carry their own `AbortSignal.timeout`: 8 s for `@deeplx/core` (a cold
   isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
   chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side
   translation request use `retry: 0`, and ofetch does not retry the fallback POST by default
+- A translated payload is cached in `caches.default` for a day; a payload that fell back to the
+  source text is cached for **one minute** only, so one transient failure cannot leave a page
+  untranslated for minutes. A client-triggered retry never reads a cached failure at all, and
+  every chunk failure is logged with its index and counted in the response
 - Titles and the article body are prefetched during SSR: the provider's 1500-character limit is
   handled by chunking, and the translated strings are written to the payload state, so the first
   paint is already translated and the client never re-requests them

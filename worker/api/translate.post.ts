@@ -56,11 +56,19 @@ const DEEPLX_PATH = '/translate'
  * translated payload is stored there under a synthetic GET key (the endpoint
  * itself is POST) and served from the edge cache on the next render. A
  * `translated: true` result lives for a day; a result that fell back to the
- * source text is kept for five minutes only, so a transient provider outage
- * cannot stick for a day.
+ * source text is kept for a minute only, so a transient provider outage cannot
+ * stick: the next render after that minute tries again, and a client retry is
+ * never answered with the cached failure at all.
  */
 const CACHE_TTL = 60 * 60 * 24
-const CACHE_FAILURE_TTL = 60 * 5
+const CACHE_FAILURE_TTL = 60
+/**
+ * Bumped whenever an entry written by an older build must not be served any
+ * more. It is part of the key, so the entries the previous build stored for a
+ * day — including one whose "translation" was an echo with a whitespace tweak —
+ * are simply never read again instead of having to expire.
+ */
+const CACHE_VERSION = 2
 /** A reserved TLD, so the synthetic key can never collide with a real site. */
 const CACHE_ORIGIN = 'https://translate-cache.internal'
 
@@ -77,6 +85,8 @@ const translationCache = (
 interface TranslatePayload {
   text: string
   translated: boolean
+  /** how many chunks had to keep their source text; for observability only */
+  failedChunks?: number
 }
 
 /** SHA-256 hex of the text, so a long body still gets a short cache key. */
@@ -92,6 +102,62 @@ const digest = async (value: string): Promise<string> => {
 
 type TargetLanguage = Parameters<typeof translateByDeepLX>[1]
 type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
+
+/**
+ * The part of a chunk a translation is supposed to change: markup, code blocks
+ * and whitespace removed. The anonymous endpoint has been observed answering
+ * with the source unchanged apart from a single space it inserted inside a
+ * `<code>` block, so "did anything change?" cannot be a byte comparison — that
+ * answer was accepted as a translation and cached for a day, which is how an
+ * article body stayed Chinese while its title was translated.
+ */
+const visibleText = (value: string): string =>
+  value
+    .replace(/<(?:pre|code)\b[\s\S]*?<\/(?:pre|code)>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/** Han characters, to notice a zh→en answer that kept the source language. */
+const HAN_PATTERN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g
+const hanCount = (value: string): number =>
+  (value.match(HAN_PATTERN) ?? []).length
+
+/** Below this, leftover Han characters can still be a name or a quoted term. */
+const MIN_HAN = 4
+
+/**
+ * Whether a provider answer is really a translation. An answer identical to the
+ * chunk was already treated as an echo; this also catches an echo whose only
+ * difference is markup noise, and an `en` answer that still carries most of the
+ * source's Han characters — translated markup, untranslated content.
+ */
+const isUntranslated = (
+  chunk: string,
+  answer: string,
+  target: TargetLanguage,
+): boolean => {
+  const sourceText = visibleText(chunk)
+
+  // nothing but markup and code: there is no prose to translate, so an identical
+  // answer is not a failure
+  if (!sourceText) {
+    return false
+  }
+
+  if (sourceText === visibleText(answer)) {
+    return true
+  }
+
+  const sourceHan = hanCount(sourceText)
+
+  return (
+    target === 'EN' &&
+    sourceHan >= MIN_HAN &&
+    hanCount(visibleText(answer)) * 2 >= sourceHan
+  )
+}
 
 /** Self-hosted DLX. Both env vars are optional: `DEEPLX_URL` alone already
  * enables the fallback, and no `authorization` header is sent without a token. */
@@ -185,15 +251,17 @@ const translateWithLibrary = (
  * the final response can be inspected here.
  *
  * It counts as a success only when the final HTTP status is 200, the JSON `code`
- * is 200 and `data` is a non-empty string other than the input; anything else
- * (429, an auth failure whose body may not even be JSON, an empty payload or an
- * unchanged answer) throws. The token is never logged.
+ * is 200 and `data` is a non-empty string that actually translated the chunk;
+ * anything else (429, an auth failure whose body may not even be JSON, an empty
+ * payload or an answer that is still the source, markup noise aside) throws. The
+ * token is never logged.
  */
 const translateWithDlx = async (
   chunk: string,
   target: TargetLanguage,
   source: SourceLanguage | undefined,
   service: DlxService,
+  label: string,
 ): Promise<string> => {
   const url = service.url
 
@@ -224,6 +292,7 @@ const translateWithDlx = async (
   if (response.status !== 200) {
     console.warn(
       '[translate] DLX answered with a non-200 status',
+      label,
       `status=${response.status}`,
       `length=${chunk.length}`,
     )
@@ -238,20 +307,43 @@ const translateWithDlx = async (
     throw new Error(`DLX responded with HTTP 200, code ${code}`)
   }
 
-  if (data === chunk) {
-    throw new Error('DLX returned the source text unchanged')
+  if (isUntranslated(chunk, data, target)) {
+    console.warn(
+      '[translate] DLX did not translate the chunk',
+      label,
+      `length=${chunk.length}`,
+      `source=${source ?? 'auto'} target=${target}`,
+    )
+    throw new Error('DLX did not translate the chunk')
   }
 
   return data
 }
 
-const translateChunk = async (
-  chunk: string,
-  target: TargetLanguage,
-  source: SourceLanguage | undefined,
-  attempts: number,
-  service: DlxService,
-): Promise<{ text: string; ok: boolean }> => {
+/** One chunk of one request: the chunk itself plus everything the logs need. */
+interface ChunkTask {
+  chunk: string
+  index: number
+  total: number
+  target: TargetLanguage
+  source: SourceLanguage | undefined
+  attempts: number
+  service: DlxService
+}
+
+const translateChunk = async ({
+  chunk,
+  index,
+  total,
+  target,
+  source,
+  attempts,
+  service,
+}: ChunkTask): Promise<{ text: string; ok: boolean }> => {
+  // every log line names the chunk, so a partly translated body can be traced to
+  // the chunks that failed instead of being invisible
+  const label = `chunk=${index + 1}/${total}`
+
   // primary: the `@deeplx/core` library, up to `attempts` tries. It reports its
   // outcome as a value, so the retry decision is a plain check on `code`
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -265,7 +357,7 @@ const translateChunk = async (
         typeof result.data === 'string' &&
         result.data
       ) {
-        if (result.data === chunk) {
+        if (isUntranslated(chunk, result.data, target)) {
           // The library's anonymous profile echoes short, ambiguous or mixed
           // chunks unchanged (it also mirrors the requested `source_lang` as
           // `detected_source_language` when its detection is not confident), so
@@ -274,7 +366,8 @@ const translateChunk = async (
           // path that can still translate such a chunk, so stop retrying here and
           // let the fallback try it once below.
           console.warn(
-            '[translate] library returned the source text unchanged, falling back',
+            '[translate] library did not translate the chunk, falling back',
+            label,
             `attempt=${attempt}/${attempts}`,
             `length=${chunk.length}`,
             `source=${source ?? 'auto'} target=${target}`,
@@ -289,6 +382,7 @@ const translateChunk = async (
       // and decide whether another attempt is worth it
       console.warn(
         `[translate] library chunk failed (attempt ${attempt}/${attempts})`,
+        label,
         `code=${result.code}`,
         `message=${'message' in result ? result.message : 'none'}`,
         `length=${chunk.length}`,
@@ -299,6 +393,7 @@ const translateChunk = async (
         // rejected the same way; stop retrying and let the fallback try instead
         console.warn(
           '[translate] library rejected the request (4xx), not retrying',
+          label,
           `code=${result.code}`,
           `length=${chunk.length}`,
         )
@@ -310,6 +405,7 @@ const translateChunk = async (
       // whole route
       console.warn(
         `[translate] library threw (attempt ${attempt}/${attempts})`,
+        label,
         String(error),
         `length=${chunk.length}`,
       )
@@ -318,11 +414,12 @@ const translateChunk = async (
 
   // fallback: one self-hosted DLX request, and only when it is configured. It runs
   // when the library really failed (a 4xx above, or a 5xx/unusable result that used
-  // up the attempts) or echoed the chunk unchanged; a translated chunk never
+  // up the attempts) or did not translate the chunk; a translated chunk never
   // reaches it, and without `DEEPLX_URL` the chunk simply keeps its source text.
   if (service.url) {
     console.warn(
       '[translate] falling back to the self-hosted DLX',
+      label,
       `attempts=${attempts}`,
       `length=${chunk.length}`,
       `source=${source ?? 'auto'} target=${target}`,
@@ -330,19 +427,62 @@ const translateChunk = async (
 
     try {
       return {
-        text: await translateWithDlx(chunk, target, source, service),
+        text: await translateWithDlx(chunk, target, source, service, label),
         ok: true,
       }
     } catch (error) {
       console.warn(
         '[translate] DLX fallback failed',
+        label,
         String(error),
         `length=${chunk.length}`,
       )
     }
   }
 
+  console.warn(
+    '[translate] chunk kept its source text',
+    label,
+    `length=${chunk.length}`,
+    `target=${target}`,
+  )
+
   return { text: chunk, ok: false }
+}
+
+/**
+ * Every chunk is at least one subrequest. Measured, a normal article body is
+ * 1-5 chunks (2-6 subrequests, all of which complete), and a synthetic
+ * 15.6k-character body was 11 chunks: the runtime already queued those to the
+ * same origin (a peak of 2 in flight, identical with and without this bound), so
+ * the chunk count is not what broke a body. The bound is a cap rather than a
+ * fix: it matches the runtime's simultaneous-connection budget, so a pathological
+ * body cannot fire an unbounded number of them at once, while a normal article
+ * (at most 6 chunks) still runs in one round.
+ */
+const CHUNK_CONCURRENCY = 6
+
+const mapConcurrent = async <Item, Result>(
+  items: Item[],
+  limit: number,
+  task: (item: Item, index: number) => Promise<Result>,
+): Promise<Result[]> => {
+  const results = new Array<Result>(items.length)
+  // one shared iterator: `next()` is synchronous, so two workers can never take
+  // the same item
+  const queue = items.entries()
+
+  const worker = async () => {
+    for (const [index, item] of queue) {
+      results[index] = await task(item, index)
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  )
+
+  return results
 }
 
 export default defineEventHandler(async event => {
@@ -390,7 +530,7 @@ export default defineEventHandler(async event => {
   // mode and a hash of the text; the first render pays, the next ones hit it
   const cacheKey = translationCache
     ? new Request(
-        `${CACHE_ORIGIN}/?source=${source ?? 'auto'}&target=${target}&hash=${await digest(text)}`,
+        `${CACHE_ORIGIN}/?v=${CACHE_VERSION}&source=${source ?? 'auto'}&target=${target}&hash=${await digest(text)}`,
       )
     : undefined
 
@@ -420,7 +560,7 @@ export default defineEventHandler(async event => {
     }
   }
 
-  // chunks are translated in parallel, and a chunk that fails (timeout, rate
+  // chunks are translated a few at a time, and a chunk that fails (timeout, rate
   // limit, ...) keeps its original text, so a long article never blocks the SSR
   // only a client-triggered call may retry: the SSR prefetch awaits this route
   // before rendering, so retrying there would double the worst-case latency
@@ -433,18 +573,42 @@ export default defineEventHandler(async event => {
     token: getEnv(event, 'DEEPLX_TOKEN'),
   }
   const chunks = splitText(text)
-  const results = await Promise.all(
-    chunks.map(chunk =>
-      translateChunk(chunk, target, source, attempts, service),
-    ),
+  const results = await mapConcurrent(
+    chunks,
+    CHUNK_CONCURRENCY,
+    (chunk, index) =>
+      translateChunk({
+        chunk,
+        index,
+        total: chunks.length,
+        target,
+        source,
+        attempts,
+        service,
+      }),
   )
+
+  const failedChunks = results.filter(result => !result.ok).length
 
   const payload: TranslatePayload = {
     text: results.map(result => result.text).join(''),
     // the client keeps reading `text`; this reports whether any chunk had to
     // fall back to the source text (rate limit, timeout, endpoint error)
-    translated: results.every(result => result.ok),
+    translated: !failedChunks,
+    failedChunks,
   }
+
+  // one line per request, so a partly translated body is visible as a count
+  // instead of silently keeping some of its source text
+  console.warn(
+    '[translate] chunks processed',
+    `chunks=${chunks.length}`,
+    `failed=${failedChunks}`,
+    `translated=${payload.translated}`,
+    `target=${target}`,
+    `source=${source ?? 'auto'}`,
+    `length=${text.length}`,
+  )
 
   if (translationCache && cacheKey) {
     await translationCache
