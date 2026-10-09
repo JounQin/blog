@@ -193,35 +193,32 @@ optional KV namespace and read by the GraphQL client:
   URL, and a malformed body degrades to an empty translation rather than a 500. A failed request
   caches the source text, and an untagged template renders its original text while the translation
   is pending and after it fails, so neither case can show the "Translating…" placeholder
-- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a **fallback** for a
-  chunk the library cannot translate, tried in this order for every chunk: `@deeplx/core` first
-  (`translateByDeepLX`, which returns `{ code, data, ... }` instead of throwing), retried while its
-  `code` is **not** a 4xx (a 4xx means DeepL rejected the request/client profile, so a repeat is
-  pointless, and the loop stops there). A 200 whose output is identical to the input is not
-  retried either, but it does go to DLX: the library's anonymous profile echoes short, ambiguous
-  or mixed chunks unchanged, while the self-hosted DLX answers with a different client profile —
-  the iOS one — so it is the path that can still translate such a chunk. When the fallback fails,
-  or `DEEPLX_URL` is unset, that chunk keeps its source text and the request reports
-  `translated: false`. So, after the library attempts are
-  spent on a failure or the chunk came back unchanged, **one** POST to
-  `<DEEPLX_URL>/translate` with
-  `Authorization: Bearer $DEEPLX_TOKEN` (omitted when the token is unset) and
-  `{ text, source_lang?, target_lang }` (`source_lang` is sent only when the caller named a
-  source, so the DLX detects it otherwise), for a self-hosted
-  [DLX](https://github.com/OwO-Network/DLX). The fallback follows redirects (the runtime
-  default), but the endpoint should serve `/translate` directly: a 301/302/303 is re-issued as a
-  GET and drops the body, so only a method-preserving redirect (307/308) still translates. Only
-  the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
-  `data !== chunk`. A chunk the library translates never reaches DLX, and with `DEEPLX_URL` unset
-  nothing changes at all (the route stays library-only)
-- The library signal is the value `translateByDeepLX` returns: a 200 carries `data` (identical to
-  the input stops the retries and falls back to DLX, a different one is the translation), a 4xx
-  `code` short-circuits to the fallback, and any other non-200 shape (5xx, empty payload,
-  unexpected throw) spends the remaining attempts — no error parsing, cause inspection or message
-  matching
+- `DEEPLX_URL` (e.g. `https://<your-dlx-host>`, **no trailing slash**) adds a self-hosted
+  [DLX](https://github.com/OwO-Network/DLX) as a **fallback**. A unit the batch did not answer gets
+  **one** POST to `<DEEPLX_URL>/translate` with `Authorization: Bearer $DEEPLX_TOKEN` (omitted when
+  the token is unset) and `{ text, source_lang?, target_lang }` (`source_lang` is sent only when the
+  caller named a source, so the DLX detects it otherwise). The anonymous profile echoes short,
+  ambiguous or mixed units unchanged, while the DLX answers with a different client profile — the
+  iOS one — so it is the path that can still translate such a unit. The fallback follows redirects
+  (the runtime default), but the endpoint should serve `/translate` directly: a 301/302/303 is
+  re-issued as a GET and drops the body, so only a method-preserving redirect (307/308) still
+  translates. Only the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
+  `data !== chunk`. When the fallback fails, or `DEEPLX_URL` is unset, that unit keeps its source
+  text and the request reports `translated: false` with the unit counted in `failedChunks` — not in
+  `remaining`, because without a fallback no follow-up request can do better
+- A unit whose answer still shares a meaningful run of source prose with its source is a **suspect**.
+  All suspects go through **one batched DLX array request** inside the same subrequest budget; the
+  answer that shares less source prose wins, so a retry can never make a unit worse, and a unit that
+  still holds source prose is reported as `remaining` rather than as translated. The check is
+  language-agnostic: it compares text with text after discounting the runs a translation legitimately
+  keeps verbatim (identifiers, URLs, markup) and never names a script or a Unicode range
+- The batch signal is the oneshot response: an HTTP 200 whose `translations` line up with the input
+  (`translations[i].text` per unit, `detected_source_language` alongside); anything else — a non-200,
+  a body whose `translations` do not line up, a unit with no `text` — fails that whole batch and sends
+  each of its units to the fallback
 - The fallback response only counts as translated when the HTTP status is 200, the JSON `code`
   is 200, `data` is a non-empty string and `data !== chunk`; everything else (any error status,
-  an auth failure, a bad payload, an unchanged answer) fails like the library path, with a
+  an auth failure, a bad payload, an unchanged answer) fails like the batch path, with a
   warning that names the path and the status/code but never the token
 - Bundle workaround: `@deeplx/core` imports `node-fetch-native/proxy`, and `node-fetch-native` ships
   a conditional exports map whose `workerd`/`worker` branch points at `dist/native.mjs` (a file).
@@ -230,27 +227,37 @@ optional KV namespace and read by the GraphQL client:
   `dist/native.mjs/proxy`, so the build died with `ENOTDIR: not a directory`. `nitro.alias` maps that
   subpath to the package's own proxy stub (`dist/proxy-stub.mjs`), which is exactly the "no proxy in
   this runtime" implementation — see the alias in [nuxt.config.ts](nuxt.config.ts)
-- Only prose is sent to a provider: `<pre>`/`<code>` spans (attributes, nesting and inline ones
-  included) are lifted out of the body and spliced back byte-for-byte, so an identifier, a regex or
-  a shell snippet cannot be rewritten and no placeholder has to survive a round trip through the
-  provider
-- The remaining prose is split into block-level units — a `<p>`, `<li>`, heading, blockquote or
-  table cell each — so the provider is asked for a whole paragraph instead of an arbitrary
-  1500-character slice. A unit that exceeds the provider's 1500-character limit is split at a
-  clause, newline or tag boundary and the pieces are joined back; nothing is cut in the middle of a
-  sentence when a boundary exists
+- Only prose is sent to a provider. A `<pre>` block is a hard segment: it is lifted out of the body
+  and spliced back byte-for-byte. Inline `<code>` is not a segment boundary — the block around it
+  stays one unit, and each inline span is replaced by a short, letter-free `{{n}}` token, so the code
+  itself is never sent. On return every token has to appear exactly once and in order, and the
+  original span is spliced back; a missing, duplicated, reordered or invented token drops that unit
+  to its prose fragments, translated one fragment at a time, so a mangled placeholder can never
+  corrupt the body
+- The prose is split into block-level units — a `<p>`, `<li>`, heading, blockquote or table cell
+  each — so the provider is asked for a whole paragraph instead of an arbitrary slice of the
+  per-text limit (`MAX_CHARS`, which is `MAX_FREE_TEXT_LENGTH` from `@deeplx/core`). A unit that
+  exceeds that limit is split at a clause, newline, tag or space boundary, and only where the cut
+  cannot land inside a tag, an HTML entity or a token, so joining the pieces back restores every
+  attribute and entity byte-for-byte
 - Units travel to the provider **in batches**: the anonymous oneshot endpoint takes an array of
   texts and answers with one translation per input, in order (`text: [...]` →
   `translations[i]`), so up to `BATCH_MAX_TEXTS` (16) units of at most `BATCH_MAX_CHARS` (8000)
-  characters are one subrequest. The single-text `@deeplx/core` helper stays as the fallback for a
-  unit the batch did not answer, one unit at a time. Batches run six at a time, the runtime's
+  characters are one subrequest. A unit the batch could not answer goes to the self-hosted DLX
+  fallback described above, one unit at a time. Batches run six at a time, the runtime's
   simultaneous-connection budget
-- A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests. The Workers free plan caps
-  subrequests per request at 50, so 16 leaves 34 for the GitHub calls and the rest of the request,
-  while a 102-unit article like `/article/323` is 7 batches and fits in one render. Units the budget
-  does not reach keep their source text and are reported as `remaining`; each unit's result is also
-  cached on its own (`caches.default`, a cache read costs no subrequest), so a follow-up request
-  pays only for the units still missing and the client finishes the page in the background
+- A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests, the cookie warm-up included.
+  Every outbound call reserves its slot before it starts, so a batch and its fallbacks can never push
+  the total over the cap; the Workers free plan caps subrequests per request at 50, which leaves 34
+  for the GitHub calls and the rest of the request. A block-heavy article like `/article/323` is 13
+  units in one batch, so a render is normally one or two subrequests. Units the budget does not reach
+  keep their source text and are reported as `remaining`; each unit's result is also cached on its own
+  (`caches.default`, a cache read costs no subrequest), so a follow-up request pays only for the units
+  still missing and the client finishes the page in the background. A unit the DLX retry improved is
+  cached instead of the partial provider answer
+- The cookie warm-up is deduplicated per isolate: concurrent renders share one in-flight request, and
+  after a failure the next attempt waits for a one-minute cooldown, so a cold or broken
+  `deepl.com/translator` cannot make every render pay the timeout
 - A provider answer only counts as a translation when it actually changed the text: the check
   removes markup, `<pre>`/`<code>` content and whitespace before comparing, so the echo that only
   inserted a space inside a `<code>` block is still an echo. The provider's own detected language
@@ -260,15 +267,16 @@ optional KV namespace and read by the GraphQL client:
   unchanged goes to the DLX fallback once, and the request reports `translated: false` (with
   `failedChunks`) if that fails too, instead of caching an untranslated body as a success. No
   script, Unicode range or per-language character class is involved anywhere in the shipped code
-- Provider requests carry their own `AbortSignal.timeout`: 8 s for `@deeplx/core` (a cold
-  isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
-  chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side
+- Provider requests carry their own `AbortSignal.timeout`: 8 s for the oneshot batch (a cold
+  isolate also pays a cookie warm-up) and 4 s for the DLX fallback or its batched retry, so a
+  worst-case SSR prefetch stays bounded rather than doubling per attempt. Page-level API calls,
+  GitHub requests and the client-side
   translation request use `retry: 0`, and ofetch does not retry the fallback POST by default
 - A translated payload is cached in `caches.default` for a day; a payload that fell back to the
   source text is cached for **one minute** only, so one transient failure cannot leave a page
   untranslated for minutes. A client-triggered retry never reads a cached failure at all, and
   every chunk failure is logged with its index and counted in the response
-- Titles and the article body are prefetched during SSR: the provider's 1500-character limit is
+- Titles and the article body are prefetched during SSR: the per-text limit (`MAX_CHARS`) is
   handled by chunking, and the translated strings are written to the payload state, so the first
   paint is already translated and the client never re-requests them
 - `useI18n().prefetch()` resolves the DSL and requests the missing translations inside
