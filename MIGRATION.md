@@ -230,18 +230,26 @@ optional KV namespace and read by the GraphQL client:
   `dist/native.mjs/proxy`, so the build died with `ENOTDIR: not a directory`. `nitro.alias` maps that
   subpath to the package's own proxy stub (`dist/proxy-stub.mjs`), which is exactly the "no proxy in
   this runtime" implementation — see the alias in [nuxt.config.ts](nuxt.config.ts)
-- Texts longer than the provider's 1500-character anonymous limit are split at safe
-  boundaries (newline, `>`, space) and translated up to six chunks at a time; a chunk that fails
-  (timeout, rate limit) keeps its original text, so a long article never blocks the SSR. The cap
-  matches the runtime's simultaneous-connection budget: a normal body (measured: 1-5 chunks,
-  2-6 subrequests) still runs in one round, and only a pathological body is spread over several
-  rounds instead of firing every chunk at once
+- Only prose is sent to a provider: `<pre>`/`<code>` spans (attributes, nesting and inline ones
+  included) are lifted out of the body and spliced back byte-for-byte, so an identifier, a regex or
+  a shell snippet cannot be rewritten and no placeholder has to survive a round trip through the
+  provider
+- The remaining prose is split into block-level units — a `<p>`, `<li>`, heading, blockquote or
+  table cell each — and every unit is its own request, so the provider is asked for a whole
+  paragraph instead of an arbitrary 1500-character slice. A unit that exceeds the provider's
+  1500-character limit is split at a sentence, newline or tag boundary and the pieces are joined
+  back; nothing is cut in the middle of a sentence when a boundary exists. Units are translated up
+  to six at a time (the runtime's simultaneous-connection budget), and a unit that fails keeps its
+  original text, so a long article never blocks the SSR
 - A provider answer only counts as a translation when it actually changed the text: the check
-  ignores markup, code and whitespace, so an echo that only inserted a space in a `<code>` block
-  is still an echo, and a zh→en answer that keeps most of the source's Han characters is
-  rejected too. The answer is then handed to the DLX fallback, and the request reports
-  `translated: false` (with `failedChunks`) if that fails as well, instead of caching an
-  untranslated body as a success
+  removes markup, `<pre>`/`<code>` content and whitespace before comparing, so the echo that only
+  inserted a space inside a `<code>` block is still an echo. The provider's own detected language
+  is used as the second, equally language-agnostic signal: when it reports that the source already
+  is the requested target language, an unchanged answer is the expected one (there was nothing to
+  translate) — accepted, but reported as *not* a translation. Everything else that comes back
+  unchanged goes to the DLX fallback once, and the request reports `translated: false` (with
+  `failedChunks`) if that fails too, instead of caching an untranslated body as a success. No
+  script, Unicode range or per-language character class is involved anywhere in the shipped code
 - Provider requests carry their own `AbortSignal.timeout`: 8 s for `@deeplx/core` (a cold
   isolate pays a cookie warm-up) and 4 s for the DLX fallback, so a worst-case SSR prefetch
   chunk stays at 8 s + 4 s = 12 s. Page-level API calls, GitHub requests and the client-side

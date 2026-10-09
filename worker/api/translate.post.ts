@@ -29,6 +29,16 @@ import { getEnv } from '../utils/env'
  * locale cookie, exactly as before. Note that the anonymous endpoint mirrors a
  * given `source_lang` as `detected_source_language` whenever its own detection is
  * not confident, so an accurate tag helps and a wrong one can cause an echo.
+ *
+ * Only prose is ever sent: `<pre>`/`<code>` spans are lifted out of the body and
+ * spliced back byte-for-byte, and the prose is split into block-level units
+ * (paragraphs, list items, headings, table cells) that are translated one by one,
+ * so a provider sees a whole paragraph rather than an arbitrary slice of one. A
+ * unit that comes back unchanged -- compared with markup, code and whitespace
+ * removed, and with the provider's own `sourceLang`/`source_lang` taken into
+ * account when it says the source already is the target language -- keeps its
+ * source text, is counted in `failedChunks`, and is tried once against the DLX
+ * fallback. No signal in this file depends on a particular language or script.
  */
 const DEEPL_LOCALES: Record<Locale, string> = {
   [Locale.EN]: 'EN',
@@ -110,6 +120,8 @@ type SourceLanguage = NonNullable<Parameters<typeof translateByDeepLX>[0]>
  * `<code>` block, so "did anything change?" cannot be a byte comparison — that
  * answer was accepted as a translation and cached for a day, which is how an
  * article body stayed Chinese while its title was translated.
+ *
+ * Nothing here knows about a language: it only removes markup and whitespace.
  */
 const visibleText = (value: string): string =>
   value
@@ -119,43 +131,82 @@ const visibleText = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
 
-/** Han characters, to notice a zh→en answer that kept the source language. */
-const HAN_PATTERN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g
-const hanCount = (value: string): number =>
-  (value.match(HAN_PATTERN) ?? []).length
-
-/** Below this, leftover Han characters can still be a name or a quoted term. */
-const MIN_HAN = 4
+/**
+ * `EN`, `en-US`, `ZH-Hans` … all name one language for this comparison, which is
+ * only ever used to compare two language tags with each other. No script or
+ * Unicode range is involved, so the rule works for any pair of languages.
+ */
+const languageOf = (value?: string): string | undefined =>
+  value?.trim().toLowerCase().split(/[-_]/)[0] || undefined
 
 /**
- * Whether a provider answer is really a translation. An answer identical to the
- * chunk was already treated as an echo; this also catches an echo whose only
- * difference is markup noise, and an `en` answer that still carries most of the
- * source's Han characters — translated markup, untranslated content.
+ * Whether a provider answer should be treated as *not a translation*, using
+ * language-agnostic signals only:
+ *
+ * - the answer equals the source once markup, `<pre>`/`<code>` content and
+ *   whitespace are removed: an unchanged answer is never a translation;
+ * - unless the provider itself reports that the source already is the requested
+ *   target language (`sourceLang` from the library, `source_lang` from the DLX).
+ *   Then there was nothing to translate and the identical answer is the expected
+ *   one — it is accepted, just not reported as a translation.
+ *
+ * Without a detected language the first signal decides on its own.
  */
 const isUntranslated = (
   chunk: string,
   answer: string,
   target: TargetLanguage,
+  detected?: string,
 ): boolean => {
   const sourceText = visibleText(chunk)
 
-  // nothing but markup and code: there is no prose to translate, so an identical
-  // answer is not a failure
+  // nothing but markup and code: there is no prose to translate
   if (!sourceText) {
     return false
   }
 
-  if (sourceText === visibleText(answer)) {
-    return true
+  if (sourceText !== visibleText(answer)) {
+    return false
   }
 
-  const sourceHan = hanCount(sourceText)
+  return languageOf(detected) !== languageOf(target)
+}
 
-  return (
-    target === 'EN' &&
-    sourceHan >= MIN_HAN &&
-    hanCount(visibleText(answer)) * 2 >= sourceHan
+/**
+ * The detected language is only usable when it agrees with the source the caller
+ * asserted. The anonymous endpoint reports the *requested target* as its detected
+ * language whenever its own detection is not confident — measured: the Chinese
+ * bodies of 80, 105 and 421 and the Chinese prose of 323 all come back as
+ * `sourceLang: "EN"` for `target=EN`, and even a single ` 对 ` unit comes back
+ * byte-identical with `sourceLang: "EN"` — so a detection that contradicts the
+ * caller is discarded and rule (1) decides alone. A detection that agrees is
+ * meaningful: `source=en, target=en` with `detected=EN` really is "nothing to
+ * translate", while `source=zh, target=en` with `detected=EN` is the provider
+ * echoing the text.
+ */
+const detectedFor = (
+  reported: string | undefined,
+  source: SourceLanguage | undefined,
+): string | undefined =>
+  source && languageOf(reported) === languageOf(source) ? reported : undefined
+
+/**
+ * Whether an answer that is unchanged in prose is still the correct one: the
+ * provider says the source already is the target language, so there was nothing
+ * to translate. Everything else that reached this point is an echo.
+ */
+const isAlreadyTarget = (
+  chunk: string,
+  answer: string,
+  target: TargetLanguage,
+  detected?: string,
+): boolean => {
+  const sourceText = visibleText(chunk)
+
+  return Boolean(
+    sourceText &&
+      sourceText === visibleText(answer) &&
+      languageOf(detected) === languageOf(target),
   )
 }
 
@@ -166,16 +217,121 @@ interface DlxService {
   token?: string
 }
 
-/** DLX answers `{ code, data, ... }`: `data` is the translation on success. */
-interface DlxResponse {
-  code?: number
-  data?: unknown
-  message?: string
+/** A body split into what a translator may see and what it may not. */
+interface Segment {
+  /** a `<pre>`/`<code>` span, spliced back byte-for-byte */
+  code: boolean
+  text: string
+}
+
+/** One block-level unit of prose, and the pieces it is actually sent as. */
+interface ProseUnit {
+  text: string
+  /** empty when the unit has no letters and nothing has to be translated */
+  pieces: string[]
 }
 
 /**
- * Splits a possibly long (HTML) text into chunks of at most `MAX_CHARS`
- * characters, preferring boundaries that cannot break a tag or an entity.
+ * `<pre>` is listed first so a block that contains `<code>` is one code segment;
+ * the non-greedy body then stops at the matching closer. Attributes are part of
+ * the match, so the segment is restored with them.
+ */
+const CODE_SPAN = /<pre\b[^>]*>[\s\S]*?<\/pre>|<code\b[^>]*>[\s\S]*?<\/code>/gi
+
+/** Something a translation could actually change; ` / ` between two code spans
+ * has no letters and is passed through instead of being sent and echoed. */
+const TRANSLATABLE = /\p{L}/u
+
+/**
+ * Splits a body into ordered prose and code segments. Code is never sent to a
+ * provider -- it is spliced back exactly as it arrived -- so an identifier,
+ * a regex or a shell snippet cannot be rewritten, and no placeholder has to
+ * survive a round trip through the provider (which is what makes this safer than
+ * masking the code with a token).
+ */
+const splitSegments = (text: string): Segment[] => {
+  const segments: Segment[] = []
+  let last = 0
+
+  for (const match of text.matchAll(CODE_SPAN)) {
+    if (match.index > last) {
+      segments.push({ code: false, text: text.slice(last, match.index) })
+    }
+    segments.push({ code: true, text: match[0] })
+    last = match.index + match[0].length
+  }
+
+  if (last < text.length) {
+    segments.push({ code: false, text: text.slice(last) })
+  }
+
+  return segments
+}
+
+/** DLX answers `{ code, data, source_lang, ... }`: `data` is the translation. */
+interface DlxResponse {
+  code?: number
+  data?: unknown
+  /** the language the DLX detected for the text it was sent */
+  source_lang?: string
+  message?: string
+}
+
+/** Closers of the prose blocks an article is made of. A unit ends after one of
+ * them, so a unit is a whole paragraph, list item, heading or table cell. */
+const BLOCK_CLOSE =
+  /<\/(?:p|li|h[1-6]|blockquote|td|th|dt|dd|figcaption|caption|summary)\s*>/gi
+
+/**
+ * Splits prose (code already lifted out) into block-level units, keeping their
+ * tags: a `<p>`, `<li>`, heading, blockquote or table cell is one unit, so the
+ * provider is asked to translate complete paragraphs rather than 1500-character
+ * slices. Because every unit carries its own markup, reassembly is a plain
+ * concatenation in the original order.
+ */
+const splitBlocks = (text: string): string[] => {
+  const blocks: string[] = []
+  let last = 0
+
+  for (const match of text.matchAll(BLOCK_CLOSE)) {
+    const end = match.index + match[0].length
+
+    if (end > last) {
+      blocks.push(text.slice(last, end))
+      last = end
+    }
+  }
+
+  if (last < text.length) {
+    blocks.push(text.slice(last))
+  }
+
+  return blocks
+}
+
+/**
+ * The end of a clause: any final punctuation, in whatever script, so an
+ * oversized block is cut at a clause boundary. A Unicode general category is
+ * used rather than a list of characters, so nothing here is tied to a language
+ * (and CJK prose, which has no spaces, still gets a boundary).
+ */
+const CLAUSE_END = /\p{Po}/gu
+
+/** The offset just after the last clause end of `window`, or -1 when it has none. */
+const lastClauseCut = (window: string): number => {
+  let cut = -1
+
+  for (const match of window.matchAll(CLAUSE_END)) {
+    cut = match.index + match[0].length
+  }
+
+  return cut
+}
+
+/**
+ * Splits a block that exceeds the provider's per-request limit at a sentence,
+ * newline or tag boundary, so a piece is never cut in the middle of a sentence
+ * when a boundary exists at all.
  */
 const splitText = (text: string, size = MAX_CHARS): string[] => {
   if ([...text].length <= size) {
@@ -187,16 +343,17 @@ const splitText = (text: string, size = MAX_CHARS): string[] => {
 
   while ([...rest].length > size) {
     const window = [...rest].slice(0, size).join('')
+    // every candidate is already an exclusive end offset
     let cut = Math.max(
-      window.lastIndexOf('\n'),
-      window.lastIndexOf('>'),
-      window.lastIndexOf(' '),
+      lastClauseCut(window),
+      window.lastIndexOf('\n') + 1,
+      window.lastIndexOf('>') + 1,
+      window.lastIndexOf(' ') + 1,
     )
 
     if (cut <= 0) {
+      // a single 1500-character word: nothing to break on
       cut = window.length
-    } else {
-      cut += 1
     }
 
     chunks.push(rest.slice(0, cut))
@@ -262,7 +419,7 @@ const translateWithDlx = async (
   source: SourceLanguage | undefined,
   service: DlxService,
   label: string,
-): Promise<string> => {
+): Promise<{ text: string; detected?: string }> => {
   const url = service.url
 
   // the caller only takes this path when `DEEPLX_URL` is set; the guard keeps the
@@ -301,23 +458,35 @@ const translateWithDlx = async (
 
   // ofetch parses the body into `_data` (destr, so a non-JSON body stays a string)
   const payload: DlxResponse | undefined = response._data
-  const { code, data } = payload ?? {}
+  const { code, data, source_lang: reported } = payload ?? {}
+
+  const detected = detectedFor(reported, source)
 
   if (code !== 200 || typeof data !== 'string' || !data) {
     throw new Error(`DLX responded with HTTP 200, code ${code}`)
   }
 
-  if (isUntranslated(chunk, data, target)) {
+  if (isUntranslated(chunk, data, target, detected)) {
     console.warn(
       '[translate] DLX did not translate the chunk',
       label,
       `length=${chunk.length}`,
       `source=${source ?? 'auto'} target=${target}`,
+      `detected=${reported ?? 'none'}`,
     )
     throw new Error('DLX did not translate the chunk')
   }
 
-  return data
+  return { text: data, detected }
+}
+
+/** What one unit's translation produced: the text plus how it came back. */
+interface ChunkResult {
+  text: string
+  /** false when nothing translated the unit and it kept its source text */
+  ok: boolean
+  /** true only when a provider actually changed the prose */
+  translated: boolean
 }
 
 /** One chunk of one request: the chunk itself plus everything the logs need. */
@@ -339,7 +508,7 @@ const translateChunk = async ({
   source,
   attempts,
   service,
-}: ChunkTask): Promise<{ text: string; ok: boolean }> => {
+}: ChunkTask): Promise<ChunkResult> => {
   // every log line names the chunk, so a partly translated body can be traced to
   // the chunks that failed instead of being invisible
   const label = `chunk=${index + 1}/${total}`
@@ -357,7 +526,25 @@ const translateChunk = async ({
         typeof result.data === 'string' &&
         result.data
       ) {
-        if (isUntranslated(chunk, result.data, target)) {
+        const detected = detectedFor(
+          'sourceLang' in result ? (result.sourceLang as string) : undefined,
+          source,
+        )
+
+        // the provider says the source already is the target language: the
+        // identical answer is the expected one, accepted but not a translation
+        if (isAlreadyTarget(chunk, result.data, target, detected)) {
+          console.warn(
+            '[translate] source already is the target language',
+            label,
+            `detected=${detected ?? 'none'}`,
+            `target=${target}`,
+            `length=${chunk.length}`,
+          )
+          return { text: result.data, ok: true, translated: false }
+        }
+
+        if (isUntranslated(chunk, result.data, target, detected)) {
           // The library's anonymous profile echoes short, ambiguous or mixed
           // chunks unchanged (it also mirrors the requested `source_lang` as
           // `detected_source_language` when its detection is not confident), so
@@ -371,11 +558,12 @@ const translateChunk = async ({
             `attempt=${attempt}/${attempts}`,
             `length=${chunk.length}`,
             `source=${source ?? 'auto'} target=${target}`,
+            `detected=${detected ?? 'none'}`,
           )
           break
         }
 
-        return { text: result.data, ok: true }
+        return { text: result.data, ok: true, translated: true }
       }
 
       // no usable response: log it (observability is enabled in wrangler.jsonc)
@@ -426,9 +614,13 @@ const translateChunk = async ({
     )
 
     try {
+      const dlx = await translateWithDlx(chunk, target, source, service, label)
+
       return {
-        text: await translateWithDlx(chunk, target, source, service, label),
+        text: dlx.text,
         ok: true,
+        // the DLX can also answer that the source already is the target language
+        translated: !isAlreadyTarget(chunk, dlx.text, target, dlx.detected),
       }
     } catch (error) {
       console.warn(
@@ -447,7 +639,7 @@ const translateChunk = async ({
     `target=${target}`,
   )
 
-  return { text: chunk, ok: false }
+  return { text: chunk, ok: false, translated: false }
 }
 
 /**
@@ -572,15 +764,51 @@ export default defineEventHandler(async event => {
     url: getEnv(event, 'DEEPLX_URL').replace(/\/+$/, ''),
     token: getEnv(event, 'DEEPLX_TOKEN'),
   }
-  const chunks = splitText(text)
+  // The body is first split into code and prose: `<pre>`/`<code>` spans are never
+  // sent to a provider and are spliced back byte-for-byte, so an identifier, a
+  // regex or a shell snippet cannot be rewritten and no placeholder has to survive
+  // a round trip. The prose is then split into block-level units (paragraphs, list
+  // items, headings, table cells), and each unit is its own request: the provider
+  // sees whole paragraphs instead of 1500-character slices, and a unit that comes
+  // back unchanged is a clear signal rather than a fragment of one.
+  const segments = splitSegments(text)
+  const plan = segments.map(segment => {
+    if (segment.code) {
+      return { code: true, text: segment.text, units: [] as ProseUnit[] }
+    }
+
+    return {
+      code: false,
+      text: segment.text,
+      units: splitBlocks(segment.text).map(unit => ({
+        text: unit,
+        // punctuation and whitespace between two code spans has no letters and
+        // nothing to translate, so it is passed through instead of being sent
+        // (and coming back as an echo)
+        pieces: TRANSLATABLE.test(unit) ? splitText(unit) : [],
+      })),
+    }
+  })
+
+  const jobs = plan.flatMap((segment, segmentIndex) =>
+    segment.units.flatMap((unit, unitIndex) =>
+      unit.pieces.map((piece, pieceIndex) => ({
+        segment: segmentIndex,
+        unit: unitIndex,
+        piece: pieceIndex,
+        text: piece,
+      })),
+    ),
+  )
+
   const results = await mapConcurrent(
-    chunks,
+    jobs,
     CHUNK_CONCURRENCY,
-    (chunk, index) =>
+    (job, index) =>
       translateChunk({
-        chunk,
+        chunk: job.text,
         index,
-        total: chunks.length,
+        total: jobs.length,
         target,
         source,
         attempts,
@@ -588,21 +816,65 @@ export default defineEventHandler(async event => {
       }),
   )
 
+  const translatedUnits = new Map<string, string>()
+  results.forEach((result, index) => {
+    const job = jobs[index]
+
+    if (job) {
+      translatedUnits.set(
+        `${job.segment}:${job.unit}:${job.piece}`,
+        result.text,
+      )
+    }
+  })
+
   const failedChunks = results.filter(result => !result.ok).length
+  const translated = results.filter(result => result.translated).length
 
   const payload: TranslatePayload = {
-    text: results.map(result => result.text).join(''),
-    // the client keeps reading `text`; this reports whether any chunk had to
-    // fall back to the source text (rate limit, timeout, endpoint error)
-    translated: !failedChunks,
+    // code segments keep their bytes; a unit without jobs is passed through as
+    // well; everything else is its (possibly partial) translation
+    text: plan
+      .map((segment, segmentIndex) =>
+        segment.code
+          ? segment.text
+          : segment.units
+              .map((unit, unitIndex) =>
+                unit.pieces.length
+                  ? unit.pieces
+                      .map(
+                        (_, pieceIndex) =>
+                          translatedUnits.get(
+                            `${segmentIndex}:${unitIndex}:${pieceIndex}`,
+                          ) ?? '',
+                      )
+                      .join('')
+                  : unit.text,
+              )
+              .join(''),
+      )
+      .join(''),
+    // the client keeps reading `text`; this reports whether the request produced
+    // a translation at all. A body that came back whole but unchanged (or that is
+    // only code) is complete, yet nothing was translated, so it is not reported
+    // as one; a unit that had to fall back is a failure either way.
+    translated: !failedChunks && (translated > 0 || !jobs.length),
     failedChunks,
   }
 
   // one line per request, so a partly translated body is visible as a count
-  // instead of silently keeping some of its source text
+  // instead of silently keeping some of its source text; the piece lengths show
+  // that an oversized unit was cut at a boundary rather than in the middle
   console.warn(
     '[translate] chunks processed',
-    `chunks=${chunks.length}`,
+    `segments=${segments.length}`,
+    `code=${plan.filter(segment => segment.code).length}`,
+    `units=${plan.reduce((total, segment) => total + segment.units.length, 0)}`,
+    `chunks=${jobs.length}`,
+    ...(jobs.length <= 12
+      ? [`lengths=${jobs.map(job => job.text.length).join(',')}`]
+      : []),
+    `translatedUnits=${translated}`,
     `failed=${failedChunks}`,
     `translated=${payload.translated}`,
     `target=${target}`,
