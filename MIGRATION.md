@@ -71,22 +71,34 @@ Some organisations reject classic personal access tokens outright
 visitor has no session, so that token cannot live in the session cookie — it is stored in an
 optional KV namespace and read by the GraphQL client:
 
-- **Capture** — the maintainer signs in once at `/api/login?owner=<OWNER_LOGIN_SECRET>`. The
-  elevated `read:org read:user` scopes are requested only when that query value matches the
-  `OWNER_LOGIN_SECRET` Worker secret, and never when the secret is unset (a guessable value like
-  `1` no longer works); a normal visitor's login keeps the app's minimal scopes. The callback
-  stores `{ accessToken, refreshToken, expiresAt, login, scopes }` under `oauth:user-token` **only
-  when the signed-in `viewer.login` matches the trusted login** (`GITHUB_OWNER_LOGIN`, defaulting
-  to the app's owner), so no visitor can write to KV whatever the query value. The refresh token is
-  kept when GitHub returns one (it does once the OAuth app expires user tokens). The secret appears
-  in the request logs for that single sign-in, so **delete (or rotate) it once the token is in KV**
-  — unsetting it fails closed and closes the elevated entry point entirely.
-- **Priority** (`worker/utils/github.ts`) — an explicit `options.token` (the login `viewer`
-  query) first; then the stored OAuth user token; then `GITHUB_TOKEN`. Any failure of the stored
-  token — missing, rejected, no data — retries with `GITHUB_TOKEN`, so a stale store degrades
-  instead of turning a route into a 502.
-- **Refresh** (`worker/utils/oauth-token.ts`) — a token that is missing, expired or within five
-  minutes of expiry is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
+- **Capture** — every sign-in asks for the same read-only `read:org read:user` scopes, so a
+  signed-in user's own token can serve the data queries and share the load; without `read:org` the
+  organisation fields would always fall back to the owner's token. The callback keeps each user's
+  `accessToken` (and `refreshToken`, when GitHub returns one because the app expires user tokens) in
+  their encrypted session, and writes `{ accessToken, refreshToken, expiresAt, login, scopes }` under
+  `oauth:user-token` in KV **only when the signed-in `viewer.login` matches `GITHUB_OWNER_LOGIN`**
+  (defaulting to the app's owner), so no visitor can write to KV. There is no separate bootstrap
+  secret any more; the earlier `OWNER_LOGIN_SECRET` gate only existed to hide the elevated scopes and
+  has been removed.
+- **Priority** (`worker/utils/github.ts`), highest first:
+  1. the optional per-call `options.token` override, never cached. Its real use is the login flow:
+     `/api/oauth` queries `viewer` with the token it has just exchanged — before any stored token
+     exists — and makes the trusted-login check with it, so it must outrank the lookups below;
+  2. the **signed-in user's own** token from this request's session;
+  3. the **owner's stored** token (`BLOG_OAUTH` KV, refreshed as below), which is what serves
+     anonymous visitors;
+  4. `GITHUB_TOKEN`.
+  Every level is tried and any failure — scope error, expired token, 401, no data — falls through to
+  the next, so a stale or under-scoped token degrades instead of turning a route into a 502.
+- **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
+  `caches.default` for five minutes, keyed on the query, its variables and the token **level**
+  (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
+  token, so this cuts the repeated calls of a busy page; the data is the configured public
+  repository/organisation, so the same answer is correct for every identity, and keying on the level
+  keeps a token that can see more from serving a lesser token's caller. Only a clean data response is
+  stored: a rate limit, a 401 or an empty body is never cached, so an error cannot poison it.
+- **Refresh** (`worker/utils/oauth-token.ts`) — the owner's stored token, when missing, expired or
+  within five minutes of expiry, is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
   rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
   A refresh failure falls back to `GITHUB_TOKEN`.

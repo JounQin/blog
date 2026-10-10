@@ -1,72 +1,80 @@
 # Local development variables for Cloudflare Workers.
 # Copy to `.dev.vars` (gitignored) — it is read by BOTH `yarn dev` (nitro runs
 # through the Cloudflare dev emulation) and `yarn worker:dev` (wrangler dev).
-# Production equivalents: `wrangler secret put <NAME>` for secrets and the
-# `vars` block of wrangler.jsonc for non-secret values.
+# Production equivalents: `wrangler secret put <NAME>` for the SECRET values below
+# and the `vars` block of wrangler.jsonc for the non-secret ones. Never commit a
+# real value, and never put a real KV namespace id here — those live in
+# wrangler.jsonc (`kv_namespaces`: top level = preview, env.production =
+# production; local `wrangler dev` uses Miniflare's local KV, so nothing has to be
+# created for local work).
+#
+# The plain names below are read first; the NUXT_-prefixed runtimeConfig
+# equivalents (NUXT_GITHUB_TOKEN, NUXT_GITHUB_OWNER, NUXT_GITHUB_CLIENT_ID, ...)
+# still work as a fallback. See the "GitHub tokens" section of README.md and
+# MIGRATION.md for how the values are used.
 
-# GitHub personal access token: read-only access to the public blog repository.
-# classic PAT needs no scopes (or `public_repo`); a fine-grained PAT must be
-# scoped to public repositories read-only AND expire within 366 days, otherwise
-# organizations such as 1stG reject it.
+# --- GitHub data access ---
+
+# SECRET. Fallback token for the GitHub GraphQL API, used only when neither the
+# signed-in user's own token nor the owner's stored OAuth token is available. A
+# classic PAT needs no scopes (or `public_repo`) for public data, but some
+# organisations reject it outright — that is what the OAuth user token below is
+# for. A fine-grained PAT must be scoped to public repositories read-only AND
+# expire within 366 days, otherwise organisations such as 1stG reject it.
 GITHUB_TOKEN=
 
-# Optional: the maintainer's own GitHub *user* login. The elevated
-# `read:org read:user` scopes are requested only when the `owner` query value
-# matches OWNER_LOGIN_SECRET, so the one-time owner sign-in is
-# /api/login?owner=<OWNER_LOGIN_SECRET>; ordinary logins keep the minimal scopes.
-# The resulting OAuth user token is stored in the BLOG_OAUTH KV namespace declared
-# in wrangler.jsonc (top level = preview, env.production = production; local
-# `wrangler dev` uses Miniflare's local KV, so nothing has to be created for
-# local work) and preferred over GITHUB_TOKEN for every GitHub-data request,
-# including anonymous SSR renders. It defaults to the app's owner.
-# Organisations that reject classic PATs (e.g. web-infra-dev) accept this token.
-# GITHUB_OWNER_LOGIN=JounQin
-#
-# A long random value. The callback ignores it and separately requires the
-# signed-in login to match GITHUB_OWNER_LOGIN, so no visitor can write to KV.
-# Delete (or rotate) it once the token is in KV: it appears in the request log
-# for that single sign-in, and unsetting it closes the elevated entry point.
-# OWNER_LOGIN_SECRET=
-
+# NOT secrets. The repository whose issues are the articles.
 GITHUB_REPOSITORY_OWNER=JounQin
 GITHUB_REPOSITORY_NAME=blog
+# `user` or `organization`; picks the `user(...)` / `organization(...)` query.
 GITHUB_REPOSITORY_OWNER_TYPE=user
 
-# comma separated; the first key signs the session cookie, all of them verify
+# NOT a secret. The maintainer's own GitHub *user* login. Every sign-in asks for
+# `read:org read:user`; when this login signs in, the callback stores its OAuth
+# token in the BLOG_OAUTH KV namespace, and that token then serves anonymous
+# visitors (and is the fallback for a signed-in user whose own token cannot read
+# an organisation). Defaults to the app owner above. No separate bootstrap secret
+# exists: `OWNER_LOGIN_SECRET` was removed because it only gated those scopes.
+# GITHUB_OWNER_LOGIN=JounQin
+
+# --- sessions ---
+
+# SECRET, comma separated; the first key signs the session cookie, all of them
+# verify it.
 APP_KEYS=dev-key-1,dev-key-2
 
-# GitHub OAuth app (login button); callback: <origin>/api/oauth
-# GITHUB_OAUTH_CALLBACK is optional: when empty, /api/login derives it from the
-# origin of the incoming request -- previews rely on that, together with a wildcard
-# redirect URI in the GitHub app settings.
+# --- GitHub OAuth app (login button) ---
+
+# NOT a secret: it is public in the authorize URL.
 GITHUB_CLIENT_ID=
+# SECRET.
 GITHUB_CLIENT_SECRET=
+# NOT a secret. Optional: when empty, /api/login derives it from the origin of the
+# incoming request — previews rely on that, together with a wildcard redirect URI
+# in the GitHub app settings.
 GITHUB_OAUTH_CALLBACK=http://localhost:3000/api/oauth
 
-# translations need no configuration: they use @deeplx/core (DeepL free endpoints)
-# optional fallback when @deeplx/core fails (4xx/5xx) or echoes a chunk unchanged, tried once
-# against a self-hosted DLX (https://github.com/OwO-Network/DLX); the DLX answers with a
-# different client profile, so it can still translate a chunk the library echoed.
-# The DLX answers POST <DEEPLX_URL>/translate (4s timeout; redirects are followed, but a
-# 301/302/303 drops the POST body, so serve /translate directly -- only a 307/308 keeps it)
-# with an optional `Authorization: Bearer <DEEPLX_TOKEN>` -- DEEPLX_URL alone enables the fallback
-# DEEPLX_URL=https://<your-dlx-host>
-# DEEPLX_TOKEN=
+# --- labels / filtering (NOT secrets) ---
 
-# optional overrides (self-hosted GitHub / local stubs)
-# GITHUB_API_URL=https://api.github.com/graphql
-# GITHUB_OAUTH_TOKEN_URL=https://github.com/login/oauth/access_token
-
-# --- defaults carried over from the legacy env.js ---
 # labels hidden from the article list / categories
 GITHUB_EXCLUDED_LABELS=dependencies,feature,flag,greenkeeper,PR: draft,PR: merged,PR: partially-approved,PR: reviewed-approved,PR: reviewed-changes-requested,PR: unreviewed,security
 # repositories whose items are filtered out of the pulse page
 GITHUB_EXCLUDED_REPOSITORY_OWNERS=
 
+# --- translations ---
+
+# No configuration is needed: @deeplx/core uses DeepL's free endpoints. Optional
+# fallback when @deeplx/core fails (4xx/5xx) or echoes a chunk unchanged, tried
+# once against a self-hosted DLX (https://github.com/OwO-Network/DLX); the DLX
+# answers with a different client profile, so it can still translate a chunk the
+# library echoed. DEEPLX_URL is NOT a secret; DEEPLX_TOKEN is SECRET.
+# DEEPLX_URL=https://<your-dlx-host>
+# DEEPLX_TOKEN=
+
+# --- optional overrides (self-hosted GitHub / local stub servers), NOT secrets ---
+
+# GITHUB_API_URL=https://api.github.com/graphql
+# GITHUB_OAUTH_TOKEN_URL=https://github.com/login/oauth/access_token
+
 # The legacy env.js also defined DEBUG / PARSER_NO_WATCH / TS_NODE_FILES for the
-# old ts-node + nodemon + eslint 8 toolchain; the Nuxt stack does not use them:
-# DEBUG=1stg:*
-# PARSER_NO_WATCH=true
-# TS_NODE_FILES=true
-# NODE_ENV is provided by the tools themselves (`nuxt dev` = development,
-# `nuxt build` = production), so it is not hardcoded here.
+# old ts-node + nodemon + eslint 8 toolchain; the Nuxt stack does not use them.

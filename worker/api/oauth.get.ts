@@ -136,6 +136,12 @@ export default defineEventHandler(async event => {
   await writeSession(event, {
     uuid: session.uuid,
     token: tokenResponse.access_token,
+    // kept so a logged-in visitor's own token can be used for their requests;
+    // the OAuth app only returns these when it expires user tokens
+    refreshToken: tokenResponse.refresh_token,
+    tokenExpiresAt: tokenResponse.expires_in
+      ? Date.now() + tokenResponse.expires_in * 1000
+      : undefined,
     user: viewer,
   })
 
