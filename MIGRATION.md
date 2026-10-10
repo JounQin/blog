@@ -161,16 +161,24 @@ optional KV namespace and read by the GraphQL client:
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
   rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
   A refresh failure falls back to `GITHUB_TOKEN`.
-- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`. The top-level
-  `kv_namespaces` entry is the **preview** namespace (Cloudflare's non-production builds run
-  `wrangler versions upload` against the top-level config); `env.production` declares the
-  **production** namespace, and Production's Deploy command must target it because `kv_namespaces`
-  is non-inheritable, like `vars`: use `yarn deploy` (`wrangler deploy --env production`), while
-  `yarn deploy:preview` (`wrangler versions upload`) is the non-production/preview upload. Local
-  `wrangler dev` uses Miniflare's local KV, so no dev namespace is needed. The code
-  feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN` alone;
-  the config is the source of truth (a binding that exists only in the dashboard is removed by the
-  next deploy).
+- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`, declared once per deploy path
+  and never at the top level, because that is where each path actually reads it:
+  - **Previews** read the `previews` block, so the preview namespace is
+    `previews.kv_namespaces` (`{ binding: "BLOG_OAUTH", id: "6c39022c…" }`). This is also the shape
+    the dashboard's **Settings → Bindings → Previews Base** page generates, and the reason a top-level
+    entry stayed inert for preview versions. Worker Previews are created with `wrangler preview`
+    (Wrangler ≥ 4.135);
+  - **Production** reads `env.production`, so it is `env.production.kv_namespaces`
+    (`{ binding: "BLOG_OAUTH", id: "f91ef451…" }`), and Production's Deploy command must target it
+    (`yarn deploy` = `wrangler deploy --env production`) because `kv_namespaces` is non-inheritable,
+    like `vars`. `yarn deploy:preview` (`wrangler versions upload`) uploads a non-production version;
+    it does not itself apply the `previews` block.
+  There is no top-level `kv_namespaces`: a bare `wrangler deploy` is not used here, so a top-level
+  entry is read by neither path (it only produced a misleading duplicate). Local `wrangler dev` uses
+  Miniflare's local KV, so no dev namespace is needed. The code feature-detects the binding, so a
+  deployment without it keeps working on `GITHUB_TOKEN` alone; the config is the source of truth (a
+  binding that exists only in the dashboard is removed by the next deploy, and a dashboard change to
+  Previews Base must be copied back into `previews`).
 
 ### Translation
 

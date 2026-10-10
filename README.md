@@ -34,12 +34,13 @@ refreshed with its refresh token before it expires (GitHub rotates both, the new
 back and cached per isolate, and a failure degrades rather than failing a page), and successful
 GitHub responses are cached in `caches.default` for five minutes — never errors or rate limits.
 
-`wrangler dev` uses Miniflare's local KV, so local work needs no namespace. The top-level
-`kv_namespaces` entry in `wrangler.jsonc` is the **preview** namespace (non-production builds run
-`wrangler versions upload` against the top-level config) and `env.production` holds the
-**production** one: `yarn deploy` is `wrangler deploy --env production`, and `yarn deploy:preview`
-is `wrangler versions upload`. Set Production's Deploy command to `yarn deploy` (or
-`npx wrangler deploy --env production`) so it never targets the preview namespace.
+`wrangler dev` uses Miniflare's local KV, so local work needs no namespace. The binding is declared
+per deploy path in `wrangler.jsonc`: `previews.kv_namespaces` holds the **preview** namespace (Worker
+Previews read the `previews` block, and it is the shape the dashboard's Previews Base Bindings page
+generates), while `env.production.kv_namespaces` holds the **production** one. There is no top-level
+`kv_namespaces`, because neither `wrangler deploy --env production` (`yarn deploy`) nor the Previews
+block reads it. Set Production's Deploy command to `yarn deploy` (`npx wrangler deploy --env
+production`).
 
 The exact token precedence and configuration are described in
 [MIGRATION.md](MIGRATION.md#github-tokens).
@@ -61,7 +62,7 @@ yarn dev                       # http://localhost:3000 (the OAuth callback is re
 | `yarn build`                               | Production build into `.output/`                                         |
 | `yarn worker:dev`                          | Run the build output inside a local workerd through wrangler (port 8787) |
 | `yarn deploy`                              | `wrangler deploy --env production` (the `blog` Worker)                   |
-| `yarn deploy:preview`                      | `wrangler versions upload` (non-production version, preview namespace)    |
+| `yarn deploy:preview`                      | `wrangler versions upload` (non-production version upload; Worker Previews use `wrangler preview`) |
 | `yarn lint` / `yarn lint:fix`              | ESLint (flat config)                                                     |
 | `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared)                                    |
 
