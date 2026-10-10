@@ -985,8 +985,15 @@ const CHUNK_CONCURRENCY = 6
  * helper stays the fallback for a single unit.
  */
 const BATCH_MAX_TEXTS = 16
-/** A sensible ceiling for one request body, on top of the per-text limit. */
-const BATCH_MAX_CHARS = 8000
+/**
+ * The endpoint caps the **total** text of one request at its free-text limit:
+ * measured against the live endpoint, 1500 characters across all items is
+ * accepted while 1600 is rejected with `text exceeds maximum length`. A larger
+ * ceiling made every batch that exceeded one long paragraph fail with a 400 and
+ * left the whole page untranslated, because a failed batch sends all of its
+ * units to the fallback. `MAX_FREE_TEXT_LENGTH` is exactly that limit.
+ */
+const BATCH_MAX_CHARS = MAX_FREE_TEXT_LENGTH
 /**
  * How many provider subrequests one request may spend. The Workers free plan caps subrequests per request at 50, and a render
  * also talks to the GitHub API, so 16 leaves a wide margin (34 of the 50 stay for
