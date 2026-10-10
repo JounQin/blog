@@ -116,7 +116,7 @@ const getKv = (event: H3Event): KvNamespace | undefined => {
 let cachedOAuthToken: StoredOAuthToken | undefined
 
 /**
- * Drops the per-isolate cache, so the next `getOAuthUserToken` re-reads KV and
+ * Drops the per-isolate cache, so the next `getUsableOwnerToken` re-reads KV and
  * re-refreshes when needed.
  *
  * Called when the stored token is *rejected* (401/permission error) and whenever
@@ -466,12 +466,16 @@ export const captureOwnerOAuthToken = async (
     : 'unavailable'
 }
 
-/** The OAuth user token to prefer, or `undefined` to use the fallback. */
-export const getOAuthUserToken = async (
+/**
+ * The usable owner entry, or `undefined` to use the fallback. The whole entry is
+ * returned (not just the token) because the cache identity is the pinned
+ * account id, so it must survive a token rotation.
+ */
+export const getUsableOwnerToken = async (
   event: H3Event,
-): Promise<string | undefined> => {
+): Promise<StoredOAuthToken | undefined> => {
   if (cachedOAuthToken && isFresh(cachedOAuthToken)) {
-    return cachedOAuthToken.accessToken
+    return cachedOAuthToken
   }
 
   const stored = await readStoredOAuthToken(event)
@@ -496,7 +500,7 @@ export const getOAuthUserToken = async (
 
   if (isFresh(stored)) {
     cachedOAuthToken = stored
-    return stored.accessToken
+    return stored
   }
 
   const refreshed = await refreshStoredOAuthToken(event, stored)
@@ -508,5 +512,5 @@ export const getOAuthUserToken = async (
   }
 
   cachedOAuthToken = refreshed
-  return refreshed.accessToken
+  return refreshed
 }

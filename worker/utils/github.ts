@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3'
 
 import { getEnv } from './env'
-import { getOAuthUserToken, markOwnerTokenRejected } from './oauth-token'
+import type { StoredOAuthToken } from './oauth-token'
+import { getUsableOwnerToken, markOwnerTokenRejected } from './oauth-token'
 import { readSession } from './session'
 
 interface GraphqlResponse<T> {
@@ -10,16 +11,19 @@ interface GraphqlResponse<T> {
   message?: string
 }
 
-/** Which token a request used; the value itself is never part of a cache key. */
+/**
+ * Which token a request used. Used for logging and for the "last level tolerates
+ * partial data" rule; it is deliberately **not** the cache identity.
+ */
 type TokenLevel = 'explicit' | 'session' | 'owner' | 'fallback'
 
 const CACHE_ORIGIN = 'https://github-cache.internal'
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 /**
- * GitHub data here is public and changes on the order of minutes (issues,
- * labels, pinned items), while GraphQL's rate limit is per token and every
- * anonymous visitor shares the owner's. Five minutes removes the repeated calls
- * of a busy render/page while keeping the content fresh enough for a blog.
+ * GitHub data changes on the order of minutes (issues, labels, pinned items),
+ * while GraphQL's rate limit is per token and every anonymous visitor shares the
+ * owner's. Five minutes removes the repeated calls of a busy render/page while
+ * keeping the content fresh enough for a blog.
  */
 const CACHE_TTL = 300
 
@@ -44,20 +48,33 @@ const digest = async (value: string): Promise<string> => {
 }
 
 /**
- * The cache key is the query, its variables and the token *level* — never a
- * token value. Every query here reads the configured repository/organisation,
- * which is public, so one answer is correct for every identity; keying on the
- * level rather than sharing a single entry also keeps a token that can see more
- * from serving a lesser token's caller. `explicit` requests (the login `viewer`
- * query) are never cached at all, because their answer is per-user.
+ * The cache identity for a level: what must be equal for two requests to be
+ * allowed to share a body.
+ *
+ * The data is *not* uniformly public — the same query returns different nodes
+ * for a member of a private organisation than for a non-member — so the key must
+ * never be the coarse level alone. It is:
+ *
+ * - `explicit`: never cached (the login `viewer` query is per-user);
+ * - `session` / `owner`: the account's numeric GitHub id, `user:<id>` /
+ *   `owner:<id>`. Two requests from the same account see the same data: the
+ *   account determines both the private resources it can reach and (because
+ *   every sign-in requests the same read-only scopes) the scopes granted, so the
+ *   identity is stable even when its token is rotated;
+ * - a SHA-256 fingerprint of the token actually used, for a legacy session with
+ *   no recorded account id (`user:token:<hash>`) or the fallback
+ *   (`fallback:<hash>`), where the token itself is the only identity available.
+ *
+ * A raw token never appears in a key, and a stale or rotated token at the same
+ * account id keeps the same key, so it does not wipe the cache.
  */
 const cacheKeyOf = async (
   query: string,
   variables: Record<string, unknown>,
-  level: TokenLevel,
+  identity: string,
 ): Promise<Request> =>
   new Request(
-    `${CACHE_ORIGIN}/?${CACHE_VERSION}&level=${level}&hash=${await digest(
+    `${CACHE_ORIGIN}/?${CACHE_VERSION}&identity=${identity}&hash=${await digest(
       `${query}\n${JSON.stringify(variables)}`,
     )}`,
   )
@@ -150,6 +167,9 @@ const interpret = <T>(body: GraphqlResponse<T>, strict: boolean): T => {
  * One GraphQL request with an explicit token and the shared cache layer. Only a
  * clean, successful body is ever stored: a rate limit, a 401 or an empty
  * response is not cached, so the cache cannot poison itself with an error.
+ *
+ * `identity` (see `cacheKeyOf`) is what a body may be shared across; the level
+ * is only used for logging and for the partial-data rule.
  */
 const runGraphql = async <T>(
   event: H3Event,
@@ -157,12 +177,13 @@ const runGraphql = async <T>(
   variables: Record<string, unknown>,
   token: string,
   level: TokenLevel,
+  identity: string,
 ): Promise<T> => {
   const { github } = useRuntimeConfig(event)
   const cache = getEdgeCache()
   const cacheKey =
     cache && level !== 'explicit'
-      ? await cacheKeyOf(query, variables, level)
+      ? await cacheKeyOf(query, variables, identity)
       : undefined
 
   if (cache && cacheKey) {
@@ -172,7 +193,7 @@ const runGraphql = async <T>(
       : null
 
     if (cached?.data) {
-      console.warn(`[github] cache hit (${level})`)
+      console.warn(`[github] cache hit (${identity})`)
       return interpret(cached, level !== 'fallback')
     }
   }
@@ -207,7 +228,7 @@ const runGraphql = async <T>(
         }),
       )
       .catch(() => undefined)
-    console.warn(`[github] cache stored (${level})`)
+    console.warn(`[github] cache stored (${identity})`)
   }
 
   return interpret(body, level !== 'fallback')
@@ -246,23 +267,31 @@ export async function githubGraphql<T>(
   options: { token?: string } = {},
 ): Promise<T> {
   if (options.token) {
-    return runGraphql<T>(event, query, variables, options.token, 'explicit')
+    return runGraphql<T>(event, query, variables, options.token, 'explicit', '')
   }
 
   const { githubToken } = useRuntimeConfig(event)
   const fallback = getEnv(event, 'GITHUB_TOKEN', githubToken)
 
   // 2. the signed-in user's own token, when this request carries a session
-  let sessionToken: string | undefined
+  let session: Awaited<ReturnType<typeof readSession>> = {}
 
   try {
-    sessionToken = (await readSession(event)).token
+    session = await readSession(event)
   } catch (error) {
     // the session is best effort here: never fail a page because of it
     console.warn('[github] could not read the session token', String(error))
   }
 
+  const sessionToken = session.token
+
   if (sessionToken && sessionToken !== fallback) {
+    // the account id is the stable identity; a session created before it was
+    // recorded only has its token, so fall back to its fingerprint
+    const identity = session.user?.databaseId
+      ? `user:${session.user.databaseId}`
+      : `user:token:${await digest(sessionToken)}`
+
     try {
       const data = await runGraphql<T>(
         event,
@@ -270,6 +299,7 @@ export async function githubGraphql<T>(
         variables,
         sessionToken,
         'session',
+        identity,
       )
       console.warn('[github] used the signed-in user token')
       return data
@@ -282,17 +312,31 @@ export async function githubGraphql<T>(
   }
 
   // 3. the owner's stored token, which also serves anonymous visitors
-  let ownerToken: string | undefined
+  let owner: StoredOAuthToken | undefined
 
   try {
-    ownerToken = await getOAuthUserToken(event)
+    owner = await getUsableOwnerToken(event)
   } catch (error) {
     console.warn('[github] could not resolve the owner OAuth token', String(error))
   }
 
-  if (ownerToken && ownerToken !== fallback) {
+  if (owner?.accessToken && owner.accessToken !== fallback) {
+    // the pinned account id keeps the key stable across a token rotation, so a
+    // rotated owner token does not wipe the cache
+    const identity =
+      typeof owner.id === 'number' && owner.id > 0
+        ? `owner:${owner.id}`
+        : `owner:token:${await digest(owner.accessToken)}`
+
     try {
-      const data = await runGraphql<T>(event, query, variables, ownerToken, 'owner')
+      const data = await runGraphql<T>(
+        event,
+        query,
+        variables,
+        owner.accessToken,
+        'owner',
+        identity,
+      )
       console.warn('[github] used the owner OAuth user token')
       return data
     } catch (error) {
@@ -300,7 +344,11 @@ export async function githubGraphql<T>(
         // drop the isolate cache; a credential failure is also marked under its
         // own key, naming the exact token that failed, so no other isolate
         // retries it and a concurrent sign-in cannot be clobbered
-        await markOwnerTokenRejected(event, ownerToken, isAuthFailure(error))
+        await markOwnerTokenRejected(
+          event,
+          owner.accessToken,
+          isAuthFailure(error),
+        )
         console.warn('[github] dropped the rejected owner OAuth token from the cache')
       }
       console.warn(
@@ -319,5 +367,13 @@ export async function githubGraphql<T>(
 
   console.warn('[github] no signed-in user or owner OAuth token, using GITHUB_TOKEN')
 
-  return runGraphql<T>(event, query, variables, fallback, 'fallback')
+  // the fallback has no account to key on, so its own fingerprint is the identity
+  return runGraphql<T>(
+    event,
+    query,
+    variables,
+    fallback,
+    'fallback',
+    `fallback:${await digest(fallback)}`,
+  )
 }

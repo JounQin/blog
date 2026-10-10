@@ -7,6 +7,11 @@ const MAX_AGE = 60 * 60 * 24 * 365
 
 export interface SessionUser {
   avatarUrl: string
+  /**
+   * The account's numeric GitHub id (`viewer.databaseId`). Used as the cache
+   * identity, because it is stable per account while a token is not.
+   */
+  databaseId?: number
   id: string
   login: string
   name: string | null

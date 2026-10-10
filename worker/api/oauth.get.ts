@@ -92,9 +92,12 @@ export default defineEventHandler(async event => {
     })
   }
 
-  const { viewer } = await githubGraphql<{
-    viewer: SessionUser & { databaseId?: number }
-  }>(event, VIEWER_QUERY, {}, { token: tokenResponse.access_token })
+  const { viewer } = await githubGraphql<{ viewer: SessionUser }>(
+    event,
+    VIEWER_QUERY,
+    {},
+    { token: tokenResponse.access_token },
+  )
 
   // Only the maintainer's sign-in may populate the shared OAuth user token:
   // some organisations reject classic personal access tokens, and an anonymous

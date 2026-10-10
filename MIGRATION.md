@@ -135,12 +135,22 @@ optional KV namespace and read by the GraphQL client:
   until then a stale retry costs one rejected call before the fallback (see *dead tokens* above) —
   while a concurrent sign-in or refresh can never be clobbered.
 - **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
-  `caches.default` for five minutes, keyed on the query, its variables and the token **level**
-  (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
-  token, so this cuts the repeated calls of a busy page; the data is the configured public
-  repository/organisation, so the same answer is correct for every identity, and keying on the level
-  keeps a token that can see more from serving a lesser token's caller. Only a clean data response is
-  stored: a rate limit, a 401 or an empty body is never cached, so an error cannot poison it.
+  `caches.default` for five minutes, keyed on the query, its variables and a **per-identity**
+  component (never a raw token, and never the coarse token level). GitHub data is **not** uniformly
+  public: the same query can return different nodes for a member of a private organisation than for a
+  non-member, so sharing one body across identities would leak. The identity component is:
+  - `user:<databaseId>` for a signed-in user, and `owner:<databaseId>` for the owner's stored token.
+    Two requests with the same account id must see the same data: the account determines both the
+    private resources it can reach and — because every sign-in asks for the same read-only scopes —
+    the scopes granted. The pinned account id also keeps the owner's key stable across a token
+    rotation, so rotating the token does not wipe the cache;
+  - `user:token:<sha256>` for a session created before the account id was recorded, and
+    `fallback:<sha256>` for `GITHUB_TOKEN`, which has no account to key on — the token itself is the
+    only identity available, stored as a one-way hash.
+
+  Anonymous traffic all shares the owner's identity, and GraphQL's limit is per token, so the cache
+  still cuts the repeated calls of a busy page. Only a clean data response is stored: a rate limit, a
+  401 or an empty body is never cached, so an error cannot poison it.
 - **Refresh** (`worker/utils/oauth-token.ts`) — the owner's stored token, when missing, expired or
   within five minutes of expiry, is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
