@@ -71,12 +71,16 @@ Some organisations reject classic personal access tokens outright
 visitor has no session, so that token cannot live in the session cookie — it is stored in an
 optional KV namespace and read by the GraphQL client:
 
-- **Capture** — the maintainer signs in once at `/api/login?owner=1`. Only that flag adds the
-  `read:org read:user` scopes; a normal visitor's login keeps the app's minimal scopes. The
-  callback stores `{ accessToken, refreshToken, expiresAt, login, scopes }` under
-  `oauth:user-token` **only when the signed-in `viewer.login` matches the trusted login**
-  (`GITHUB_OWNER_LOGIN`, defaulting to the app's owner). The refresh token is kept when GitHub
-  returns one (it does once the OAuth app expires user tokens).
+- **Capture** — the maintainer signs in once at `/api/login?owner=<OWNER_LOGIN_SECRET>`. The
+  elevated `read:org read:user` scopes are requested only when that query value matches the
+  `OWNER_LOGIN_SECRET` Worker secret, and never when the secret is unset (a guessable value like
+  `1` no longer works); a normal visitor's login keeps the app's minimal scopes. The callback
+  stores `{ accessToken, refreshToken, expiresAt, login, scopes }` under `oauth:user-token` **only
+  when the signed-in `viewer.login` matches the trusted login** (`GITHUB_OWNER_LOGIN`, defaulting
+  to the app's owner), so no visitor can write to KV whatever the query value. The refresh token is
+  kept when GitHub returns one (it does once the OAuth app expires user tokens). The secret appears
+  in the request logs for that single sign-in, so **delete (or rotate) it once the token is in KV**
+  — unsetting it fails closed and closes the elevated entry point entirely.
 - **Priority** (`worker/utils/github.ts`) — an explicit `options.token` (the login `viewer`
   query) first; then the stored OAuth user token; then `GITHUB_TOKEN`. Any failure of the stored
   token — missing, rejected, no data — retries with `GITHUB_TOKEN`, so a stale store degrades

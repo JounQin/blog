@@ -1,6 +1,27 @@
 import { getBlogConfig } from '../utils/blog'
+import { getEnv } from '../utils/env'
 import { safeInternalPath } from '../utils/path'
 import { readSession, writeSession } from '../utils/session'
+
+/**
+ * Compares the `owner` query value with `OWNER_LOGIN_SECRET`. A length mismatch
+ * is folded into the result instead of returning early, so the comparison does
+ * not leak the secret's length through an early return.
+ */
+const matchesOwnerSecret = (value: string, secret: string): boolean => {
+  if (!value || !secret) {
+    return false
+  }
+
+  let mismatch = value.length === secret.length ? 0 : 1
+  const length = Math.max(value.length, secret.length, 1)
+
+  for (let index = 0; index < length; index++) {
+    mismatch |= (value.charCodeAt(index) || 0) ^ (secret.charCodeAt(index) || 0)
+  }
+
+  return mismatch === 0
+}
 
 /**
  * Starts the GitHub OAuth flow.
@@ -45,13 +66,18 @@ export default defineEventHandler(async event => {
   authorizeUrl.searchParams.set('state', uuid)
   authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${encodeURIComponent(target)}`)
 
-  // A normal visitor keeps the app's existing (minimal) scopes. The maintainer
-  // signs in with `?owner=1` once to grant the data scopes the shared OAuth user
-  // token needs; the callback still verifies the login before storing anything,
-  // so the flag alone grants nothing.
-  if (['1', 'true', 'yes'].includes(String(owner ?? '').toLowerCase())) {
+  // A normal visitor keeps the app's existing (minimal) scopes. The elevated
+  // data scopes are requested only for the one-time owner sign-in, and only when
+  // the `owner` value equals the `OWNER_LOGIN_SECRET` Worker secret; with the
+  // secret unset this fails closed (no elevated scopes at all). The callback
+  // independently verifies the signed-in login before storing anything, so the
+  // query value alone can never reach KV.
+  const ownerSecret = getEnv(event, 'OWNER_LOGIN_SECRET')
+
+  if (matchesOwnerSecret(String(owner ?? ''), ownerSecret)) {
     authorizeUrl.searchParams.set('scope', 'read:org read:user')
   }
 
   return sendRedirect(event, authorizeUrl.toString(), 302)
 })
+
