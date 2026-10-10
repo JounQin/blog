@@ -37,7 +37,9 @@ GitHub responses are cached in `caches.default` for five minutes — never error
 `wrangler dev` uses Miniflare's local KV, so local work needs no namespace. The top-level
 `kv_namespaces` entry in `wrangler.jsonc` is the **preview** namespace (non-production builds run
 `wrangler versions upload` against the top-level config) and `env.production` holds the
-**production** one, so Production's Deploy command must be `npx wrangler deploy --env production`.
+**production** one: `yarn deploy` is `wrangler deploy --env production`, and `yarn deploy:preview`
+is `wrangler versions upload`. Set Production's Deploy command to `yarn deploy` (or
+`npx wrangler deploy --env production`) so it never targets the preview namespace.
 
 The exact token precedence and configuration are described in
 [MIGRATION.md](MIGRATION.md#github-tokens).
@@ -58,7 +60,8 @@ yarn dev                       # http://localhost:3000 (the OAuth callback is re
 | `yarn dev`                                 | Nuxt dev server (port 3000)                                              |
 | `yarn build`                               | Production build into `.output/`                                         |
 | `yarn worker:dev`                          | Run the build output inside a local workerd through wrangler (port 8787) |
-| `yarn deploy`                              | `wrangler deploy` (Cloudflare Workers)                                   |
+| `yarn deploy`                              | `wrangler deploy --env production` (the `blog` Worker)                   |
+| `yarn deploy:preview`                      | `wrangler versions upload` (non-production version, preview namespace)    |
 | `yarn lint` / `yarn lint:fix`              | ESLint (flat config)                                                     |
 | `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared)                                    |
 

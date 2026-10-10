@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { getBlogConfig } from './blog'
+import { sha256Hex } from './digest'
 import { getCloudflareEnv, getEnv } from './env'
 
 /**
@@ -21,18 +22,18 @@ import { getCloudflareEnv, getEnv } from './env'
  */
 
 /** Stable key inside the KV namespace. */
-export const OAUTH_TOKEN_KEY = 'oauth:user-token'
+const OAUTH_TOKEN_KEY = 'oauth:user-token'
 
 /**
  * A separate key holding the "this token was rejected" mark. It lives in its own
  * key on purpose: Workers KV has no compare-and-swap, so writing the mark into
  * the token entry itself would be a read-modify-write that a concurrent owner
  * sign-in (or a refresh) could have its fresh pair clobbered by. Here the mark
- * never touches the entry, and its value identifies *which* token was rejected
- * (a SHA-256 fingerprint of the access token), so a stale mark can never match —
- * and therefore never hide — a token stored later.
+ * never touches the entry, and its value is the SHA-256 fingerprint of the exact
+ * token that was rejected, so a stale mark can never match — and therefore never
+ * hide — a token stored later.
  */
-export const OAUTH_REJECTED_MARK_KEY = 'oauth:user-token:rejected'
+const OAUTH_REJECTED_MARK_KEY = 'oauth:user-token:rejected'
 
 /** Refresh this long before the access token actually expires. */
 const EXPIRY_MARGIN = 5 * 60 * 1000
@@ -56,14 +57,18 @@ export interface StoredOAuthToken {
   scopes?: string
 }
 
+/**
+ * A stored entry that passed the read rule, so its account id is pinned (a
+ * positive safe integer). Callers can key on `id` without re-checking it.
+ */
+export interface UsableOwnerToken extends StoredOAuthToken {
+  id: number
+}
+
 /** Only the KV methods used here, so the binding stays optional and structural. */
 interface KvNamespace {
-  get: (key: string, type?: 'text') => Promise<string | null>
-  put: (
-    key: string,
-    value: string,
-    options?: { expirationTtl?: number },
-  ) => Promise<void>
+  get: (key: string) => Promise<string | null>
+  put: (key: string, value: string) => Promise<void>
   /** present on a real KV namespace; guarded so a partial stub still works */
   delete?: (key: string) => Promise<void>
 }
@@ -127,21 +132,6 @@ export const invalidateOAuthUserToken = (): void => {
 }
 
 /**
- * A stable, non-reversible identifier for an access token: its SHA-256 digest.
- * It identifies the mark's target without ever storing the token itself.
- */
-const fingerprint = async (accessToken: string): Promise<string> => {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(accessToken),
-  )
-
-  return [...new Uint8Array(bytes)]
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-/**
  * Records that GitHub rejected a token, so isolates stop retrying it once they
  * observe the mark.
  *
@@ -174,22 +164,14 @@ export const markOwnerTokenRejected = async (
   }
 
   try {
-    await kv.put(
-      OAUTH_REJECTED_MARK_KEY,
-      JSON.stringify({
-        fingerprint: await fingerprint(rejectedAccessToken),
-        rejectedAt: Date.now(),
-      }),
-    )
+    await kv.put(OAUTH_REJECTED_MARK_KEY, await sha256Hex(rejectedAccessToken))
   } catch (error) {
     console.warn('[oauth-token] could not mark the token rejected', String(error))
   }
 }
 
-/** The rejected-token mark, when one is stored. */
-const readRejectedMark = async (
-  event: H3Event,
-): Promise<{ fingerprint: string } | undefined> => {
+/** The rejected token's fingerprint, when a mark is stored. */
+const readRejectedMark = async (event: H3Event): Promise<string | undefined> => {
   const kv = getKv(event)
 
   if (!kv) {
@@ -197,17 +179,7 @@ const readRejectedMark = async (
   }
 
   try {
-    const raw = await kv.get(OAUTH_REJECTED_MARK_KEY)
-
-    if (!raw) {
-      return undefined
-    }
-
-    const parsed = JSON.parse(raw) as { fingerprint?: unknown }
-
-    return typeof parsed?.fingerprint === 'string'
-      ? { fingerprint: parsed.fingerprint }
-      : undefined
+    return (await kv.get(OAUTH_REJECTED_MARK_KEY)) || undefined
   } catch (error) {
     console.warn('[oauth-token] could not read the rejected mark', String(error))
     return undefined
@@ -221,12 +193,10 @@ const isMarkedRejected = async (
 ): Promise<boolean> => {
   const mark = await readRejectedMark(event)
 
-  return (
-    Boolean(mark) && mark?.fingerprint === (await fingerprint(entry.accessToken))
-  )
+  return Boolean(mark) && mark === (await sha256Hex(entry.accessToken))
 }
 
-export const readStoredOAuthToken = async (
+const readStoredOAuthToken = async (
   event: H3Event,
 ): Promise<StoredOAuthToken | undefined> => {
   const kv = getKv(event)
@@ -253,7 +223,7 @@ export const readStoredOAuthToken = async (
   }
 }
 
-export const writeStoredOAuthToken = async (
+const writeStoredOAuthToken = async (
   event: H3Event,
   token: StoredOAuthToken,
 ): Promise<boolean> => {
@@ -383,7 +353,7 @@ const refreshStoredOAuthToken = async (
       return undefined
     }
 
-    console.warn('[oauth-token] refreshed the stored OAuth user token')
+    console.debug('[oauth-token] refreshed the stored OAuth user token')
 
     return next
   } catch (error) {
@@ -423,7 +393,7 @@ const isUsableEntry = (event: H3Event, entry: StoredOAuthToken): boolean => {
   return true
 }
 
-export type CaptureOwnerTokenResult = 'stored' | 'refused' | 'unavailable'
+type CaptureOwnerTokenResult = 'stored' | 'refused' | 'unavailable'
 
 /**
  * Stores the owner's token following the identity-pinning rules:
@@ -470,12 +440,15 @@ export const captureOwnerOAuthToken = async (
  * The usable owner entry, or `undefined` to use the fallback. The whole entry is
  * returned (not just the token) because the cache identity is the pinned
  * account id, so it must survive a token rotation.
+ *
+ * `isUsableEntry` has already proven the id, so the returned entry narrows to
+ * `UsableOwnerToken`.
  */
 export const getUsableOwnerToken = async (
   event: H3Event,
-): Promise<StoredOAuthToken | undefined> => {
+): Promise<UsableOwnerToken | undefined> => {
   if (cachedOAuthToken && isFresh(cachedOAuthToken)) {
-    return cachedOAuthToken
+    return cachedOAuthToken as UsableOwnerToken
   }
 
   const stored = await readStoredOAuthToken(event)
@@ -489,18 +462,19 @@ export const getUsableOwnerToken = async (
     return undefined
   }
 
-  // a mark only counts when it names *this* token, so a stale mark left by an
-  // older token can never hide a freshly stored one
-  if (await isMarkedRejected(event, stored)) {
-    console.warn(
-      `[oauth-token] ignoring the stored token (marked rejected): stored=${stored.login ?? 'missing'}`,
-    )
-    return undefined
-  }
-
   if (isFresh(stored)) {
+    // a mark only counts for a token we would otherwise use; an expired entry
+    // must reach the refresh path below, where the new token has a different
+    // fingerprint and the stale mark cannot hide it
+    if (await isMarkedRejected(event, stored)) {
+      console.warn(
+        `[oauth-token] ignoring the stored token (marked rejected): stored=${stored.login ?? 'missing'}`,
+      )
+      return undefined
+    }
+
     cachedOAuthToken = stored
-    return stored
+    return stored as UsableOwnerToken
   }
 
   const refreshed = await refreshStoredOAuthToken(event, stored)
@@ -512,5 +486,5 @@ export const getUsableOwnerToken = async (
   }
 
   cachedOAuthToken = refreshed
-  return refreshed
+  return refreshed as UsableOwnerToken
 }

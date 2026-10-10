@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3'
 
+import { sha256Hex } from './digest'
 import { getEnv } from './env'
-import type { StoredOAuthToken } from './oauth-token'
+import type { UsableOwnerToken } from './oauth-token'
 import { getUsableOwnerToken, markOwnerTokenRejected } from './oauth-token'
 import { readSession } from './session'
 
@@ -12,13 +13,19 @@ interface GraphqlResponse<T> {
 }
 
 /**
- * Which token a request used. Used for logging and for the "last level tolerates
- * partial data" rule; it is deliberately **not** the cache identity.
+ * Which token a request used. It drives the logging, the "last level tolerates
+ * partial data" rule and the decision not to cache the `explicit` override; it
+ * is deliberately **not** the cache identity (see `cacheKeyOf`).
  */
 type TokenLevel = 'explicit' | 'session' | 'owner' | 'fallback'
 
 const CACHE_ORIGIN = 'https://github-cache.internal'
-const CACHE_VERSION = 'v2'
+/**
+ * The cache is new with this change (it did not exist before), so the first
+ * published shape is `v1`. The slot exists only as a cheap future invalidation
+ * lever: bump it if the key shape changes.
+ */
+const CACHE_VERSION = 'v1'
 /**
  * GitHub data changes on the order of minutes (issues, labels, pinned items),
  * while GraphQL's rate limit is per token and every anonymous visitor shares the
@@ -35,17 +42,6 @@ interface EdgeCache {
 
 const getEdgeCache = (): EdgeCache | undefined =>
   (globalThis as { caches?: { default?: EdgeCache } }).caches?.default
-
-const digest = async (value: string): Promise<string> => {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(value),
-  )
-
-  return [...new Uint8Array(bytes)]
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('')
-}
 
 /**
  * The cache identity for a level: what must be equal for two requests to be
@@ -74,54 +70,39 @@ const cacheKeyOf = async (
   identity: string,
 ): Promise<Request> =>
   new Request(
-    `${CACHE_ORIGIN}/?${CACHE_VERSION}&identity=${identity}&hash=${await digest(
+    `${CACHE_ORIGIN}/?${CACHE_VERSION}&identity=${identity}&hash=${await sha256Hex(
       `${query}\n${JSON.stringify(variables)}`,
     )}`,
   )
 
 /**
- * Whether an upstream failure looks like the token itself being rejected rather
- * than a transient network or parse problem. Only then is the per-isolate cache
- * dropped, so a temporary failure does not throw away a good token.
+ * Parses an upstream failure once. `rejected` is the union of the credential and
+ * permission signals (any of them means the token cannot serve the query, so the
+ * isolate cache must be dropped); `credential` is the narrower subset that also
+ * justifies persisting the rejection mark, since an under-scoped-but-valid token
+ * may still serve other queries.
  */
-const isRejectedToken = (error: unknown): boolean => {
+const parseRejection = (
+  error: unknown,
+): { rejected: boolean; credential: boolean } => {
   const statusCode = (error as { statusCode?: number } | undefined)?.statusCode
   const message = String(
     (error as { statusMessage?: string } | undefined)?.statusMessage ??
       (error as Error | undefined)?.message ??
       error,
   )
+  const credential =
+    statusCode === 401 || /bad credentials|requires authentication/i.test(message)
 
-  return (
-    statusCode === 401 ||
-    statusCode === 403 ||
-    /bad credentials|requires authentication|forbidden|not been granted|resource not accessible|permission/i.test(
-      message,
-    )
-  )
-}
-
-/**
- * Whether the token's *credentials* are bad, as opposed to a token that is
- * merely under-scoped for the query. Only this narrower class is persisted in
- * KV: an under-scoped (but valid) token may still serve other queries, so it is
- * only dropped from the isolate cache, while a bad credential must be marked so
- * that other isolates stop retrying it once they observe the mark (KV is
- * eventually consistent, so that is best effort, never a correctness
- * requirement).
- */
-const isAuthFailure = (error: unknown): boolean => {
-  const statusCode = (error as { statusCode?: number } | undefined)?.statusCode
-  const message = String(
-    (error as { statusMessage?: string } | undefined)?.statusMessage ??
-      (error as Error | undefined)?.message ??
-      error,
-  )
-
-  return (
-    statusCode === 401 ||
-    /bad credentials|requires authentication/i.test(message)
-  )
+  return {
+    credential,
+    rejected:
+      credential ||
+      statusCode === 403 ||
+      /forbidden|not been granted|resource not accessible|permission/i.test(
+        message,
+      ),
+  }
 }
 
 /**
@@ -193,7 +174,7 @@ const runGraphql = async <T>(
       : null
 
     if (cached?.data) {
-      console.warn(`[github] cache hit (${identity})`)
+      console.debug(`[github] cache hit (${identity})`)
       return interpret(cached, level !== 'fallback')
     }
   }
@@ -228,7 +209,7 @@ const runGraphql = async <T>(
         }),
       )
       .catch(() => undefined)
-    console.warn(`[github] cache stored (${identity})`)
+    console.debug(`[github] cache stored (${identity})`)
   }
 
   return interpret(body, level !== 'fallback')
@@ -253,12 +234,14 @@ const runGraphql = async <T>(
  *    for `/api/about` there;
  * 4. `GITHUB_TOKEN`, the fallback.
  *
- * Any failure at a level falls through to the next one. For every level except
- * the last, a GraphQL `errors` payload is a failure even when partial `data`
- * came with it (a token without `read:org` must not silently serve half an
- * org profile); only `GITHUB_TOKEN`, which has nowhere left to go, tolerates
- * partial data. A rejected owner token also drops the per-isolate cache, so the
- * next request re-reads KV or refreshes instead of retrying a dead token.
+ * Every level except the explicit override (which *is* the login flow, so it
+ * returns its result directly) falls through to the next one on failure. For
+ * every level except the last, a GraphQL `errors` payload is a failure even when
+ * partial `data` came with it (a token without `read:org` must not silently serve
+ * half an org profile); only `GITHUB_TOKEN`, which has nowhere left to go,
+ * tolerates partial data. A rejected owner token also drops the per-isolate
+ * cache, so the next request re-reads KV or refreshes instead of retrying a dead
+ * token.
  */
 export async function githubGraphql<T>(
   event: H3Event,
@@ -290,7 +273,7 @@ export async function githubGraphql<T>(
     // recorded only has its token, so fall back to its fingerprint
     const identity = session.user?.databaseId
       ? `user:${session.user.databaseId}`
-      : `user:token:${await digest(sessionToken)}`
+      : `user:token:${await sha256Hex(sessionToken)}`
 
     try {
       const data = await runGraphql<T>(
@@ -301,7 +284,7 @@ export async function githubGraphql<T>(
         'session',
         identity,
       )
-      console.warn('[github] used the signed-in user token')
+      console.debug('[github] used the signed-in user token')
       return data
     } catch (error) {
       console.warn(
@@ -312,7 +295,7 @@ export async function githubGraphql<T>(
   }
 
   // 3. the owner's stored token, which also serves anonymous visitors
-  let owner: StoredOAuthToken | undefined
+  let owner: UsableOwnerToken | undefined
 
   try {
     owner = await getUsableOwnerToken(event)
@@ -320,14 +303,9 @@ export async function githubGraphql<T>(
     console.warn('[github] could not resolve the owner OAuth token', String(error))
   }
 
-  if (owner?.accessToken && owner.accessToken !== fallback) {
+  if (owner && owner.accessToken !== fallback) {
     // the pinned account id keeps the key stable across a token rotation, so a
     // rotated owner token does not wipe the cache
-    const identity =
-      typeof owner.id === 'number' && owner.id > 0
-        ? `owner:${owner.id}`
-        : `owner:token:${await digest(owner.accessToken)}`
-
     try {
       const data = await runGraphql<T>(
         event,
@@ -335,24 +313,28 @@ export async function githubGraphql<T>(
         variables,
         owner.accessToken,
         'owner',
-        identity,
+        `owner:${owner.id}`,
       )
-      console.warn('[github] used the owner OAuth user token')
+      console.debug('[github] used the owner OAuth user token')
       return data
     } catch (error) {
-      if (isRejectedToken(error)) {
+      const rejection = parseRejection(error)
+
+      if (rejection.rejected) {
         // drop the isolate cache; a credential failure is also marked under its
-        // own key, naming the exact token that failed, so no other isolate
-        // retries it and a concurrent sign-in cannot be clobbered
+        // own key, naming the exact token that failed, so other isolates stop
+        // retrying it and a concurrent sign-in cannot be clobbered
         await markOwnerTokenRejected(
           event,
           owner.accessToken,
-          isAuthFailure(error),
+          rejection.credential,
         )
-        console.warn('[github] dropped the rejected owner OAuth token from the cache')
       }
+
       console.warn(
-        '[github] the owner OAuth token failed, falling back to GITHUB_TOKEN:',
+        `[github] the owner OAuth token failed${
+          rejection.rejected ? ' (cache dropped)' : ''
+        }, falling back to GITHUB_TOKEN:`,
         String(error),
       )
     }
@@ -365,7 +347,7 @@ export async function githubGraphql<T>(
     })
   }
 
-  console.warn('[github] no signed-in user or owner OAuth token, using GITHUB_TOKEN')
+  console.debug('[github] no signed-in user or owner OAuth token, using GITHUB_TOKEN')
 
   // the fallback has no account to key on, so its own fingerprint is the identity
   return runGraphql<T>(
@@ -374,6 +356,6 @@ export async function githubGraphql<T>(
     variables,
     fallback,
     'fallback',
-    `fallback:${await digest(fallback)}`,
+    `fallback:${await sha256Hex(fallback)}`,
   )
 }

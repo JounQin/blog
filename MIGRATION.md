@@ -151,6 +151,11 @@ optional KV namespace and read by the GraphQL client:
   Anonymous traffic all shares the owner's identity, and GraphQL's limit is per token, so the cache
   still cuts the repeated calls of a busy page. Only a clean data response is stored: a rate limit, a
   401 or an empty body is never cached, so an error cannot poison it.
+
+  The identity lives in the cache key's **query string** (`...?v1&identity=…&hash=…`), so a zone
+  Cache Rule that strips query strings for this Worker would collapse every identity onto one key and
+  defeat the isolation. Do not add such a rule; if one already exists, exclude this Worker's cache
+  (the key cannot move out of the query string because Cloudflare's cache API keys on the URL).
 - **Refresh** (`worker/utils/oauth-token.ts`) — the owner's stored token, when missing, expired or
   within five minutes of expiry, is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
@@ -159,9 +164,10 @@ optional KV namespace and read by the GraphQL client:
 - **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`. The top-level
   `kv_namespaces` entry is the **preview** namespace (Cloudflare's non-production builds run
   `wrangler versions upload` against the top-level config); `env.production` declares the
-  **production** namespace, and Production's Deploy command must be
-  `npx wrangler deploy --env production` because `kv_namespaces` is non-inheritable, like `vars`.
-  Local `wrangler dev` uses Miniflare's local KV, so no dev namespace is needed. The code
+  **production** namespace, and Production's Deploy command must target it because `kv_namespaces`
+  is non-inheritable, like `vars`: use `yarn deploy` (`wrangler deploy --env production`), while
+  `yarn deploy:preview` (`wrangler versions upload`) is the non-production/preview upload. Local
+  `wrangler dev` uses Miniflare's local KV, so no dev namespace is needed. The code
   feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN` alone;
   the config is the source of truth (a binding that exists only in the dashboard is removed by the
   next deploy).

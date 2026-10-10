@@ -8,10 +8,12 @@
 # production; local `wrangler dev` uses Miniflare's local KV, so nothing has to be
 # created for local work).
 #
-# The plain names below are read first; the NUXT_-prefixed runtimeConfig
-# equivalents (NUXT_GITHUB_TOKEN, NUXT_GITHUB_OWNER, NUXT_GITHUB_CLIENT_ID, ...)
-# still work as a fallback. See the "GitHub tokens" section of README.md and
-# MIGRATION.md for how the values are used.
+# The plain names below are read first. The NUXT_-prefixed runtimeConfig
+# equivalents exist only for the keys defined in nuxt.config.ts (NUXT_GITHUB_TOKEN
+# and NUXT_GITHUB_* for `runtimeConfig.github`); the others (APP_KEYS,
+# GITHUB_OWNER_LOGIN, GITHUB_OAUTH_TOKEN_URL, DEEPLX_URL, DEEPLX_TOKEN) are read
+# from the bindings / process.env only and have no NUXT_ form. See the "GitHub
+# tokens" section of README.md and MIGRATION.md for how the values are used.
 
 # --- GitHub data access ---
 

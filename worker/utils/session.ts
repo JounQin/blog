@@ -24,10 +24,6 @@ export interface SessionData {
   uuid?: string
   /** GitHub OAuth access token of the logged in user */
   token?: string
-  /** refresh token, sent when the OAuth app expires user tokens */
-  refreshToken?: string
-  /** epoch milliseconds when `token` expires, when GitHub reported it */
-  tokenExpiresAt?: number
   user?: SessionUser
 }
 
