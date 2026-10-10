@@ -76,11 +76,29 @@ optional KV namespace and read by the GraphQL client:
   signed-in user's own token can serve the data queries and share the load; without `read:org` the
   organisation fields would always fall back to the owner's token. The callback keeps each user's
   `accessToken` (and `refreshToken`, when GitHub returns one because the app expires user tokens) in
-  their encrypted session, and writes `{ accessToken, refreshToken, expiresAt, login, scopes }` under
-  `oauth:user-token` in KV **only when the signed-in `viewer.login` matches `GITHUB_OWNER_LOGIN`**
-  (defaulting to the app's owner), so no visitor can write to KV. There is no separate bootstrap
+  their encrypted session, and writes the **owner's** entry
+  `{ accessToken, refreshToken, expiresAt, login, id, scopes }` under `oauth:user-token` in KV only
+  when the signed-in `viewer.login` matches `GITHUB_OWNER_LOGIN` (defaulting to the app's owner), so
+  no visitor can write to KV. `id` is the account's numeric GitHub id (`viewer.databaseId`), recorded
+  on the first bootstrap — nothing new for the operator to configure. There is no separate bootstrap
   secret any more; the earlier `OWNER_LOGIN_SECRET` gate only existed to hide the elevated scopes and
   has been removed.
+- **Identity pinning** — the entry is an identity record, not just a login string:
+  - *read rule*: the stored token is used only when `entry.login` matches `GITHUB_OWNER_LOGIN` **and**
+    the pinned `id` is present. Otherwise the entry is ignored (a warning names `stored=<login>` and
+    `expected=<GITHUB_OWNER_LOGIN>`, never a token) and the request falls through to `GITHUB_TOKEN`.
+    The entry is deliberately **not** deleted on a mismatch: deleting is irreversible and would throw
+    away the refresh token for what may be a typo, whereas ignoring it has the same effect and is
+    reversible.
+  - *write rule*: the callback stores when there is no entry, or the entry has no pinned id yet (the
+    first bootstrap, which also covers an entry created before the id existed); or when the
+    signing-in account's `id` equals the entry's id **and** the stored token was rejected (a
+    same-identity re-bootstrap). A healthy same-identity entry is left alone, so a routine login does
+    not churn the pair. A **different** account id is refused with a warning — this is what stops a
+    changed `GITHUB_OWNER_LOGIN` from handing the site to whoever now owns that login.
+  - *deliberate transfer*: to move the blog to another account on purpose, delete the
+    `oauth:user-token` KV key by hand, update `GITHUB_OWNER_LOGIN`, then sign in as the new owner; the
+    next sign-in has no entry to conflict with and pins the new identity.
 - **Priority** (`worker/utils/github.ts`), highest first:
   1. the optional per-call `options.token` override, never cached. Its real use is the login flow:
      `/api/oauth` queries `viewer` with the token it has just exchanged — before any stored token

@@ -33,8 +33,11 @@ GITHUB_REPOSITORY_OWNER_TYPE=user
 # `read:org read:user`; when this login signs in, the callback stores its OAuth
 # token in the BLOG_OAUTH KV namespace, and that token then serves anonymous
 # visitors (and is the fallback for a signed-in user whose own token cannot read
-# an organisation). Defaults to the app owner above. No separate bootstrap secret
-# exists: `OWNER_LOGIN_SECRET` was removed because it only gated those scopes.
+# an organisation). Defaults to the app owner above. The entry pins that account's
+# numeric GitHub id, so changing this login neither uses nor overwrites it; moving
+# the blog to another account on purpose means deleting the KV key first, then
+# signing in as the new owner. No separate bootstrap secret exists:
+# `OWNER_LOGIN_SECRET` was removed because it only gated those scopes.
 # GITHUB_OWNER_LOGIN=JounQin
 
 # --- sessions ---

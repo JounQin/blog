@@ -26,7 +26,10 @@ Every sign-in asks for the same read-only `read:org read:user` scopes, so a sign
 token can serve the data queries and share the load instead of everything depending on one token.
 When `GITHUB_OWNER_LOGIN` (the maintainer, defaulting to the app owner) signs in once, the callback
 stores that account's token in the `BLOG_OAUTH` KV namespace — it serves anonymous visitors and is
-the fallback for a signed-in user whose own token cannot read an organisation. The stored token is
+the fallback for a signed-in user whose own token cannot read an organisation. The entry pins that
+account's numeric GitHub id, so a changed `GITHUB_OWNER_LOGIN` neither uses nor overwrites it;
+handing the blog to another account on purpose means deleting the KV key first, then signing in as
+the new owner. The stored token is
 refreshed with its refresh token before it expires (GitHub rotates both, the new pair is written
 back and cached per isolate, and a failure degrades rather than failing a page), and successful
 GitHub responses are cached in `caches.default` for five minutes — never errors or rate limits.

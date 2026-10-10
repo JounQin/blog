@@ -275,8 +275,8 @@ export async function githubGraphql<T>(
     } catch (error) {
       if (isRejectedToken(error)) {
         // do not keep retrying a token GitHub rejected: drop the isolate cache
-        // so the next request re-reads KV (a newer token) or refreshes it
-        invalidateOAuthUserToken()
+        // (and remember the rejection, so a same-identity sign-in may re-bootstrap)
+        invalidateOAuthUserToken(true)
         console.warn('[github] dropped the rejected owner OAuth token from the cache')
       }
       console.warn(

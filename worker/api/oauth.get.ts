@@ -5,8 +5,8 @@ import { getBlogConfig } from '../utils/blog'
 import { getEnv } from '../utils/env'
 import { githubGraphql } from '../utils/github'
 import {
+  captureOwnerOAuthToken,
   getTrustedLogin,
-  writeStoredOAuthToken,
 } from '../utils/oauth-token'
 import { readSession, writeSession } from '../utils/session'
 
@@ -14,6 +14,7 @@ const VIEWER_QUERY = /* GraphQL */ `
   query viewer {
     viewer {
       avatarUrl
+      databaseId
       id
       login
       name
@@ -91,12 +92,9 @@ export default defineEventHandler(async event => {
     })
   }
 
-  const { viewer } = await githubGraphql<{ viewer: SessionUser }>(
-    event,
-    VIEWER_QUERY,
-    {},
-    { token: tokenResponse.access_token },
-  )
+  const { viewer } = await githubGraphql<{
+    viewer: SessionUser & { databaseId?: number }
+  }>(event, VIEWER_QUERY, {}, { token: tokenResponse.access_token })
 
   // Only the maintainer's sign-in may populate the shared OAuth user token:
   // some organisations reject classic personal access tokens, and an anonymous
@@ -109,20 +107,24 @@ export default defineEventHandler(async event => {
       trustedLogin &&
       viewer.login.toLowerCase() === trustedLogin.toLowerCase()
     ) {
-      const stored = await writeStoredOAuthToken(event, {
+      // `captureOwnerOAuthToken` applies the identity-pinning write rule: the
+      // numeric id is recorded on the first bootstrap, and a later sign-in whose
+      // account id differs is refused rather than overwriting the owner's entry.
+      const result = await captureOwnerOAuthToken(event, {
         accessToken: tokenResponse.access_token,
         refreshToken: tokenResponse.refresh_token,
         expiresAt: tokenResponse.expires_in
           ? Date.now() + tokenResponse.expires_in * 1000
           : undefined,
         login: viewer.login,
+        id: viewer.databaseId,
         scopes: tokenResponse.scope,
       })
 
       console.warn(
         '[oauth-token] maintainer sign-in',
         `login=${viewer.login}`,
-        `stored=${stored}`,
+        `result=${result}`,
         `scopes=${JSON.stringify(tokenResponse.scope ?? '')}`,
       )
     }

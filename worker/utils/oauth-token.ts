@@ -34,6 +34,13 @@ export interface StoredOAuthToken {
   expiresAt?: number
   /** the trusted login this token belongs to, for observability */
   login?: string
+  /**
+   * The account's numeric GitHub id (`viewer.databaseId`), pinned at the first
+   * bootstrap. It is what makes the entry an *identity* record rather than a
+   * login string: a changed `GITHUB_OWNER_LOGIN` can never hand the site to
+   * whoever now owns that login.
+   */
+  id?: number
   /** scopes GitHub granted, e.g. `read:org, read:user` */
   scopes?: string
 }
@@ -96,6 +103,13 @@ const getKv = (event: H3Event): KvNamespace | undefined => {
 let cachedOAuthToken: StoredOAuthToken | undefined
 
 /**
+ * Whether the stored token was rejected (401 or a permission error) since it was
+ * last read. A same-identity sign-in re-bootstraps the entry only in that case:
+ * a healthy entry is left alone, so a routine login does not churn the pair.
+ */
+let rejectedStoredToken = false
+
+/**
  * Drops the per-isolate cache, so the next `getOAuthUserToken` re-reads KV and
  * re-refreshes when needed.
  *
@@ -105,8 +119,12 @@ let cachedOAuthToken: StoredOAuthToken | undefined
  * isolate is recycled. Also called when a new token is written, so a fresh login
  * or a rotation is picked up immediately.
  */
-export const invalidateOAuthUserToken = (): void => {
+export const invalidateOAuthUserToken = (rejected = false): void => {
   cachedOAuthToken = undefined
+
+  if (rejected) {
+    rejectedStoredToken = true
+  }
 }
 
 export const readStoredOAuthToken = async (
@@ -151,12 +169,17 @@ export const writeStoredOAuthToken = async (
     // a newly stored token (a fresh login, or a rotation) must be picked up by
     // the next call instead of the previous isolate cache
     invalidateOAuthUserToken()
+    rejectedStoredToken = false
     return true
   } catch (error) {
     console.warn('[oauth-token] could not store the token', String(error))
     return false
   }
 }
+
+/** A plausible pinned GitHub account id (`viewer.databaseId`). */
+const isPinnedOwnerId = (id: unknown): id is number =>
+  typeof id === 'number' && Number.isSafeInteger(id) && id > 0
 
 /** Whether the access token is usable now (or close enough not to bother). */
 const isFresh = (token: StoredOAuthToken): boolean =>
@@ -236,6 +259,8 @@ const refreshStoredOAuthToken = async (
         ? Date.now() + response.expires_in * 1000
         : undefined,
       login: token.login,
+      // the pinned identity must survive a refresh, or the entry stops matching
+      id: token.id,
       scopes: response.scope ?? token.scopes,
     }
 
@@ -258,6 +283,89 @@ const refreshStoredOAuthToken = async (
   }
 }
 
+/**
+ * Whether a stored entry is allowed to be used at all. Both the login and the
+ * pinned numeric id must be consistent with the current configuration; anything
+ * else means "do not use it". The entry is deliberately *not* deleted on a
+ * mismatch: deleting is irreversible and would throw away the refresh token for
+ * what may just be a typo, while ignoring it has the same effect and is
+ * reversible (fix the configuration and the entry works again).
+ */
+const isUsableEntry = (event: H3Event, entry: StoredOAuthToken): boolean => {
+  const expected = getTrustedLogin(event)
+  const login = typeof entry.login === 'string' ? entry.login.trim() : ''
+
+  if (!login || login.toLowerCase() !== expected.toLowerCase()) {
+    console.warn(
+      `[oauth-token] ignoring the stored token (login mismatch): stored=${
+        login || 'missing'
+      } expected=${expected || 'missing'}`,
+    )
+    return false
+  }
+
+  if (!isPinnedOwnerId(entry.id)) {
+    console.warn(
+      `[oauth-token] ignoring the stored token (no pinned account id): stored=${login} expected=${expected}`,
+    )
+    return false
+  }
+
+  return true
+}
+
+export type CaptureOwnerTokenResult =
+  | 'stored'
+  | 'skipped'
+  | 'refused'
+  | 'unavailable'
+
+/**
+ * Stores the owner's token following the identity-pinning rules:
+ *
+ * - no entry, or an entry that has no pinned id yet (the first bootstrap, which
+ *   also covers an entry created before the id was introduced) -> store, pinning
+ *   the signing-in account's id;
+ * - same pinned id and the stored token was *rejected* -> store (a same-identity
+ *   re-bootstrap that repairs the entry);
+ * - same pinned id and the token is still healthy -> keep the existing entry, so
+ *   a routine login does not churn the refresh-token pair;
+ * - different pinned id -> refuse and warn: a changed `GITHUB_OWNER_LOGIN` must
+ *   never hand the site to whoever now owns that login.
+ *
+ * The caller must already have checked `viewer.login === GITHUB_OWNER_LOGIN`.
+ */
+export const captureOwnerOAuthToken = async (
+  event: H3Event,
+  token: StoredOAuthToken,
+): Promise<CaptureOwnerTokenResult> => {
+  const entry = await readStoredOAuthToken(event)
+
+  if (entry && isPinnedOwnerId(entry.id)) {
+    if (!isPinnedOwnerId(token.id) || token.id !== entry.id) {
+      console.warn(
+        `[oauth-token] refusing to store the owner token (account id mismatch): stored=${
+          entry.login ?? 'missing'
+        } signing-in=${token.login ?? 'missing'}`,
+      )
+      return 'refused'
+    }
+
+    if (!rejectedStoredToken) {
+      console.warn(
+        `[oauth-token] keeping the existing owner token: login=${
+          token.login ?? 'missing'
+        } signed in again while its token is still healthy`,
+      )
+      return 'skipped'
+    }
+  }
+
+  return (await writeStoredOAuthToken(event, token))
+    ? 'stored'
+    : 'unavailable'
+}
+
 /** The OAuth user token to prefer, or `undefined` to use the fallback. */
 export const getOAuthUserToken = async (
   event: H3Event,
@@ -269,6 +377,11 @@ export const getOAuthUserToken = async (
   const stored = await readStoredOAuthToken(event)
 
   if (!stored) {
+    return undefined
+  }
+
+  // read rule: a mismatch means "do not use it", never "delete it"
+  if (!isUsableEntry(event, stored)) {
     return undefined
   }
 
