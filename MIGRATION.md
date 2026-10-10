@@ -202,16 +202,19 @@ optional KV namespace and read by the GraphQL client:
   iOS one — so it is the path that can still translate such a unit. The fallback follows redirects
   (the runtime default), but the endpoint should serve `/translate` directly: a 301/302/303 is
   re-issued as a GET and drops the body, so only a method-preserving redirect (307/308) still
-  translates. Only the **final** response is judged — HTTP 200, `code` 200, a non-empty `data` and
-  `data !== chunk`. When the fallback fails, or `DEEPLX_URL` is unset, that unit keeps its source
-  text and the request reports `translated: false` with the unit counted in `failedChunks` — not in
-  `remaining`, because without a fallback no follow-up request can do better
+  translates. A redirect stays inside that one outbound request, so it does not reserve a second
+  `MAX_SUBREQUESTS` slot of its own. Only the **final** response is judged — HTTP 200, `code` 200, a
+  non-empty `data` and `data !== chunk`. When the fallback fails, or `DEEPLX_URL` is unset, that unit
+  keeps its source text and the request reports `translated: false` with the unit counted in
+  `failedChunks` — not in `remaining`, because without a fallback no follow-up request can do better
 - A unit whose answer still shares a meaningful run of source prose with its source is a **suspect**.
   All suspects go through **one batched DLX array request** inside the same subrequest budget; the
-  answer that shares less source prose wins, so a retry can never make a unit worse, and a unit that
-  still holds source prose is reported as `remaining` rather than as translated. The check is
-  language-agnostic: it compares text with text after discounting the runs a translation legitimately
-  keeps verbatim (identifiers, URLs, markup) and never names a script or a Unicode range
+  answer that shares less source prose wins, so a retry can never make a unit worse. When a fallback
+  is configured, a unit that still holds source prose after that retry is reported as `remaining`
+  rather than as translated; without `DEEPLX_URL` there is no retry to make, so it is not marked
+  `remaining` and its failed piece already counts in `failedChunks`. The check is language-agnostic:
+  it compares text with text after discounting the runs a translation legitimately keeps verbatim
+  (identifiers, URLs, markup) and never names a script or a Unicode range
 - The batch signal is the oneshot response: an HTTP 200 whose `translations` line up with the input
   (`translations[i].text` per unit, `detected_source_language` alongside); anything else — a non-200,
   a body whose `translations` do not line up, a unit with no `text` — fails that whole batch and sends
@@ -246,15 +249,16 @@ optional KV namespace and read by the GraphQL client:
   characters are one subrequest. A unit the batch could not answer goes to the self-hosted DLX
   fallback described above, one unit at a time. Batches run six at a time, the runtime's
   simultaneous-connection budget
-- A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests, the cookie warm-up included.
-  Every outbound call reserves its slot before it starts, so a batch and its fallbacks can never push
-  the total over the cap; the Workers free plan caps subrequests per request at 50, which leaves 34
-  for the GitHub calls and the rest of the request. A block-heavy article like `/article/323` is 13
-  units in one batch, so a render is normally one or two subrequests. Units the budget does not reach
-  keep their source text and are reported as `remaining`; each unit's result is also cached on its own
-  (`caches.default`, a cache read costs no subrequest), so a follow-up request pays only for the units
-  still missing and the client finishes the page in the background. A unit the DLX retry improved is
-  cached instead of the partial provider answer
+- A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests. Each outbound request
+  reserves exactly one slot before it is sent — the cookie warm-up, every provider batch, every DLX
+  fallback call and the one batched DLX retry — so a batch and its fallbacks can never push the total
+  over the cap, and following a redirect does not reserve a slot of its own. The Workers free plan
+  caps subrequests per request at 50, which leaves 34 for the GitHub calls and the rest of the
+  request. A block-heavy article like `/article/323` is 13 units in one batch, so a render is normally
+  one or two subrequests. Units the budget does not reach keep their source text and are reported as
+  `remaining`; each unit's result is also cached on its own (`caches.default`, a cache read costs no
+  subrequest), so a continuation pays only for the units still missing. A unit the DLX retry improved
+  is cached instead of the partial provider answer
 - The cookie warm-up is deduplicated per isolate: concurrent renders share one in-flight request, and
   after a failure the next attempt waits for a one-minute cooldown, so a cold or broken
   `deepl.com/translator` cannot make every render pay the timeout
@@ -278,7 +282,12 @@ optional KV namespace and read by the GraphQL client:
   every chunk failure is logged with its index and counted in the response
 - Titles and the article body are prefetched during SSR: the per-text limit (`MAX_CHARS`) is
   handled by chunking, and the translated strings are written to the payload state, so the first
-  paint is already translated and the client never re-requests them
+  paint is already translated and the client does not re-request those strings. The exception is a
+  partly translated entry: while its `remaining` is above zero the client sends a continuation,
+  bounded by `MAX_CONTINUATIONS` in `useI18n`, and each continuation pays only for the units still
+  missing. A unit that failed with no `DEEPLX_URL` is reported in `failedChunks`, not `remaining`,
+  and a suspect without a fallback is a failed chunk too, so neither can start a continuation that
+  could not help
 - `useI18n().prefetch()` resolves the DSL and requests the missing translations inside
   `useAsyncData`, writing them to `useState('translate-cache')` (serialized into the payload),
   so the SSR HTML already contains the translated text instead of the `Translating…` placeholder
