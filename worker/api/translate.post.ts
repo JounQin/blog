@@ -8,7 +8,6 @@ import {
   ONESHOT_FREE_ENDPOINT,
   SOURCE_LANG_MAP,
   TARGET_LANG_MAP,
-  getSharedCookies,
   translateByDeepLX,
 } from '@deeplx/core'
 import { $fetch } from 'ofetch'
@@ -65,8 +64,9 @@ const DEEPL_LOCALES: Record<Locale, string> = {
 /** The provider rejects anything longer than its anonymous oneshot limit, so the
  * splitting cap is that limit itself rather than a copy of the number. */
 const MAX_CHARS = MAX_FREE_TEXT_LENGTH
-// a cold isolate pays a cookie warm-up request first, so the budget is generous
-// (measured ~2 s per translation from node, including the session warm-up)
+// the budget is generous: a batched translation can take seconds (measured ~2 s
+// per translation from node), and the library path may still make its own warm-up
+// request when it is used
 const CHUNK_TIMEOUT = 8000
 /**
  * The fallback gets its own, shorter budget. It runs after the library path, so
@@ -618,7 +618,7 @@ const unmask = (answer: string, codeSpans: string[]): string | undefined => {
   return result
 }
 
-/** Client-triggered calls may retry once (warm-up, transient 5xx, timeouts).
+/** Client-triggered calls may retry once (transient 5xx, timeouts).
  * The SSR prefetch never retries (see below), so a slow provider cannot
  * multiply the render latency. */
 const MAX_ATTEMPTS = 2
@@ -988,8 +988,7 @@ const BATCH_MAX_TEXTS = 16
 /** A sensible ceiling for one request body, on top of the per-text limit. */
 const BATCH_MAX_CHARS = 8000
 /**
- * How many provider subrequests one request may spend, the cookie warm-up
- * included. The Workers free plan caps subrequests per request at 50, and a render
+ * How many provider subrequests one request may spend. The Workers free plan caps subrequests per request at 50, and a render
  * also talks to the GitHub API, so 16 leaves a wide margin (34 of the 50 stay for
  * the GitHub calls and the rest of the request). Every outbound call reserves its
  * slot *before* it starts, so a batch and its fallbacks can never push the total
@@ -1031,98 +1030,21 @@ interface OneshotResponse {
 const instanceId = crypto.randomUUID()
 const sessionId = crypto.randomUUID()
 
-/** The warm-up's outcome: the cookies it obtained and whether it fetched at all. */
-interface WarmResult {
-  cookies?: string
-  fetched: boolean
-}
-
-let warmCookies: string | undefined
-/** The one in-flight warm-up, shared by every caller that races into it. */
-let warmPromise: Promise<WarmResult> | undefined
-/** When the last warm-up failed, so a failure is not retried on every render. */
-let warmFailedAt = 0
-/** How long a failed warm-up is left alone before one request tries it again. */
-const WARM_COOLDOWN = 60_000
-
-/**
- * The actual warm-up request, exactly like the library does. It only runs when
- * neither this isolate's cookies nor the library's own are already known.
- */
-const doWarmOneshot = async (): Promise<WarmResult> => {
-  if (warmCookies !== undefined || getSharedCookies()) {
-    return {
-      cookies: warmCookies ?? getSharedCookies() ?? undefined,
-      fetched: false,
-    }
-  }
-
-  const response = await fetch('https://www.deepl.com/translator', {
-    signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
-  })
-  // `Set-Cookie` is a forbidden response-header name, so `get('set-cookie')` is
-  // only a compatibility fallback: `getSetCookie()` is the accessor the current
-  // spec requires (workerd gates it behind a flag while `get()` happens to return
-  // the joined value), so prefer it whenever the runtime provides it.
-  const setCookie =
-    response.headers.getSetCookie?.().join('; ') ??
-    response.headers.get('set-cookie') ??
-    ''
-  const cookies = [
-    /userCountry=[^;]+/.exec(setCookie)?.[0],
-    /verifiedBot=[^;]+/.exec(setCookie)?.[0],
-  ].filter(Boolean)
-
-  warmCookies = cookies.length ? cookies.join('; ') : ''
-  return { cookies: warmCookies || undefined, fetched: true }
-}
-
-/**
- * One best-effort warm-up per isolate, exactly like the library does. Concurrent
- * callers share a single in-flight promise, so a cold isolate makes one request
- * however many renders race into it; the resolved cookies are cached, so a later
- * call makes no request at all. It reports whether *this* call made the request,
- * so the caller can count that subrequest against its budget.
- *
- * A rejected warm-up is not fatal: the caller gets no cookies and no throw, and
- * the in-flight promise is cleared so a later call can try again -- but only after
- * a short cooldown, or every render would pay the timeout again.
- */
-const warmOneshot = (): Promise<WarmResult> => {
-  if (warmCookies !== undefined || getSharedCookies()) {
-    return Promise.resolve({
-      cookies: warmCookies ?? getSharedCookies() ?? undefined,
-      fetched: false,
-    })
-  }
-
-  // a recent failure is left alone: no request, and no budget slot either
-  if (warmFailedAt && Date.now() - warmFailedAt < WARM_COOLDOWN) {
-    return Promise.resolve({ cookies: undefined, fetched: false })
-  }
-
-  warmPromise ??= doWarmOneshot().catch(error => {
-    console.warn('[translate] warm-up failed', String(error))
-    warmFailedAt = Date.now()
-    warmPromise = undefined
-    return { cookies: undefined, fetched: true }
-  })
-
-  return warmPromise
-}
-
 /**
  * Translates a batch of units in one request. Every answer is returned position
  * by position, so the caller can still tell which unit failed; a status other
  * than 200, or a response whose `translations` do not line up with the input,
- * fails the whole batch and sends each unit to the fallback. The cookies come from
- * a warm-up the caller already counted, so this never warms up on its own.
+ * fails the whole batch and sends each unit to the fallback.
+ *
+ * This path deliberately does not warm up: the batch POST carries no cookies,
+ * which the endpoint accepts, so a cold isolate pays no extra warm-up request
+ * here. The library path (`translateByDeepLX`) still warms itself up whenever it
+ * is used.
  */
 const translateBatchWithLibrary = async (
   texts: string[],
   target: TargetLanguage,
   source: SourceLanguage | undefined,
-  cookies?: string,
 ): Promise<(OneshotAnswer | undefined)[]> => {
   const response = await fetch(ONESHOT_FREE_ENDPOINT, {
     method: 'POST',
@@ -1135,7 +1057,6 @@ const translateBatchWithLibrary = async (
       'x-app-os-version': IOS_OS_VERSION,
       'x-app-instance-id': instanceId,
       'x-app-session-id': sessionId,
-      ...(cookies ? { cookie: cookies } : {}),
     },
     body: JSON.stringify({
       text: texts,
@@ -1519,7 +1440,7 @@ export default defineEventHandler(async event => {
 
   const allUnits = plan.flatMap(segment => segment.units)
 
-  // One subrequest budget for the whole request, the cookie warm-up included.
+  // One subrequest budget for the whole request.
   // Every outbound call reserves its slot *before* it starts, so the batches and
   // their fallbacks can never push the total past `MAX_SUBREQUESTS`; whatever is
   // left keeps its source text and is reported as `remaining`. Every piece first
@@ -1567,10 +1488,7 @@ export default defineEventHandler(async event => {
    * subrequest budget. An answer is written straight onto its unit, so a unit
    * whose pieces were all answered needs no index bookkeeping.
    */
-  const runTasks = async (
-    tasks: UnitTask[],
-    cookies?: string,
-  ): Promise<void> => {
+  const runTasks = async (tasks: UnitTask[]): Promise<void> => {
     if (!tasks.length) {
       return
     }
@@ -1612,7 +1530,6 @@ export default defineEventHandler(async event => {
         batch.map(job => job.text),
         target,
         source,
-        cookies,
       ).catch(() => batch.map(() => undefined))
 
       const failed: BatchJob[] = []
@@ -1683,15 +1600,7 @@ export default defineEventHandler(async event => {
     })
   }
 
-  // the warm-up is an outbound request too, so it comes out of the budget; later
-  // batches reuse the cookies and are not charged again
-  const warm = await warmOneshot()
-
-  if (warm.fetched) {
-    reserve()
-  }
-
-  await runTasks(tasksOf(allUnits), warm.cookies)
+  await runTasks(tasksOf(allUnits))
 
   /**
    * Rebuilds a unit's text from its answers, splicing masked code back in.
@@ -1741,7 +1650,7 @@ export default defineEventHandler(async event => {
       unit.answers = new Array<PieceResult | undefined>(unit.pieces.length)
     }
 
-    await runTasks(tasksOf(fragmented), warm.cookies)
+    await runTasks(tasksOf(fragmented))
 
     for (const unit of fragmented) {
       unit.result = rebuild(unit) ?? unit.text
