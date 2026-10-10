@@ -12,9 +12,11 @@ GITHUB_TOKEN=
 
 # Optional: the maintainer's own GitHub *user* login. When that user signs in to
 # the blog (at /api/login?owner=1, which asks for `read:org read:user`), the
-# resulting OAuth user token is stored in the optional BLOG_OAUTH KV namespace
-# (see wrangler.jsonc) and preferred over GITHUB_TOKEN for every GitHub-data
-# request, including anonymous SSR renders. It defaults to the app's owner.
+# resulting OAuth user token is stored in the BLOG_OAUTH KV namespace declared in
+# wrangler.jsonc (top level = preview, env.production = production; local
+# `wrangler dev` uses Miniflare's local KV, so nothing has to be created for
+# local work) and preferred over GITHUB_TOKEN for every GitHub-data request,
+# including anonymous SSR renders. It defaults to the app's owner.
 # Organisations that reject classic PATs (e.g. web-infra-dev) accept this token.
 # GITHUB_OWNER_LOGIN=JounQin
 

@@ -86,12 +86,15 @@ optional KV namespace and read by the GraphQL client:
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
   rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
   A refresh failure falls back to `GITHUB_TOKEN`.
-- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc` (`kv_namespaces`); the id
-  committed there is the **dev** namespace (`blog-oauth-dev`), and production needs its own id in
-  the same place (this repo deploys through the Cloudflare Git integration, so a dashboard-only
-  binding would be removed by the next `wrangler deploy` — the config is the source of truth). The
-  code feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN`
-  alone. Create one with `npx wrangler kv namespace create BLOG_OAUTH` and paste its id there.
+- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`. The top-level
+  `kv_namespaces` entry is the **preview** namespace (Cloudflare's non-production builds run
+  `wrangler versions upload` against the top-level config); `env.production` declares the
+  **production** namespace, and Production's Deploy command must be
+  `npx wrangler deploy --env production` because `kv_namespaces` is non-inheritable, like `vars`.
+  Local `wrangler dev` uses Miniflare's local KV, so no dev namespace is needed. The code
+  feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN` alone;
+  the config is the source of truth (a binding that exists only in the dashboard is removed by the
+  next deploy).
 
 ### Translation
 
