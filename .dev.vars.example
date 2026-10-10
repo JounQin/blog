@@ -3,13 +3,15 @@
 # through the Cloudflare dev emulation) and `yarn worker:dev` (wrangler dev).
 # Production equivalents: `wrangler secret put <NAME>` for the SECRET values below
 # and the `vars` block of wrangler.jsonc for the non-secret ones. Never commit a
-# real value, and never put a real KV namespace id here — those live in
-# wrangler.jsonc, where the top level (`kv_namespaces`) is production (production
-# namespace) and `previews.kv_namespaces` is the preview namespace for
-# `wrangler preview` (branch/PR Previews). A `wrangler versions upload` Version URL
-# uses production resources and is not for branch testing. Check the deployed
-# version's Bindings tab to confirm. Local `wrangler dev` uses Miniflare's local
-# KV, so nothing has to be created for local work.
+# real value, and never put a real KV namespace id here — the `BLOG_OAUTH` KV
+# binding is configured in the Cloudflare dashboard instead (Production bindings
+# for the production Worker, Previews Base for branch/PR previews). The code
+# feature-detects it, so without it the Worker falls back to `GITHUB_TOKEN`. Note
+# that Cloudflare says dashboard Previews Base settings must be copied back into
+# wrangler.jsonc "to keep future deployments in sync", so a `wrangler deploy` may
+# drop a dashboard-only binding; confirm on the deployed version's Bindings tab.
+# Local `wrangler dev` uses Miniflare's local KV, so nothing has to be created for
+# local work.
 #
 # The plain names below are read first. The NUXT_-prefixed runtimeConfig
 # equivalents exist only for the keys defined in nuxt.config.ts (NUXT_GITHUB_TOKEN

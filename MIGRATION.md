@@ -161,27 +161,20 @@ optional KV namespace and read by the GraphQL client:
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
   rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
   A refresh failure falls back to `GITHUB_TOKEN`.
-- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`, and deployment happens through
-  the Cloudflare Git integration building from that file. There is no `env.<name>` block: a Wrangler
-  environment would create a separately named Worker, which is not wanted here.
-  - the top level (`kv_namespaces`) is **production** and uses the production namespace
-    (`{ binding: "BLOG_OAUTH", id: "f91ef451…" }`); a bare `wrangler deploy` uses it;
-  - `previews.kv_namespaces` uses the **preview** namespace
-    (`{ binding: "BLOG_OAUTH", id: "6c39022c…" }`). Worker Previews do not inherit production
-    settings, so this block is required for `wrangler preview` (branch/PR Previews), which is the only
-    branch-isolated path.
+- **Storage** — `BLOG_OAUTH` is configured in the **Cloudflare dashboard**, not in `wrangler.jsonc`:
+  **Production** bindings for the production Worker, and **Settings → Bindings → Previews Base** for
+  branch/PR previews (`wrangler preview`; Previews do not inherit production settings). The code
+  feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN` alone.
 
-  A `wrangler versions upload` only produces a **Version URL** that uses production resources, and
-  Cloudflare documents it as not suitable for branch or pull-request testing — so the Git
-  integration's non-production builds should be moved to Previews rather than relied on for isolation.
-  Verify the binding on a **deployed version**: **Workers → blog → Deployments/Versions → that version
-  → Bindings** should list `BLOG_OAUTH`, and the runtime logs must not contain
-  `[oauth-token] no usable BLOG_OAUTH KV binding` (that line means the stored-token path is disabled
-  and `GITHUB_TOKEN` is used). Local `wrangler dev` uses Miniflare's local KV, so no dev namespace is
-  needed. The code feature-detects the binding, so a deployment without it keeps working on
-  `GITHUB_TOKEN` alone. The config is the source of truth: a binding that exists only in the dashboard
-  can be dropped by the next build, so copy any dashboard change back into `wrangler.jsonc` (the
-  Previews Base panel says the same).
+  Trade-off, stated factually: Cloudflare's Previews documentation says dashboard Previews Base settings
+  must be copied back into the Wrangler file "to keep future deployments in sync", so a `wrangler
+  deploy` may reconcile the deployed bindings from the config and drop a dashboard-only binding. That is
+  what we want to test by declaring nothing here; if `BLOG_OAUTH` disappears after a deploy, its
+  declaration has to come back into `wrangler.jsonc`. Verify on a **deployed version**: **Workers →
+  blog → Deployments/Versions → that version → Bindings** should list `BLOG_OAUTH`, and the runtime
+  logs must not contain `[oauth-token] no usable BLOG_OAUTH KV binding` (that line means the
+  stored-token path is disabled and `GITHUB_TOKEN` is used). Local `wrangler dev` uses Miniflare's
+  local KV, so no dev namespace is needed.
 
 ### Translation
 
