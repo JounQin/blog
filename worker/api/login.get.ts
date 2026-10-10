@@ -35,7 +35,7 @@ export default defineEventHandler(async event => {
     await writeSession(event, { uuid })
   }
 
-  const { path } = getQuery(event) as { path?: string }
+  const { path, owner } = getQuery(event) as { path?: string; owner?: string }
   // `path` comes from the query string: reject protocol-relative targets and
   // encode it, otherwise a `?` or `&` inside it would break the redirect_uri
   const target = safeInternalPath(path)
@@ -44,6 +44,14 @@ export default defineEventHandler(async event => {
   authorizeUrl.searchParams.set('client_id', clientId)
   authorizeUrl.searchParams.set('state', uuid)
   authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${encodeURIComponent(target)}`)
+
+  // A normal visitor keeps the app's existing (minimal) scopes. The maintainer
+  // signs in with `?owner=1` once to grant the data scopes the shared OAuth user
+  // token needs; the callback still verifies the login before storing anything,
+  // so the flag alone grants nothing.
+  if (['1', 'true', 'yes'].includes(String(owner ?? '').toLowerCase())) {
+    authorizeUrl.searchParams.set('scope', 'read:org read:user')
+  }
 
   return sendRedirect(event, authorizeUrl.toString(), 302)
 })

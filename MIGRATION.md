@@ -63,6 +63,36 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   and token in the session, and 302s back to `path` (same-origin relative paths only)
 - `/api/info` returns the session user plus the public env values
 
+### GitHub tokens
+
+Some organisations reject classic personal access tokens outright
+(`web-infra-dev forbids access via a personal access token (classic)`), which is what broke
+`/api/about`; an OAuth App **user** token with `read:org` is accepted there. An anonymous
+visitor has no session, so that token cannot live in the session cookie — it is stored in an
+optional KV namespace and read by the GraphQL client:
+
+- **Capture** — the maintainer signs in once at `/api/login?owner=1`. Only that flag adds the
+  `read:org read:user` scopes; a normal visitor's login keeps the app's minimal scopes. The
+  callback stores `{ accessToken, refreshToken, expiresAt, login, scopes }` under
+  `oauth:user-token` **only when the signed-in `viewer.login` matches the trusted login**
+  (`GITHUB_OWNER_LOGIN`, defaulting to the app's owner). The refresh token is kept when GitHub
+  returns one (it does once the OAuth app expires user tokens).
+- **Priority** (`worker/utils/github.ts`) — an explicit `options.token` (the login `viewer`
+  query) first; then the stored OAuth user token; then `GITHUB_TOKEN`. Any failure of the stored
+  token — missing, rejected, no data — retries with `GITHUB_TOKEN`, so a stale store degrades
+  instead of turning a route into a 502.
+- **Refresh** (`worker/utils/oauth-token.ts`) — a token that is missing, expired or within five
+  minutes of expiry is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
+  `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
+  rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
+  A refresh failure falls back to `GITHUB_TOKEN`.
+- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc` (`kv_namespaces`); the id
+  committed there is the **dev** namespace (`blog-oauth-dev`), and production needs its own id in
+  the same place (this repo deploys through the Cloudflare Git integration, so a dashboard-only
+  binding would be removed by the next `wrangler deploy` — the config is the source of truth). The
+  code feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN`
+  alone. Create one with `npx wrangler kv namespace create BLOG_OAUTH` and paste its id there.
+
 ### Translation
 
 - `/api/translate` is backed by `@deeplx/core` (`translateByDeepLX(source, target, text)`, DeepL's

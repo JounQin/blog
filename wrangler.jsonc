@@ -11,6 +11,17 @@
   "observability": {
     "enabled": true,
   },
+  // KV namespace holding the maintainer's OAuth user token, so the GitHub-data
+  // routes (`/api/about`, ...) can use it for anonymous renders too. The code
+  // feature-detects the binding: without it the Worker keeps using GITHUB_TOKEN.
+  // The id below is the **dev** namespace (`blog-oauth-dev`); production needs
+  // its own namespace id in this same place. A binding that exists only in the
+  // Cloudflare dashboard is removed by the next `wrangler deploy`, and this repo
+  // deploys through the Cloudflare Git integration, so this file is the source of
+  // truth -- the production id must be pasted here once the operator creates it.
+  "kv_namespaces": [
+    { "binding": "BLOG_OAUTH", "id": "460e0ce797c84e249dc09177ef34838c" },
+  ],
   // `previews` is required by `npx wrangler preview` (Workers Builds runs it for
   // preview deployments) and may stay empty: assets, compatibility settings and
   // migrations live at the top level, and we have no preview-specific vars or

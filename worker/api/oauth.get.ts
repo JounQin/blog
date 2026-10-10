@@ -4,6 +4,10 @@ import { safeInternalPath } from '../utils/path'
 import { getBlogConfig } from '../utils/blog'
 import { getEnv } from '../utils/env'
 import { githubGraphql } from '../utils/github'
+import {
+  getTrustedLogin,
+  writeStoredOAuthToken,
+} from '../utils/oauth-token'
 import { readSession, writeSession } from '../utils/session'
 
 const VIEWER_QUERY = /* GraphQL */ `
@@ -54,6 +58,9 @@ export default defineEventHandler(async event => {
 
   const tokenResponse = await $fetch<{
     access_token?: string
+    refresh_token?: string
+    expires_in?: number
+    scope?: string
     error?: string
     error_description?: string
   }>(
@@ -90,6 +97,41 @@ export default defineEventHandler(async event => {
     {},
     { token: tokenResponse.access_token },
   )
+
+  // Only the maintainer's sign-in may populate the shared OAuth user token:
+  // some organisations reject classic personal access tokens, and an anonymous
+  // render carries no session cookie, so this token is what lets `/api/about`
+  // work for everyone. Best effort: a KV problem never breaks the login.
+  try {
+    const trustedLogin = getTrustedLogin(event)
+
+    if (
+      trustedLogin &&
+      viewer.login.toLowerCase() === trustedLogin.toLowerCase()
+    ) {
+      const stored = await writeStoredOAuthToken(event, {
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token,
+        expiresAt: tokenResponse.expires_in
+          ? Date.now() + tokenResponse.expires_in * 1000
+          : undefined,
+        login: viewer.login,
+        scopes: tokenResponse.scope,
+      })
+
+      console.warn(
+        '[oauth-token] maintainer sign-in',
+        `login=${viewer.login}`,
+        `stored=${stored}`,
+        `scopes=${JSON.stringify(tokenResponse.scope ?? '')}`,
+      )
+    }
+  } catch (error) {
+    console.warn(
+      '[oauth-token] could not store the maintainer token',
+      String(error),
+    )
+  }
 
   await writeSession(event, {
     uuid: session.uuid,
