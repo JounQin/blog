@@ -13,9 +13,11 @@ interface GraphqlResponse<T> {
 }
 
 /**
- * Which token a request used. It drives the logging, the "last level tolerates
- * partial data" rule and the decision not to cache the `explicit` override; it
- * is deliberately **not** the cache identity (see `cacheKeyOf`).
+ * Which token source a request used. It selects the source and decides cache
+ * eligibility (the `explicit` override is never cached) and the partial-data
+ * rule (only the last level tolerates partial data); the log lines print the
+ * *identity*, not this. It is deliberately **not** the cache identity (see
+ * `cacheKeyOf`).
  */
 type TokenLevel = 'explicit' | 'session' | 'owner' | 'fallback'
 
@@ -149,8 +151,10 @@ const interpret = <T>(body: GraphqlResponse<T>, strict: boolean): T => {
  * clean, successful body is ever stored: a rate limit, a 401 or an empty
  * response is not cached, so the cache cannot poison itself with an error.
  *
- * `identity` (see `cacheKeyOf`) is what a body may be shared across; the level
- * is only used for logging and for the partial-data rule.
+ * `identity` (see `cacheKeyOf`) is what a body may be shared across. `level`
+ * names the token source and decides cache eligibility (`explicit` is never
+ * cached) and whether partial data is tolerated; the log lines print the
+ * identity instead.
  */
 const runGraphql = async <T>(
   event: H3Event,

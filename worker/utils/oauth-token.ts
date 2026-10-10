@@ -53,7 +53,11 @@ export interface StoredOAuthToken {
    * whoever now owns that login.
    */
   id?: number
-  /** scopes GitHub granted, e.g. `read:org, read:user` */
+  /**
+   * Scopes GitHub granted, e.g. `read:org, read:user`. Kept as KV diagnostics:
+   * nothing reads it back, but it shows what the stored token can actually do
+   * when inspecting the entry.
+   */
   scopes?: string
 }
 
@@ -127,7 +131,7 @@ let cachedOAuthToken: StoredOAuthToken | undefined
  * Called when the stored token is *rejected* (401/permission error) and whenever
  * a new token is written, so a fresh login or a rotation is picked up at once.
  */
-export const invalidateOAuthUserToken = (): void => {
+const invalidateOAuthUserToken = (): void => {
   cachedOAuthToken = undefined
 }
 
