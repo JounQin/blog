@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { getEnv } from './env'
-import { getOAuthUserToken, invalidateOAuthUserToken } from './oauth-token'
+import { getOAuthUserToken, markOwnerTokenRejected } from './oauth-token'
 import { readSession } from './session'
 
 interface GraphqlResponse<T> {
@@ -81,6 +81,27 @@ const isRejectedToken = (error: unknown): boolean => {
     /bad credentials|requires authentication|forbidden|not been granted|resource not accessible|permission/i.test(
       message,
     )
+  )
+}
+
+/**
+ * Whether the token's *credentials* are bad, as opposed to a token that is
+ * merely under-scoped for the query. Only this narrower class is persisted in
+ * KV: an under-scoped (but valid) token may still serve other queries, so it is
+ * only dropped from the isolate cache, while a bad credential must be marked so
+ * that no isolate retries it until the owner signs in again.
+ */
+const isAuthFailure = (error: unknown): boolean => {
+  const statusCode = (error as { statusCode?: number } | undefined)?.statusCode
+  const message = String(
+    (error as { statusMessage?: string } | undefined)?.statusMessage ??
+      (error as Error | undefined)?.message ??
+      error,
+  )
+
+  return (
+    statusCode === 401 ||
+    /bad credentials|requires authentication/i.test(message)
   )
 }
 
@@ -274,9 +295,9 @@ export async function githubGraphql<T>(
       return data
     } catch (error) {
       if (isRejectedToken(error)) {
-        // do not keep retrying a token GitHub rejected: drop the isolate cache
-        // (and remember the rejection, so a same-identity sign-in may re-bootstrap)
-        invalidateOAuthUserToken(true)
+        // drop the isolate cache; a credential failure is also marked in KV so
+        // no other isolate retries the dead token before the owner signs in again
+        await markOwnerTokenRejected(event, isAuthFailure(error))
         console.warn('[github] dropped the rejected owner OAuth token from the cache')
       }
       console.warn(

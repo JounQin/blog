@@ -41,6 +41,14 @@ export interface StoredOAuthToken {
    * whoever now owns that login.
    */
   id?: number
+  /**
+   * Set when GitHub rejected this entry's access token (401/Bad credentials) on
+   * some isolate. It lives in KV rather than in module state on purpose: a
+   * rejection seen by one isolate must stop every isolate from retrying a dead
+   * token. Any successful write (a fresh sign-in, or a refresh) replaces the
+   * entry and therefore clears the mark.
+   */
+  rejectedAt?: number
   /** scopes GitHub granted, e.g. `read:org, read:user` */
   scopes?: string
 }
@@ -103,27 +111,40 @@ const getKv = (event: H3Event): KvNamespace | undefined => {
 let cachedOAuthToken: StoredOAuthToken | undefined
 
 /**
- * Whether the stored token was rejected (401 or a permission error) since it was
- * last read. A same-identity sign-in re-bootstraps the entry only in that case:
- * a healthy entry is left alone, so a routine login does not churn the pair.
- */
-let rejectedStoredToken = false
-
-/**
  * Drops the per-isolate cache, so the next `getOAuthUserToken` re-reads KV and
  * re-refreshes when needed.
  *
- * Called when the stored token is *rejected* (401/permission error): keeping a
- * rejected token cached would make every request in this isolate retry it and
- * only then fall back, and a newer token stored in KV would be ignored until the
- * isolate is recycled. Also called when a new token is written, so a fresh login
- * or a rotation is picked up immediately.
+ * Called when the stored token is *rejected* (401/permission error) and whenever
+ * a new token is written, so a fresh login or a rotation is picked up at once.
  */
-export const invalidateOAuthUserToken = (rejected = false): void => {
+export const invalidateOAuthUserToken = (): void => {
   cachedOAuthToken = undefined
+}
 
-  if (rejected) {
-    rejectedStoredToken = true
+/**
+ * Records that GitHub rejected the stored token, so no isolate keeps retrying it.
+ *
+ * The per-isolate cache alone is not enough: a 401 seen by one isolate would
+ * leave every other isolate (and every freshly created one) reading the same
+ * unexpired token from KV and retrying it. `persist` marks the KV entry itself,
+ * which the read rule then ignores until a fresh sign-in replaces the entry;
+ * `persist` is false for broader permission/scope failures, where the token may
+ * still be perfectly valid for other queries.
+ */
+export const markOwnerTokenRejected = async (
+  event: H3Event,
+  persist = false,
+): Promise<void> => {
+  invalidateOAuthUserToken()
+
+  if (!persist) {
+    return
+  }
+
+  const entry = await readStoredOAuthToken(event)
+
+  if (entry && typeof entry.rejectedAt !== 'number') {
+    await writeStoredOAuthToken(event, { ...entry, rejectedAt: Date.now() })
   }
 }
 
@@ -169,7 +190,6 @@ export const writeStoredOAuthToken = async (
     // a newly stored token (a fresh login, or a rotation) must be picked up by
     // the next call instead of the previous isolate cache
     invalidateOAuthUserToken()
-    rejectedStoredToken = false
     return true
   } catch (error) {
     console.warn('[oauth-token] could not store the token', String(error))
@@ -304,6 +324,15 @@ const isUsableEntry = (event: H3Event, entry: StoredOAuthToken): boolean => {
     return false
   }
 
+  if (typeof entry.rejectedAt === 'number') {
+    // a credential failure seen by some isolate; do not retry it here, and let
+    // the owner's next sign-in replace the entry (which clears the mark)
+    console.warn(
+      `[oauth-token] ignoring the stored token (marked rejected): stored=${login} expected=${expected}`,
+    )
+    return false
+  }
+
   if (!isPinnedOwnerId(entry.id)) {
     console.warn(
       `[oauth-token] ignoring the stored token (no pinned account id): stored=${login} expected=${expected}`,
@@ -314,11 +343,7 @@ const isUsableEntry = (event: H3Event, entry: StoredOAuthToken): boolean => {
   return true
 }
 
-export type CaptureOwnerTokenResult =
-  | 'stored'
-  | 'skipped'
-  | 'refused'
-  | 'unavailable'
+export type CaptureOwnerTokenResult = 'stored' | 'refused' | 'unavailable'
 
 /**
  * Stores the owner's token following the identity-pinning rules:
@@ -326,10 +351,12 @@ export type CaptureOwnerTokenResult =
  * - no entry, or an entry that has no pinned id yet (the first bootstrap, which
  *   also covers an entry created before the id was introduced) -> store, pinning
  *   the signing-in account's id;
- * - same pinned id and the stored token was *rejected* -> store (a same-identity
- *   re-bootstrap that repairs the entry);
- * - same pinned id and the token is still healthy -> keep the existing entry, so
- *   a routine login does not churn the refresh-token pair;
+ * - same pinned id -> store. A sign-in is a rare, deliberate act, and it is the
+ *   only recovery path for a token that died elsewhere (a revocation, or a
+ *   rejection another isolate saw), so it must be authoritative on every
+ *   isolate rather than being skipped as "healthy" on the strength of
+ *   isolate-local knowledge. Overwriting the same identity's entry is always
+ *   safe;
  * - different pinned id -> refuse and warn: a changed `GITHUB_OWNER_LOGIN` must
  *   never hand the site to whoever now owns that login.
  *
@@ -341,24 +368,17 @@ export const captureOwnerOAuthToken = async (
 ): Promise<CaptureOwnerTokenResult> => {
   const entry = await readStoredOAuthToken(event)
 
-  if (entry && isPinnedOwnerId(entry.id)) {
-    if (!isPinnedOwnerId(token.id) || token.id !== entry.id) {
-      console.warn(
-        `[oauth-token] refusing to store the owner token (account id mismatch): stored=${
-          entry.login ?? 'missing'
-        } signing-in=${token.login ?? 'missing'}`,
-      )
-      return 'refused'
-    }
-
-    if (!rejectedStoredToken) {
-      console.warn(
-        `[oauth-token] keeping the existing owner token: login=${
-          token.login ?? 'missing'
-        } signed in again while its token is still healthy`,
-      )
-      return 'skipped'
-    }
+  if (
+    entry &&
+    isPinnedOwnerId(entry.id) &&
+    (!isPinnedOwnerId(token.id) || token.id !== entry.id)
+  ) {
+    console.warn(
+      `[oauth-token] refusing to store the owner token (account id mismatch): stored=${
+        entry.login ?? 'missing'
+      } signing-in=${token.login ?? 'missing'}`,
+    )
+    return 'refused'
   }
 
   return (await writeStoredOAuthToken(event, token))

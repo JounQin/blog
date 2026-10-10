@@ -76,7 +76,7 @@ optional KV namespace and read by the GraphQL client:
   signed-in user's own token can serve the data queries and share the load; without `read:org` the
   organisation fields would always fall back to the owner's token. The callback keeps each user's
   `accessToken` (and `refreshToken`, when GitHub returns one because the app expires user tokens) in
-  their encrypted session, and writes the **owner's** entry
+  their signed session, and writes the **owner's** entry
   `{ accessToken, refreshToken, expiresAt, login, id, scopes }` under `oauth:user-token` in KV only
   when the signed-in `viewer.login` matches `GITHUB_OWNER_LOGIN` (defaulting to the app's owner), so
   no visitor can write to KV. `id` is the account's numeric GitHub id (`viewer.databaseId`), recorded
@@ -85,17 +85,23 @@ optional KV namespace and read by the GraphQL client:
   has been removed.
 - **Identity pinning** — the entry is an identity record, not just a login string:
   - *read rule*: the stored token is used only when `entry.login` matches `GITHUB_OWNER_LOGIN` **and**
-    the pinned `id` is present. Otherwise the entry is ignored (a warning names `stored=<login>` and
-    `expected=<GITHUB_OWNER_LOGIN>`, never a token) and the request falls through to `GITHUB_TOKEN`.
-    The entry is deliberately **not** deleted on a mismatch: deleting is irreversible and would throw
-    away the refresh token for what may be a typo, whereas ignoring it has the same effect and is
-    reversible.
+    the pinned `id` is present **and** the entry is not marked rejected. Otherwise the entry is
+    ignored (a warning names `stored=<login>` and `expected=<GITHUB_OWNER_LOGIN>`, never a token) and
+    the request falls through to `GITHUB_TOKEN`. The entry is deliberately **not** deleted on a
+    mismatch: deleting is irreversible and would throw away the refresh token for what may be a typo,
+    whereas ignoring it has the same effect and is reversible.
   - *write rule*: the callback stores when there is no entry, or the entry has no pinned id yet (the
-    first bootstrap, which also covers an entry created before the id existed); or when the
-    signing-in account's `id` equals the entry's id **and** the stored token was rejected (a
-    same-identity re-bootstrap). A healthy same-identity entry is left alone, so a routine login does
-    not churn the pair. A **different** account id is refused with a warning — this is what stops a
-    changed `GITHUB_OWNER_LOGIN` from handing the site to whoever now owns that login.
+    first bootstrap, which also covers an entry created before the id existed), or the signing-in
+    account's `id` equals the entry's id. Overwriting the **same** identity is always safe, and a
+    sign-in is the only recovery path for a token that died elsewhere, so it is authoritative on every
+    isolate (CodeRabbit's "keep a healthy same-id entry" suggestion was deliberately not applied: the
+    isolate that sees a rejection is not necessarily the one that serves the next sign-in). A
+    **different** account id is refused with a warning — this is what stops a changed
+    `GITHUB_OWNER_LOGIN` from handing the site to whoever now owns that login.
+  - *dead tokens*: a credential failure (401/Bad credentials) also marks the entry with
+    `rejectedAt` in KV, so **every** isolate stops retrying it (a module-level flag would only cover
+    the one that saw the failure) until an owner sign-in replaces the entry — which clears the mark.
+    Under-scoped but valid tokens are not marked, since they may still serve other queries.
   - *deliberate transfer*: to move the blog to another account on purpose, delete the
     `oauth:user-token` KV key by hand, update `GITHUB_OWNER_LOGIN`, then sign in as the new owner; the
     next sign-in has no entry to conflict with and pins the new identity.
@@ -111,9 +117,10 @@ optional KV namespace and read by the GraphQL client:
   fallback (the override, the session token and the owner token) a GraphQL `errors` payload counts
   as a failure even when partial `data` came with it, so an under-scoped token cannot silently serve
   half an organisation profile; only `GITHUB_TOKEN`, which has nowhere left to go, keeps the
-  partial-data tolerance. A **rejected** owner token (401 or a permission error) also drops the
-  per-isolate cache, so the next request re-reads KV — picking up a newer token — or refreshes,
-  instead of retrying a dead token forever.
+  partial-data tolerance. A **rejected** owner token (401 or a permission error) drops the
+  per-isolate cache, and a credential failure (401/Bad credentials) is also marked in KV
+  (`rejectedAt`), so no isolate keeps retrying a dead token; the owner's next sign-in replaces the
+  entry and clears the mark.
 - **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
   `caches.default` for five minutes, keyed on the query, its variables and the token **level**
   (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
