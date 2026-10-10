@@ -295,9 +295,10 @@ export async function githubGraphql<T>(
       return data
     } catch (error) {
       if (isRejectedToken(error)) {
-        // drop the isolate cache; a credential failure is also marked in KV so
-        // no other isolate retries the dead token before the owner signs in again
-        await markOwnerTokenRejected(event, isAuthFailure(error))
+        // drop the isolate cache; a credential failure is also marked under its
+        // own key, naming the exact token that failed, so no other isolate
+        // retries it and a concurrent sign-in cannot be clobbered
+        await markOwnerTokenRejected(event, ownerToken, isAuthFailure(error))
         console.warn('[github] dropped the rejected owner OAuth token from the cache')
       }
       console.warn(

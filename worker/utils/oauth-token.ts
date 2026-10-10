@@ -23,6 +23,17 @@ import { getCloudflareEnv, getEnv } from './env'
 /** Stable key inside the KV namespace. */
 export const OAUTH_TOKEN_KEY = 'oauth:user-token'
 
+/**
+ * A separate key holding the "this token was rejected" mark. It lives in its own
+ * key on purpose: Workers KV has no compare-and-swap, so writing the mark into
+ * the token entry itself would be a read-modify-write that a concurrent owner
+ * sign-in (or a refresh) could have its fresh pair clobbered by. Here the mark
+ * never touches the entry, and its value identifies *which* token was rejected
+ * (a SHA-256 fingerprint of the access token), so a stale mark can never match —
+ * and therefore never hide — a token stored later.
+ */
+export const OAUTH_REJECTED_MARK_KEY = 'oauth:user-token:rejected'
+
 /** Refresh this long before the access token actually expires. */
 const EXPIRY_MARGIN = 5 * 60 * 1000
 
@@ -41,14 +52,6 @@ export interface StoredOAuthToken {
    * whoever now owns that login.
    */
   id?: number
-  /**
-   * Set when GitHub rejected this entry's access token (401/Bad credentials) on
-   * some isolate. It lives in KV rather than in module state on purpose: a
-   * rejection seen by one isolate must stop every isolate from retrying a dead
-   * token. Any successful write (a fresh sign-in, or a refresh) replaces the
-   * entry and therefore clears the mark.
-   */
-  rejectedAt?: number
   /** scopes GitHub granted, e.g. `read:org, read:user` */
   scopes?: string
 }
@@ -61,6 +64,8 @@ interface KvNamespace {
     value: string,
     options?: { expirationTtl?: number },
   ) => Promise<void>
+  /** present on a real KV namespace; guarded so a partial stub still works */
+  delete?: (key: string) => Promise<void>
 }
 
 /**
@@ -122,30 +127,98 @@ export const invalidateOAuthUserToken = (): void => {
 }
 
 /**
- * Records that GitHub rejected the stored token, so no isolate keeps retrying it.
+ * A stable, non-reversible identifier for an access token: its SHA-256 digest.
+ * It identifies the mark's target without ever storing the token itself.
+ */
+const fingerprint = async (accessToken: string): Promise<string> => {
+  const bytes = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(accessToken),
+  )
+
+  return [...new Uint8Array(bytes)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/**
+ * Records that GitHub rejected a token, so no isolate keeps retrying it.
  *
  * The per-isolate cache alone is not enough: a 401 seen by one isolate would
  * leave every other isolate (and every freshly created one) reading the same
- * unexpired token from KV and retrying it. `persist` marks the KV entry itself,
- * which the read rule then ignores until a fresh sign-in replaces the entry;
- * `persist` is false for broader permission/scope failures, where the token may
- * still be perfectly valid for other queries.
+ * unexpired token from KV and retrying it.
+ *
+ * This writes a **separate** key and never touches the token entry, so it cannot
+ * clobber a pair that a concurrent sign-in or refresh stored in the meantime.
+ * `rejectedAccessToken` is the exact token that failed — the mark records its
+ * fingerprint, so it only ever matches that token and a stale mark can never
+ * hide a newer one. `persist` is false for broader permission/scope failures,
+ * where the token may still be perfectly valid for other queries.
  */
 export const markOwnerTokenRejected = async (
   event: H3Event,
+  rejectedAccessToken?: string,
   persist = false,
 ): Promise<void> => {
   invalidateOAuthUserToken()
 
-  if (!persist) {
+  const kv = getKv(event)
+
+  if (!persist || !rejectedAccessToken || !kv) {
     return
   }
 
-  const entry = await readStoredOAuthToken(event)
-
-  if (entry && typeof entry.rejectedAt !== 'number') {
-    await writeStoredOAuthToken(event, { ...entry, rejectedAt: Date.now() })
+  try {
+    await kv.put(
+      OAUTH_REJECTED_MARK_KEY,
+      JSON.stringify({
+        fingerprint: await fingerprint(rejectedAccessToken),
+        rejectedAt: Date.now(),
+      }),
+    )
+  } catch (error) {
+    console.warn('[oauth-token] could not mark the token rejected', String(error))
   }
+}
+
+/** The rejected-token mark, when one is stored. */
+const readRejectedMark = async (
+  event: H3Event,
+): Promise<{ fingerprint: string } | undefined> => {
+  const kv = getKv(event)
+
+  if (!kv) {
+    return undefined
+  }
+
+  try {
+    const raw = await kv.get(OAUTH_REJECTED_MARK_KEY)
+
+    if (!raw) {
+      return undefined
+    }
+
+    const parsed = JSON.parse(raw) as { fingerprint?: unknown }
+
+    return typeof parsed?.fingerprint === 'string'
+      ? { fingerprint: parsed.fingerprint }
+      : undefined
+  } catch (error) {
+    console.warn('[oauth-token] could not read the rejected mark', String(error))
+    return undefined
+  }
+}
+
+/** Whether the stored token is the one the mark says was rejected. */
+const isMarkedRejected = async (
+  event: H3Event,
+  entry: StoredOAuthToken,
+): Promise<boolean> => {
+  const mark = await readRejectedMark(event)
+
+  return (
+    Boolean(mark) && mark?.fingerprint === (await fingerprint(entry.accessToken))
+  )
 }
 
 export const readStoredOAuthToken = async (
@@ -190,6 +263,17 @@ export const writeStoredOAuthToken = async (
     // a newly stored token (a fresh login, or a rotation) must be picked up by
     // the next call instead of the previous isolate cache
     invalidateOAuthUserToken()
+
+    // the mark refers to the token that was replaced, so it is now stale; the
+    // fingerprint check would ignore it anyway, this just keeps KV tidy
+    if (typeof kv.delete === 'function') {
+      await kv
+        .delete(OAUTH_REJECTED_MARK_KEY)
+        .catch(error =>
+          console.warn('[oauth-token] could not clear the rejected mark', String(error)),
+        )
+    }
+
     return true
   } catch (error) {
     console.warn('[oauth-token] could not store the token', String(error))
@@ -324,15 +408,6 @@ const isUsableEntry = (event: H3Event, entry: StoredOAuthToken): boolean => {
     return false
   }
 
-  if (typeof entry.rejectedAt === 'number') {
-    // a credential failure seen by some isolate; do not retry it here, and let
-    // the owner's next sign-in replace the entry (which clears the mark)
-    console.warn(
-      `[oauth-token] ignoring the stored token (marked rejected): stored=${login} expected=${expected}`,
-    )
-    return false
-  }
-
   if (!isPinnedOwnerId(entry.id)) {
     console.warn(
       `[oauth-token] ignoring the stored token (no pinned account id): stored=${login} expected=${expected}`,
@@ -402,6 +477,15 @@ export const getOAuthUserToken = async (
 
   // read rule: a mismatch means "do not use it", never "delete it"
   if (!isUsableEntry(event, stored)) {
+    return undefined
+  }
+
+  // a mark only counts when it names *this* token, so a stale mark left by an
+  // older token can never hide a freshly stored one
+  if (await isMarkedRejected(event, stored)) {
+    console.warn(
+      `[oauth-token] ignoring the stored token (marked rejected): stored=${stored.login ?? 'missing'}`,
+    )
     return undefined
   }
 

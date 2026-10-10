@@ -98,10 +98,15 @@ optional KV namespace and read by the GraphQL client:
     isolate that sees a rejection is not necessarily the one that serves the next sign-in). A
     **different** account id is refused with a warning — this is what stops a changed
     `GITHUB_OWNER_LOGIN` from handing the site to whoever now owns that login.
-  - *dead tokens*: a credential failure (401/Bad credentials) also marks the entry with
-    `rejectedAt` in KV, so **every** isolate stops retrying it (a module-level flag would only cover
-    the one that saw the failure) until an owner sign-in replaces the entry — which clears the mark.
-    Under-scoped but valid tokens are not marked, since they may still serve other queries.
+  - *dead tokens*: a credential failure (401/Bad credentials) writes a mark under its **own** KV key
+    (`oauth:user-token:rejected`) whose value is the SHA-256 fingerprint of the exact access token
+    that failed. The read rule ignores the stored token only when the mark matches the token
+    currently in KV, so **every** isolate stops retrying the dead token while a stale mark can never
+    hide a token stored later. The mark never rewrites the entry, which matters because Workers KV
+    has no compare-and-swap: a read-modify-write of the entry could clobber a pair a concurrent
+    sign-in or refresh had just stored, so the mark is deliberately kept out of the entry. A
+    successful write deletes the mark; even if one arrives afterwards it names the old token and is
+    ignored. Under-scoped but valid tokens are not marked, since they may still serve other queries.
   - *deliberate transfer*: to move the blog to another account on purpose, delete the
     `oauth:user-token` KV key by hand, update `GITHUB_OWNER_LOGIN`, then sign in as the new owner; the
     next sign-in has no entry to conflict with and pins the new identity.
@@ -118,9 +123,9 @@ optional KV namespace and read by the GraphQL client:
   as a failure even when partial `data` came with it, so an under-scoped token cannot silently serve
   half an organisation profile; only `GITHUB_TOKEN`, which has nowhere left to go, keeps the
   partial-data tolerance. A **rejected** owner token (401 or a permission error) drops the
-  per-isolate cache, and a credential failure (401/Bad credentials) is also marked in KV
-  (`rejectedAt`), so no isolate keeps retrying a dead token; the owner's next sign-in replaces the
-  entry and clears the mark.
+  per-isolate cache, and a credential failure (401/Bad credentials) is also recorded in a separate KV
+  key (`oauth:user-token:rejected`, holding the fingerprint of the token that actually failed), so no
+  isolate keeps retrying a dead token while a concurrent sign-in or refresh can never be clobbered.
 - **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
   `caches.default` for five minutes, keyed on the query, its variables and the token **level**
   (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
