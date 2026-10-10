@@ -89,7 +89,9 @@ const isRejectedToken = (error: unknown): boolean => {
  * merely under-scoped for the query. Only this narrower class is persisted in
  * KV: an under-scoped (but valid) token may still serve other queries, so it is
  * only dropped from the isolate cache, while a bad credential must be marked so
- * that no isolate retries it until the owner signs in again.
+ * that other isolates stop retrying it once they observe the mark (KV is
+ * eventually consistent, so that is best effort, never a correctness
+ * requirement).
  */
 const isAuthFailure = (error: unknown): boolean => {
   const statusCode = (error as { statusCode?: number } | undefined)?.statusCode

@@ -142,11 +142,16 @@ const fingerprint = async (accessToken: string): Promise<string> => {
 }
 
 /**
- * Records that GitHub rejected a token, so no isolate keeps retrying it.
+ * Records that GitHub rejected a token, so isolates stop retrying it once they
+ * observe the mark.
  *
  * The per-isolate cache alone is not enough: a 401 seen by one isolate would
- * leave every other isolate (and every freshly created one) reading the same
- * unexpired token from KV and retrying it.
+ * leave other isolates (and freshly created ones) reading the same unexpired
+ * token from KV and retrying it. KV is eventually consistent (a write can take
+ * up to 60 seconds or more to appear elsewhere), so this is a best-effort
+ * signal, not an atomic one; correctness does not depend on it, since the
+ * isolate that saw the rejection drops its own cache immediately and every use
+ * falls through on the rejection.
  *
  * This writes a **separate** key and never touches the token entry, so it cannot
  * clobber a pair that a concurrent sign-in or refresh stored in the meantime.

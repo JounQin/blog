@@ -101,8 +101,14 @@ optional KV namespace and read by the GraphQL client:
   - *dead tokens*: a credential failure (401/Bad credentials) writes a mark under its **own** KV key
     (`oauth:user-token:rejected`) whose value is the SHA-256 fingerprint of the exact access token
     that failed. The read rule ignores the stored token only when the mark matches the token
-    currently in KV, so **every** isolate stops retrying the dead token while a stale mark can never
-    hide a token stored later. The mark never rewrites the entry, which matters because Workers KV
+    currently in KV, so a location stops retrying the dead token as soon as it observes the mark,
+    while a stale mark can never hide a token stored later. This is a **best-effort cross-isolate
+    signal, not an atomic one**: Workers KV is eventually consistent and a write may take up to 60
+    seconds or more to be visible in other locations (negative lookups are cached too), so a
+    location that has not observed the mark yet can retry the dead token. Correctness never depends
+    on the propagation: the isolate that detected the rejection drops its own cache immediately,
+    every use re-checks and falls through on the rejection, and a stale retry only costs one rejected
+    call before the fallback. The mark never rewrites the entry, which matters because Workers KV
     has no compare-and-swap: a read-modify-write of the entry could clobber a pair a concurrent
     sign-in or refresh had just stored, so the mark is deliberately kept out of the entry. A
     successful write deletes the mark; even if one arrives afterwards it names the old token and is
@@ -124,8 +130,10 @@ optional KV namespace and read by the GraphQL client:
   half an organisation profile; only `GITHUB_TOKEN`, which has nowhere left to go, keeps the
   partial-data tolerance. A **rejected** owner token (401 or a permission error) drops the
   per-isolate cache, and a credential failure (401/Bad credentials) is also recorded in a separate KV
-  key (`oauth:user-token:rejected`, holding the fingerprint of the token that actually failed), so no
-  isolate keeps retrying a dead token while a concurrent sign-in or refresh can never be clobbered.
+  key (`oauth:user-token:rejected`, holding the fingerprint of the token that actually failed), so an
+  isolate stops retrying a dead token once it observes the mark — an eventually consistent signal, so
+  until then a stale retry costs one rejected call before the fallback (see *dead tokens* above) —
+  while a concurrent sign-in or refresh can never be clobbered.
 - **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
   `caches.default` for five minutes, keyed on the query, its variables and the token **level**
   (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
