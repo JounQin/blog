@@ -161,24 +161,27 @@ optional KV namespace and read by the GraphQL client:
   `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
   rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
   A refresh failure falls back to `GITHUB_TOKEN`.
-- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`, declared once per deploy path
-  and never at the top level, because that is where each path actually reads it:
-  - **Previews** read the `previews` block, so the preview namespace is
-    `previews.kv_namespaces` (`{ binding: "BLOG_OAUTH", id: "6c39022c…" }`). This is also the shape
-    the dashboard's **Settings → Bindings → Previews Base** page generates, and the reason a top-level
-    entry stayed inert for preview versions. Worker Previews are created with `wrangler preview`
-    (Wrangler ≥ 4.135);
-  - **Production** reads `env.production`, so it is `env.production.kv_namespaces`
-    (`{ binding: "BLOG_OAUTH", id: "f91ef451…" }`), and Production's Deploy command must target it
-    (`yarn deploy` = `wrangler deploy --env production`) because `kv_namespaces` is non-inheritable,
-    like `vars`. `yarn deploy:preview` (`wrangler versions upload`) uploads a non-production version;
-    it does not itself apply the `previews` block.
-  There is no top-level `kv_namespaces`: a bare `wrangler deploy` is not used here, so a top-level
-  entry is read by neither path (it only produced a misleading duplicate). Local `wrangler dev` uses
-  Miniflare's local KV, so no dev namespace is needed. The code feature-detects the binding, so a
-  deployment without it keeps working on `GITHUB_TOKEN` alone; the config is the source of truth (a
-  binding that exists only in the dashboard is removed by the next deploy, and a dashboard change to
-  Previews Base must be copied back into `previews`).
+- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`, and deployment happens through
+  the Cloudflare Git integration building from that file. There is no `env.<name>` block: a Wrangler
+  environment would create a separately named Worker, which is not wanted here.
+  - the top level (`kv_namespaces`) is **production** and uses the production namespace
+    (`{ binding: "BLOG_OAUTH", id: "f91ef451…" }`); a bare `wrangler deploy` uses it;
+  - `previews.kv_namespaces` uses the **preview** namespace
+    (`{ binding: "BLOG_OAUTH", id: "6c39022c…" }`). Worker Previews do not inherit production
+    settings, so this block is required for `wrangler preview` (branch/PR Previews), which is the only
+    branch-isolated path.
+
+  A `wrangler versions upload` only produces a **Version URL** that uses production resources, and
+  Cloudflare documents it as not suitable for branch or pull-request testing — so the Git
+  integration's non-production builds should be moved to Previews rather than relied on for isolation.
+  Verify the binding on a **deployed version**: **Workers → blog → Deployments/Versions → that version
+  → Bindings** should list `BLOG_OAUTH`, and the runtime logs must not contain
+  `[oauth-token] no usable BLOG_OAUTH KV binding` (that line means the stored-token path is disabled
+  and `GITHUB_TOKEN` is used). Local `wrangler dev` uses Miniflare's local KV, so no dev namespace is
+  needed. The code feature-detects the binding, so a deployment without it keeps working on
+  `GITHUB_TOKEN` alone. The config is the source of truth: a binding that exists only in the dashboard
+  can be dropped by the next build, so copy any dashboard change back into `wrangler.jsonc` (the
+  Previews Base panel says the same).
 
 ### Translation
 

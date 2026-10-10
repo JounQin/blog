@@ -4,9 +4,12 @@
 # Production equivalents: `wrangler secret put <NAME>` for the SECRET values below
 # and the `vars` block of wrangler.jsonc for the non-secret ones. Never commit a
 # real value, and never put a real KV namespace id here — those live in
-# wrangler.jsonc (`previews.kv_namespaces` = preview, `env.production.kv_namespaces`
-# = production; local `wrangler dev` uses Miniflare's local KV, so nothing has to
-# be created for local work).
+# wrangler.jsonc, where the top level (`kv_namespaces`) is production (production
+# namespace) and `previews.kv_namespaces` is the preview namespace for
+# `wrangler preview` (branch/PR Previews). A `wrangler versions upload` Version URL
+# uses production resources and is not for branch testing. Check the deployed
+# version's Bindings tab to confirm. Local `wrangler dev` uses Miniflare's local
+# KV, so nothing has to be created for local work.
 #
 # The plain names below are read first. The NUXT_-prefixed runtimeConfig
 # equivalents exist only for the keys defined in nuxt.config.ts (NUXT_GITHUB_TOKEN

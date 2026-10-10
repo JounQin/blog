@@ -34,13 +34,21 @@ refreshed with its refresh token before it expires (GitHub rotates both, the new
 back and cached per isolate, and a failure degrades rather than failing a page), and successful
 GitHub responses are cached in `caches.default` for five minutes — never errors or rate limits.
 
-`wrangler dev` uses Miniflare's local KV, so local work needs no namespace. The binding is declared
-per deploy path in `wrangler.jsonc`: `previews.kv_namespaces` holds the **preview** namespace (Worker
-Previews read the `previews` block, and it is the shape the dashboard's Previews Base Bindings page
-generates), while `env.production.kv_namespaces` holds the **production** one. There is no top-level
-`kv_namespaces`, because neither `wrangler deploy --env production` (`yarn deploy`) nor the Previews
-block reads it. Set Production's Deploy command to `yarn deploy` (`npx wrangler deploy --env
-production`).
+`wrangler dev` uses Miniflare's local KV, so local work needs no namespace. Deployment happens
+through the Cloudflare Git integration building from `wrangler.jsonc`, which is the source of truth:
+- the top level (`kv_namespaces`) is **production** and uses the production namespace
+  (`f91ef4516759457ea7dee339b90471e2`) — a bare `wrangler deploy` uses it;
+- `previews.kv_namespaces` uses the **preview** namespace (`6c39022c31e5476980a52f0c55f3f947`) for
+  Worker Previews (`wrangler preview`), which is where branch/PR isolation comes from. Previews do not
+  inherit production settings, hence the separate declaration. There is no `env.<name>` block, because
+  a Wrangler environment would create a separately named Worker.
+
+A `wrangler versions upload` only creates a **Version URL** that uses production resources; Cloudflare
+documents it as unsuitable for branch or pull-request testing, so real branch previews must go through
+Previews. Confirm the binding on a deployed version: **Workers → blog → Deployments/Versions → that
+version → Bindings** should list `BLOG_OAUTH`, and the runtime logs should not contain
+`[oauth-token] no usable BLOG_OAUTH KV binding` (that line means the stored-token path is disabled). A
+binding added only in the dashboard can be dropped by the next build from the config.
 
 The exact token precedence and configuration are described in
 [MIGRATION.md](MIGRATION.md#github-tokens).
@@ -61,8 +69,6 @@ yarn dev                       # http://localhost:3000 (the OAuth callback is re
 | `yarn dev`                                 | Nuxt dev server (port 3000)                                              |
 | `yarn build`                               | Production build into `.output/`                                         |
 | `yarn worker:dev`                          | Run the build output inside a local workerd through wrangler (port 8787) |
-| `yarn deploy`                              | `wrangler deploy --env production` (the `blog` Worker)                   |
-| `yarn deploy:preview`                      | `wrangler versions upload` (non-production version upload; Worker Previews use `wrangler preview`) |
 | `yarn lint` / `yarn lint:fix`              | ESLint (flat config)                                                     |
 | `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared)                                    |
 

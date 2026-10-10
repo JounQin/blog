@@ -10,8 +10,6 @@
   "packageManager": "yarn@4.18.1",
   "scripts": {
     "build": "nuxt build",
-    "deploy": "wrangler deploy --env production",
-    "deploy:preview": "wrangler versions upload",
     "dev": "nuxt dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
