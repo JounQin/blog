@@ -6,6 +6,8 @@ import {
   IOS_OS_VERSION,
   MAX_FREE_TEXT_LENGTH,
   ONESHOT_FREE_ENDPOINT,
+  SOURCE_LANG_MAP,
+  TARGET_LANG_MAP,
   getSharedCookies,
   translateByDeepLX,
 } from '@deeplx/core'
@@ -1137,9 +1139,16 @@ const translateBatchWithLibrary = async (
     },
     body: JSON.stringify({
       text: texts,
-      target_lang: target,
+      // The oneshot endpoint wants the DeepL app's own codes, not the ISO ones:
+      // measured against the live endpoint, `target_lang: "ZH"` answers with the
+      // *source* unchanged while `"zh-Hans"` translates, so the ISO code made
+      // every Chinese target an echo (and therefore a failure on every page that
+      // asked for Chinese). `translateByDeepLX` maps these internally; this
+      // hand-rolled batch request has to apply the same mapping. `EN` is mapped
+      // to `en-US` for the same reason.
+      target_lang: TARGET_LANG_MAP[target] ?? target,
       // JSON drops an undefined source, which is what auto-detection wants
-      source_lang: source,
+      source_lang: source ? (SOURCE_LANG_MAP[source] ?? source) : undefined,
       usage_type: 'translate',
       app_information: {
         os: 'iOS',
