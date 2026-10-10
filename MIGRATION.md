@@ -40,9 +40,10 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 - The token only ever lives in the Worker; queries were ported verbatim from `src/queries.gql`
 - HTTP client: Nuxt/ofetch `$fetch` (global `fetch` underneath). **axios was removed** —
   its Node http adapter was one of the original portability blockers
-- `githubGraphql` tolerates partial responses: when GitHub returns data _and_ errors (for
-  example nodes the token cannot read) it logs a warning and returns the partial data;
-  API routes filter `null` nodes, so pages degrade instead of failing
+- `githubGraphql` logs partial responses (data _and_ errors, for example nodes the token cannot
+  read). For every token level except the last, that is treated as a failure so the next level is
+  tried; only the final `GITHUB_TOKEN` level returns the partial data, and API routes filter `null`
+  nodes, so pages degrade instead of failing
 - Per-node `null` filtering in `/api/pulse`, and `pinnedItems` filtered in `/api/about`
 
 ### Sessions and login
@@ -62,6 +63,114 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
   (`GITHUB_OAUTH_TOKEN_URL` overridable for local stubs), queries `viewer`, stores the user
   and token in the session, and 302s back to `path` (same-origin relative paths only)
 - `/api/info` returns the session user plus the public env values
+
+### GitHub tokens
+
+Some organisations reject classic personal access tokens outright
+(`web-infra-dev forbids access via a personal access token (classic)`), which is what broke
+`/api/about`; an OAuth App **user** token with `read:org` is accepted there. An anonymous
+visitor has no session, so that token cannot live in the session cookie — it is stored in an
+optional KV namespace and read by the GraphQL client:
+
+- **Capture** — every sign-in asks for the same read-only `read:org read:user` scopes, so a
+  signed-in user's own token can serve the data queries and share the load; without `read:org` the
+  organisation fields would always fall back to the owner's token. The callback keeps each user's
+  `accessToken` (and `refreshToken`, when GitHub returns one because the app expires user tokens) in
+  their signed session, and writes the **owner's** entry
+  `{ accessToken, refreshToken, expiresAt, login, id, scopes }` under `oauth:user-token` in KV only
+  when the signed-in `viewer.login` matches `GITHUB_OWNER_LOGIN` (defaulting to the app's owner), so
+  no visitor can write to KV. `id` is the account's numeric GitHub id (`viewer.databaseId`), recorded
+  on the first bootstrap — nothing new for the operator to configure. There is no separate bootstrap
+  secret any more; the earlier `OWNER_LOGIN_SECRET` gate only existed to hide the elevated scopes and
+  has been removed.
+- **Identity pinning** — the entry is an identity record, not just a login string:
+  - *read rule*: the stored token is used only when `entry.login` matches `GITHUB_OWNER_LOGIN` **and**
+    the pinned `id` is present **and** the entry is not marked rejected. Otherwise the entry is
+    ignored (a warning names `stored=<login>` and `expected=<GITHUB_OWNER_LOGIN>`, never a token) and
+    the request falls through to `GITHUB_TOKEN`. The entry is deliberately **not** deleted on a
+    mismatch: deleting is irreversible and would throw away the refresh token for what may be a typo,
+    whereas ignoring it has the same effect and is reversible.
+  - *write rule*: the callback stores when there is no entry, or the entry has no pinned id yet (the
+    first bootstrap, which also covers an entry created before the id existed), or the signing-in
+    account's `id` equals the entry's id. Overwriting the **same** identity is always safe, and a
+    sign-in is the only recovery path for a token that died elsewhere, so it is authoritative on every
+    isolate (CodeRabbit's "keep a healthy same-id entry" suggestion was deliberately not applied: the
+    isolate that sees a rejection is not necessarily the one that serves the next sign-in). A
+    **different** account id is refused with a warning — this is what stops a changed
+    `GITHUB_OWNER_LOGIN` from handing the site to whoever now owns that login.
+  - *dead tokens*: a credential failure (401/Bad credentials) writes a mark under its **own** KV key
+    (`oauth:user-token:rejected`) whose value is the SHA-256 fingerprint of the exact access token
+    that failed. The read rule ignores the stored token only when the mark matches the token
+    currently in KV, so a location stops retrying the dead token as soon as it observes the mark,
+    while a stale mark can never hide a token stored later. This is a **best-effort cross-isolate
+    signal, not an atomic one**: Workers KV is eventually consistent and a write may take up to 60
+    seconds or more to be visible in other locations (negative lookups are cached too), so a
+    location that has not observed the mark yet can retry the dead token. Correctness never depends
+    on the propagation: the isolate that detected the rejection drops its own cache immediately,
+    every use re-checks and falls through on the rejection, and a stale retry only costs one rejected
+    call before the fallback. The mark never rewrites the entry, which matters because Workers KV
+    has no compare-and-swap: a read-modify-write of the entry could clobber a pair a concurrent
+    sign-in or refresh had just stored, so the mark is deliberately kept out of the entry. A
+    successful write deletes the mark; even if one arrives afterwards it names the old token and is
+    ignored. Under-scoped but valid tokens are not marked, since they may still serve other queries.
+  - *deliberate transfer*: to move the blog to another account on purpose, delete the
+    `oauth:user-token` KV key by hand, update `GITHUB_OWNER_LOGIN`, then sign in as the new owner; the
+    next sign-in has no entry to conflict with and pins the new identity.
+- **Priority** (`worker/utils/github.ts`), highest first:
+  1. the optional per-call `options.token` override, never cached. Its real use is the login flow:
+     `/api/oauth` queries `viewer` with the token it has just exchanged — before any stored token
+     exists — and makes the trusted-login check with it, so it must outrank the lookups below;
+  2. the **signed-in user's own** token from this request's session;
+  3. the **owner's stored** token (`BLOG_OAUTH` KV, refreshed as below), which is what serves
+     anonymous visitors;
+  4. `GITHUB_TOKEN`.
+  Every level is tried, and any failure falls through to the next. For the levels that still have a
+  fallback (the override, the session token and the owner token) a GraphQL `errors` payload counts
+  as a failure even when partial `data` came with it, so an under-scoped token cannot silently serve
+  half an organisation profile; only `GITHUB_TOKEN`, which has nowhere left to go, keeps the
+  partial-data tolerance. A **rejected** owner token (401 or a permission error) drops the
+  per-isolate cache, and a credential failure (401/Bad credentials) is also recorded in a separate KV
+  key (`oauth:user-token:rejected`, holding the fingerprint of the token that actually failed), so an
+  isolate stops retrying a dead token once it observes the mark — an eventually consistent signal, so
+  until then a stale retry costs one rejected call before the fallback (see *dead tokens* above) —
+  while a concurrent sign-in or refresh can never be clobbered.
+- **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
+  `caches.default` for five minutes, keyed on the query, its variables and a **per-identity**
+  component (never a raw token, and never the coarse token level). GitHub data is **not** uniformly
+  public: the same query can return different nodes for a member of a private organisation than for a
+  non-member, so sharing one body across identities would leak. The identity component is:
+  - `user:<databaseId>` for a signed-in user, and `owner:<databaseId>` for the owner's stored token.
+    Two requests with the same account id must see the same data: the account determines both the
+    private resources it can reach and — because every sign-in asks for the same read-only scopes —
+    the scopes granted. The pinned account id also keeps the owner's key stable across a token
+    rotation, so rotating the token does not wipe the cache;
+  - `user:token:<sha256>` for a session created before the account id was recorded, and
+    `fallback:<sha256>` for `GITHUB_TOKEN`, which has no account to key on — the token itself is the
+    only identity available, stored as a one-way hash.
+
+  Anonymous traffic all shares the owner's identity, and GraphQL's limit is per token, so the cache
+  still cuts the repeated calls of a busy page. Only a clean data response is stored: a rate limit, a
+  401 or an empty body is never cached, so an error cannot poison it.
+
+  The identity lives in the cache key's **query string** (`...?v1&identity=…&hash=…`), so a zone
+  Cache Rule that strips query strings for this Worker would collapse every identity onto one key and
+  defeat the isolation. Do not add such a rule; if one already exists, exclude this Worker's cache
+  (the key cannot move out of the query string because Cloudflare's cache API keys on the URL).
+- **Refresh** (`worker/utils/oauth-token.ts`) — the owner's stored token, when missing, expired or
+  within five minutes of expiry, is refreshed with `POST $GITHUB_OAUTH_TOKEN_URL` and
+  `grant_type=refresh_token` (the OAuth app id/secret are the existing Worker secrets); GitHub
+  rotates both tokens, so the new pair is written back. The fresh value is cached per isolate.
+  A refresh failure falls back to `GITHUB_TOKEN`.
+- **Storage** — the `BLOG_OAUTH` KV binding lives in `wrangler.jsonc`. The top-level
+  `kv_namespaces` entry is the **preview** namespace (Cloudflare's non-production builds run
+  `wrangler versions upload` against the top-level config); `env.production` declares the
+  **production** namespace, and Production's Deploy command must target it because `kv_namespaces`
+  is non-inheritable, like `vars`: use `yarn deploy` (`wrangler deploy --env production`), while
+  `yarn deploy:preview` (`wrangler versions upload`) is the non-production/preview upload. Local
+  `wrangler dev` uses Miniflare's local KV, so no dev namespace is needed. The code
+  feature-detects the binding, so a deployment without it keeps working on `GITHUB_TOKEN` alone;
+  the config is the source of truth (a binding that exists only in the dashboard is removed by the
+  next deploy).
 
 ### Translation
 
@@ -307,8 +416,10 @@ workers.dev URL itself) is accepted, and keep the explicit value for development
 
 Some organisations refuse classic personal access tokens, for example
 `web-infra-dev` forbids access via a personal access token (classic). GitHub then
-returns a partial response with per-node errors; the client in
-`worker/utils/github.ts` tolerates partial data and drops the null nodes, so the
-pages still render (verified: `/pulse` logs 2 and 23 per-node errors and answers
-200). Use a fine-grained token or a GitHub App if those repositories have to be
-included.
+returns a partial response with per-node errors. The owner's OAuth user token in
+`BLOG_OAUTH` is accepted there, so the anonymous path no longer hits it; a
+signed-in visitor's token that still cannot read a node now makes *that level*
+fail and fall through to the owner's token (see **Priority** above). Only the
+final `GITHUB_TOKEN` level keeps the partial data and drops the `null` nodes, so
+a page can still render when every token is limited (verified: `/pulse` logs the
+per-node errors and answers 200).

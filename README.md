@@ -13,6 +13,37 @@ A blog system built on the GitHub GraphQL API, with Nuxt 4 SSR running on Cloudf
 - Login: GitHub OAuth with an HMAC-signed cookie session
 - Environment variables, deployment checklist and the migration log live in [MIGRATION.md](MIGRATION.md)
 
+## GitHub tokens
+
+GitHub data is read with an OAuth **user** token rather than only `GITHUB_TOKEN`, because
+organisations such as `web-infra-dev` reject personal access tokens (classic) outright, while
+fine-grained PATs and per-organisation GitHub App installs are impractical for a blog that reads
+data across several organisations. The GitHub OAuth app therefore needs its callback URL registered
+(`GITHUB_OAUTH_CALLBACK`, or the request origin) and, for refresh tokens, **Expire user access
+tokens** enabled in its settings.
+
+Every sign-in asks for the same read-only `read:org read:user` scopes, so a signed-in visitor's own
+token can serve the data queries and share the load instead of everything depending on one token.
+When `GITHUB_OWNER_LOGIN` (the maintainer, defaulting to the app owner) signs in once, the callback
+stores that account's token in the `BLOG_OAUTH` KV namespace — it serves anonymous visitors and is
+the fallback for a signed-in user whose own token cannot read an organisation. The entry pins that
+account's numeric GitHub id, so a changed `GITHUB_OWNER_LOGIN` neither uses nor overwrites it;
+handing the blog to another account on purpose means deleting the KV key first, then signing in as
+the new owner. The stored token is
+refreshed with its refresh token before it expires (GitHub rotates both, the new pair is written
+back and cached per isolate, and a failure degrades rather than failing a page), and successful
+GitHub responses are cached in `caches.default` for five minutes — never errors or rate limits.
+
+`wrangler dev` uses Miniflare's local KV, so local work needs no namespace. The top-level
+`kv_namespaces` entry in `wrangler.jsonc` is the **preview** namespace (non-production builds run
+`wrangler versions upload` against the top-level config) and `env.production` holds the
+**production** one: `yarn deploy` is `wrangler deploy --env production`, and `yarn deploy:preview`
+is `wrangler versions upload`. Set Production's Deploy command to `yarn deploy` (or
+`npx wrangler deploy --env production`) so it never targets the preview namespace.
+
+The exact token precedence and configuration are described in
+[MIGRATION.md](MIGRATION.md#github-tokens).
+
 ## Local development
 
 ```sh
@@ -29,7 +60,8 @@ yarn dev                       # http://localhost:3000 (the OAuth callback is re
 | `yarn dev`                                 | Nuxt dev server (port 3000)                                              |
 | `yarn build`                               | Production build into `.output/`                                         |
 | `yarn worker:dev`                          | Run the build output inside a local workerd through wrangler (port 8787) |
-| `yarn deploy`                              | `wrangler deploy` (Cloudflare Workers)                                   |
+| `yarn deploy`                              | `wrangler deploy --env production` (the `blog` Worker)                   |
+| `yarn deploy:preview`                      | `wrangler versions upload` (non-production version, preview namespace)    |
 | `yarn lint` / `yarn lint:fix`              | ESLint (flat config)                                                     |
 | `yarn typecheck` / `yarn typecheck:server` | Type checking (app / worker + shared)                                    |
 

@@ -44,6 +44,11 @@ export default defineEventHandler(async event => {
   authorizeUrl.searchParams.set('client_id', clientId)
   authorizeUrl.searchParams.set('state', uuid)
   authorizeUrl.searchParams.set('redirect_uri', `${callback}?path=${encodeURIComponent(target)}`)
+  // Every sign-in asks for the data scopes: `read:org` is read-only and the
+  // logged-in user's own token is only useful for the organisation fields with
+  // it (otherwise every request falls back to the owner's token). Storing the
+  // *owner's* token in KV is gated separately, by identity, in the callback.
+  authorizeUrl.searchParams.set('scope', 'read:org read:user')
 
   return sendRedirect(event, authorizeUrl.toString(), 302)
 })

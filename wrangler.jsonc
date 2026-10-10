@@ -11,13 +11,44 @@
   "observability": {
     "enabled": true,
   },
+  // KV namespace holding the maintainer's OAuth user token, so the GitHub-data
+  // routes (`/api/about`, ...) can use it for anonymous renders too. The code
+  // feature-detects the binding: without it the Worker keeps using GITHUB_TOKEN.
+  //
+  // The top-level entry is the **preview** namespace: Cloudflare's non-production
+  // builds run `wrangler versions upload` against the top-level config, so every
+  // preview version reads and writes that store. `kv_namespaces` is a
+  // non-inheritable binding (like `vars`), so production declares its own entry
+  // under `env.production` below and Production's Deploy command must be
+  // `npx wrangler deploy --env production`.
+  //
+  // There is deliberately no dev namespace: `wrangler dev` (and `nuxt dev`'s
+  // Cloudflare emulation) uses Miniflare's local KV, so local runs never touch
+  // either deployed namespace.
+  //
+  // This file is the source of truth: a binding that exists only in the
+  // Cloudflare dashboard is removed by the next `wrangler deploy`.
+  "kv_namespaces": [
+    { "binding": "BLOG_OAUTH", "id": "6c39022c31e5476980a52f0c55f3f947" },
+  ],
+  "env": {
+    // `name: "blog"` keeps this environment on the `blog` Worker instead of the
+    // default `blog-production`. Bindings are not inherited, so `BLOG_OAUTH` is
+    // declared here with the production namespace id.
+    "production": {
+      "name": "blog",
+      "kv_namespaces": [
+        { "binding": "BLOG_OAUTH", "id": "f91ef4516759457ea7dee339b90471e2" },
+      ],
+    },
+  },
   // `previews` is required by `npx wrangler preview` (Workers Builds runs it for
   // preview deployments) and may stay empty: assets, compatibility settings and
-  // migrations live at the top level, and we have no preview-specific vars or
-  // bindings. Keeping the app constants out of `vars` is why nothing has to be
-  // duplicated here -- GITHUB_REPOSITORY_OWNER / _NAME / _OWNER_TYPE have their
-  // defaults in nuxt.config.ts (runtimeConfig.github) and are only overridden
-  // when an environment variable is set. If a value ever needs to differ per
-  // environment, add `vars` plus the matching `previews.vars`.
+  // migrations live at the top level. Keeping the app constants out of `vars` is
+  // why nothing has to be duplicated here -- GITHUB_REPOSITORY_OWNER / _NAME /
+  // _OWNER_TYPE have their defaults in nuxt.config.ts (runtimeConfig.github) and
+  // are only overridden when an environment variable is set. If a value ever
+  // needs to differ per environment, add `vars` plus the matching
+  // `previews.vars`.
   "previews": {},
 }
