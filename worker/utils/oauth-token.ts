@@ -48,16 +48,39 @@ interface KvNamespace {
   ) => Promise<void>
 }
 
-/** The KV binding when the deployment has one; `undefined` otherwise. */
+/**
+ * Whether the "no usable binding" debug line was already emitted. The check runs
+ * on every read, but the operator only needs to be told once per isolate.
+ */
+let warnedAboutBinding = false
+
+/**
+ * The KV binding when the deployment really has one; `undefined` otherwise.
+ *
+ * This validates the *shape*, not the truthiness: a plain variable or secret
+ * named `BLOG_OAUTH` is a string, and calling `.get()`/`.put()` on it would throw
+ * at runtime. Both methods must be functions, so a mis-set secret is simply
+ * ignored (the stored-token path stays disabled and `GITHUB_TOKEN` is used).
+ */
 const getKv = (event: H3Event): KvNamespace | undefined => {
   const binding = getCloudflareEnv(event).BLOG_OAUTH
 
   if (
-    binding &&
+    binding !== null &&
     typeof binding === 'object' &&
-    typeof (binding as KvNamespace).get === 'function'
+    typeof (binding as KvNamespace).get === 'function' &&
+    typeof (binding as KvNamespace).put === 'function'
   ) {
     return binding as KvNamespace
+  }
+
+  if (!warnedAboutBinding) {
+    warnedAboutBinding = true
+    // debug level on purpose: this is expected when the optional binding is not
+    // configured, and the message carries no secret
+    console.debug(
+      '[oauth-token] no usable BLOG_OAUTH KV binding; the stored-token path is disabled and GITHUB_TOKEN is used',
+    )
   }
 
   return undefined
