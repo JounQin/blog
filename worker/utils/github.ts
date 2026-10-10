@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { getEnv } from './env'
-import { getOAuthUserToken } from './oauth-token'
+import { getOAuthUserToken, invalidateOAuthUserToken } from './oauth-token'
 import { readSession } from './session'
 
 interface GraphqlResponse<T> {
@@ -62,16 +62,46 @@ const cacheKeyOf = async (
     )}`,
   )
 
-/** Throws on a hard failure so the caller can fall through to the next token. */
-const interpret = <T>(body: GraphqlResponse<T>): T => {
+/**
+ * Whether an upstream failure looks like the token itself being rejected rather
+ * than a transient network or parse problem. Only then is the per-isolate cache
+ * dropped, so a temporary failure does not throw away a good token.
+ */
+const isRejectedToken = (error: unknown): boolean => {
+  const statusCode = (error as { statusCode?: number } | undefined)?.statusCode
+  const message = String(
+    (error as { statusMessage?: string } | undefined)?.statusMessage ??
+      (error as Error | undefined)?.message ??
+      error,
+  )
+
+  return (
+    statusCode === 401 ||
+    statusCode === 403 ||
+    /bad credentials|requires authentication|forbidden|not been granted|resource not accessible|permission/i.test(
+      message,
+    )
+  )
+}
+
+/**
+ * Turns a GraphQL body into data, or throws so the caller can fall through to the
+ * next token.
+ *
+ * `strict` is for every level that has somewhere to fall through to (the login
+ * override, the signed-in user's token and the owner's token): *any* GraphQL
+ * error there means "this token cannot serve the query", even when GitHub
+ * returned partial data, so the next token gets a chance. Only the last level
+ * (`GITHUB_TOKEN`) tolerates partial data -- by then there is nothing left to try
+ * and rendering what came back beats blanking the page.
+ */
+const interpret = <T>(body: GraphqlResponse<T>, strict: boolean): T => {
   const message =
     body.errors?.map(error => error.message).join('; ') || body.message
 
   // GitHub answers with partial data plus `errors` when some nodes are not
-  // accessible (for example a token without `read:org`). Only fail hard when
-  // there is no data at all, otherwise render what we got instead of blanking
-  // the page.
-  if (message && !body.data) {
+  // accessible (for example a token without `read:org`).
+  if (message && (strict || !body.data)) {
     throw createError({ statusCode: 502, statusMessage: message })
   }
 
@@ -120,7 +150,7 @@ const runGraphql = async <T>(
 
     if (cached?.data) {
       console.warn(`[github] cache hit (${level})`)
-      return interpret(cached)
+      return interpret(cached, level !== 'fallback')
     }
   }
 
@@ -157,7 +187,7 @@ const runGraphql = async <T>(
     console.warn(`[github] cache stored (${level})`)
   }
 
-  return interpret(body)
+  return interpret(body, level !== 'fallback')
 }
 
 /**
@@ -179,9 +209,12 @@ const runGraphql = async <T>(
  *    for `/api/about` there;
  * 4. `GITHUB_TOKEN`, the fallback.
  *
- * Any failure at a level falls through to the next one: a scope error, an
- * expired token or a 401 is caught and retried, so a stale token degrades
- * instead of turning a route into a 502.
+ * Any failure at a level falls through to the next one. For every level except
+ * the last, a GraphQL `errors` payload is a failure even when partial `data`
+ * came with it (a token without `read:org` must not silently serve half an
+ * org profile); only `GITHUB_TOKEN`, which has nowhere left to go, tolerates
+ * partial data. A rejected owner token also drops the per-isolate cache, so the
+ * next request re-reads KV or refreshes instead of retrying a dead token.
  */
 export async function githubGraphql<T>(
   event: H3Event,
@@ -240,6 +273,12 @@ export async function githubGraphql<T>(
       console.warn('[github] used the owner OAuth user token')
       return data
     } catch (error) {
+      if (isRejectedToken(error)) {
+        // do not keep retrying a token GitHub rejected: drop the isolate cache
+        // so the next request re-reads KV (a newer token) or refreshes it
+        invalidateOAuthUserToken()
+        console.warn('[github] dropped the rejected owner OAuth token from the cache')
+      }
       console.warn(
         '[github] the owner OAuth token failed, falling back to GITHUB_TOKEN:',
         String(error),

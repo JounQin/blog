@@ -86,6 +86,29 @@ const getKv = (event: H3Event): KvNamespace | undefined => {
   return undefined
 }
 
+/**
+ * The fresh value is cached per isolate: a Worker isolate serves many requests,
+ * and re-reading and re-refreshing the token for every one of them would be
+ * wasteful. Only a *usable* token is cached, so an empty or unusable store keeps
+ * being re-checked (and can be filled by a later login) instead of being
+ * remembered as "no token".
+ */
+let cachedOAuthToken: StoredOAuthToken | undefined
+
+/**
+ * Drops the per-isolate cache, so the next `getOAuthUserToken` re-reads KV and
+ * re-refreshes when needed.
+ *
+ * Called when the stored token is *rejected* (401/permission error): keeping a
+ * rejected token cached would make every request in this isolate retry it and
+ * only then fall back, and a newer token stored in KV would be ignored until the
+ * isolate is recycled. Also called when a new token is written, so a fresh login
+ * or a rotation is picked up immediately.
+ */
+export const invalidateOAuthUserToken = (): void => {
+  cachedOAuthToken = undefined
+}
+
 export const readStoredOAuthToken = async (
   event: H3Event,
 ): Promise<StoredOAuthToken | undefined> => {
@@ -125,6 +148,9 @@ export const writeStoredOAuthToken = async (
 
   try {
     await kv.put(OAUTH_TOKEN_KEY, JSON.stringify(token))
+    // a newly stored token (a fresh login, or a rotation) must be picked up by
+    // the next call instead of the previous isolate cache
+    invalidateOAuthUserToken()
     return true
   } catch (error) {
     console.warn('[oauth-token] could not store the token', String(error))
@@ -213,7 +239,16 @@ const refreshStoredOAuthToken = async (
       scopes: response.scope ?? token.scopes,
     }
 
-    await writeStoredOAuthToken(event, next)
+    if (!(await writeStoredOAuthToken(event, next))) {
+      // GitHub rotates refresh tokens, so a pair that was not persisted would
+      // leave the store holding a refresh token that may already be invalid;
+      // treat that as a refresh failure and let the caller fall back
+      console.warn(
+        '[oauth-token] refresh succeeded but could not store the new token',
+      )
+      return undefined
+    }
+
     console.warn('[oauth-token] refreshed the stored OAuth user token')
 
     return next
@@ -222,15 +257,6 @@ const refreshStoredOAuthToken = async (
     return undefined
   }
 }
-
-/**
- * The fresh value is cached per isolate: a Worker isolate serves many requests,
- * and re-reading and re-refreshing the token for every one of them would be
- * wasteful. Only a *usable* token is cached, so an empty or unusable store keeps
- * being re-checked (and can be filled by a later login) instead of being
- * remembered as "no token".
- */
-let cachedOAuthToken: StoredOAuthToken | undefined
 
 /** The OAuth user token to prefer, or `undefined` to use the fallback. */
 export const getOAuthUserToken = async (

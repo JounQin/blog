@@ -40,9 +40,10 @@ wrangler.jsonc   main=.output/server/index.mjs, assets=.output/public, nodejs_co
 - The token only ever lives in the Worker; queries were ported verbatim from `src/queries.gql`
 - HTTP client: Nuxt/ofetch `$fetch` (global `fetch` underneath). **axios was removed** —
   its Node http adapter was one of the original portability blockers
-- `githubGraphql` tolerates partial responses: when GitHub returns data _and_ errors (for
-  example nodes the token cannot read) it logs a warning and returns the partial data;
-  API routes filter `null` nodes, so pages degrade instead of failing
+- `githubGraphql` logs partial responses (data _and_ errors, for example nodes the token cannot
+  read). For every token level except the last, that is treated as a failure so the next level is
+  tried; only the final `GITHUB_TOKEN` level returns the partial data, and API routes filter `null`
+  nodes, so pages degrade instead of failing
 - Per-node `null` filtering in `/api/pulse`, and `pinnedItems` filtered in `/api/about`
 
 ### Sessions and login
@@ -88,8 +89,13 @@ optional KV namespace and read by the GraphQL client:
   3. the **owner's stored** token (`BLOG_OAUTH` KV, refreshed as below), which is what serves
      anonymous visitors;
   4. `GITHUB_TOKEN`.
-  Every level is tried and any failure — scope error, expired token, 401, no data — falls through to
-  the next, so a stale or under-scoped token degrades instead of turning a route into a 502.
+  Every level is tried, and any failure falls through to the next. For the levels that still have a
+  fallback (the override, the session token and the owner token) a GraphQL `errors` payload counts
+  as a failure even when partial `data` came with it, so an under-scoped token cannot silently serve
+  half an organisation profile; only `GITHUB_TOKEN`, which has nowhere left to go, keeps the
+  partial-data tolerance. A **rejected** owner token (401 or a permission error) also drops the
+  per-isolate cache, so the next request re-reads KV — picking up a newer token — or refreshes,
+  instead of retrying a dead token forever.
 - **Cache** (`worker/utils/github.ts`) — successful GitHub responses are also stored in
   `caches.default` for five minutes, keyed on the query, its variables and the token **level**
   (never a token value). Anonymous traffic all shares the owner's token, and GraphQL's limit is per
@@ -356,8 +362,10 @@ workers.dev URL itself) is accepted, and keep the explicit value for development
 
 Some organisations refuse classic personal access tokens, for example
 `web-infra-dev` forbids access via a personal access token (classic). GitHub then
-returns a partial response with per-node errors; the client in
-`worker/utils/github.ts` tolerates partial data and drops the null nodes, so the
-pages still render (verified: `/pulse` logs 2 and 23 per-node errors and answers
-200). Use a fine-grained token or a GitHub App if those repositories have to be
-included.
+returns a partial response with per-node errors. The owner's OAuth user token in
+`BLOG_OAUTH` is accepted there, so the anonymous path no longer hits it; a
+signed-in visitor's token that still cannot read a node now makes *that level*
+fail and fall through to the owner's token (see **Priority** above). Only the
+final `GITHUB_TOKEN` level keeps the partial data and drops the `null` nodes, so
+a page can still render when every token is limited (verified: `/pulse` logs the
+per-node errors and answers 200).
