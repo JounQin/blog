@@ -32,6 +32,19 @@ export const useI18n = () => {
     'translate-retried',
     () => ({}),
   )
+  // units a render's subrequest budget did not reach: the page shows what it has
+  // and the client asks for the rest in follow-up requests
+  const remaining = useState<Record<string, number>>(
+    'translate-remaining',
+    () => ({}),
+  )
+  const continued = useState<Record<string, number>>(
+    'translate-continued',
+    () => ({}),
+  )
+
+  /** How many follow-up requests a partly translated entry may cost. */
+  const MAX_CONTINUATIONS = 4
 
   const request = async (
     key: string,
@@ -41,7 +54,10 @@ export const useI18n = () => {
     retry = false,
   ) => {
     try {
-      const { text } = await $fetch<{ text: string }>('/api/translate', {
+      const { text, remaining: left } = await $fetch<{
+        text: string
+        remaining?: number
+      }>('/api/translate', {
         // POST: a long article body must not have to fit into a URL. No
         // transport retry either -- `retry` in the body only allows one retry
         // inside the route, and only for client-triggered calls; the SSR
@@ -58,9 +74,11 @@ export const useI18n = () => {
         },
       })
       cache.value[key] = text
+      remaining.value[key] = left ?? 0
     } catch {
       // a failed translation degrades to the source text, never to a placeholder
       cache.value[key] = source
+      remaining.value[key] = 0
     }
   }
 
@@ -112,8 +130,11 @@ export const useI18n = () => {
     // equal to the source is a fallback: it renders (never a placeholder) but it
     // does not count as a successful hit
     const fallback = cached != null && cached === parsed.source
+    // a render only spends a fixed subrequest budget, so an entry can be partly
+    // translated: it renders what it has and asks for the rest
+    const partial = (remaining.value[key] ?? 0) > 0
 
-    if (cached && !fallback) {
+    if (cached && !fallback && !partial) {
       return buildTranslatedText(parsed, cached)
     }
 
@@ -121,10 +142,15 @@ export const useI18n = () => {
       import.meta.client &&
       parsed.source &&
       !pending.value[key] &&
-      // a fallback is retried once; a successful entry is never re-requested
-      (!cached || !retried.value[key])
+      // a fallback is retried once, a partly translated entry a few times, and a
+      // completed one never
+      (partial
+        ? (continued.value[key] ?? 0) < MAX_CONTINUATIONS
+        : !cached || !retried.value[key])
     ) {
-      if (fallback) {
+      if (partial) {
+        continued.value[key] = (continued.value[key] ?? 0) + 1
+      } else if (fallback) {
         retried.value[key] = true
       }
 
