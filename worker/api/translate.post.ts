@@ -1528,10 +1528,17 @@ export default defineEventHandler(async event => {
     unit =>
       unit.result !== undefined &&
       isAnswered(unit) &&
-      unit.answers.some(answer => answer?.translated) &&
+      // only prose counts: a fixed code piece is never translated, so answering it
+      // verbatim must not make a unit look whole
+      unit.answers.some(
+        (answer, index) => !unit.pieces[index]?.fixed && answer?.translated,
+      ) &&
       // a piece the provider said already is the target language stays verbatim
       // by design, so its text is not untranslated prose
-      !unit.answers.some(answer => answer?.ok && !answer.translated) &&
+      !unit.answers.some(
+        (answer, index) =>
+          !unit.pieces[index]?.fixed && answer?.ok && !answer.translated,
+      ) &&
       isSuspect(unit.text, unit.result),
   )
 
@@ -1543,13 +1550,14 @@ export default defineEventHandler(async event => {
     )
   }
 
-  // one single-text DLX request per suspect, each reserved like every other call;
-  // the answer that shares less source prose wins, so a retry can never make a
-  // unit worse, and a unit that still shares a meaningful run is not reported as
-  // translated. The shared budget bounds the loop, so a pathological body cannot
-  // fire an unbounded number of retries.
-  let retried = 0
-  let improved = 0
+  // One single-text DLX request per suspect. The slots are reserved up front, so
+  // the shared budget still bounds how many run, and the requests then go through
+  // the same bounded-concurrency helper as everything else: a body with many
+  // suspects costs ⌈n/CHUNK_CONCURRENCY⌉ round trips instead of n sequential ones,
+  // each of which could block for the whole 4 s fallback budget. The answer that
+  // shares less source prose wins, so a retry can never make a unit worse, and a
+  // unit that still shares a meaningful run is not reported as translated.
+  const retryable: ProseUnit[] = []
 
   if (service.url) {
     for (const unit of suspects) {
@@ -1557,87 +1565,88 @@ export default defineEventHandler(async event => {
         break
       }
 
-      const entry = maskCode(unit.text)
-      retried++
-
-      let answer: string | undefined
-
-      try {
-        const dlx = await translateWithDlx(
-          entry.masked,
-          target,
-          source,
-          service,
-          `suspect=${retried}/${suspects.length}`,
-        )
-        answer = dlx.text
-      } catch (error) {
-        console.warn(
-          '[translate] DLX retry failed',
-          `suspect=${retried}/${suspects.length}`,
-          String(error),
-        )
-        continue
-      }
-
-      const current = unit.result
-
-      if (answer === undefined || current === undefined) {
-        continue
-      }
-
-      const restored = entry.codeSpans.length
-        ? unmask(answer, entry.codeSpans)
-        : answer
-
-      if (
-        restored !== undefined &&
-        sharedProse(unit.text, restored).cover <
-          sharedProse(unit.text, current).cover
-      ) {
-        unit.result = restored
-        improved++
-
-        // Cache the better answer so a continuation or a later request reuses it
-        // instead of the half-translated provider answer. A piece-level cache entry
-        // has to hold the *masked* answer (the one still carrying the tokens), so
-        // only a unit whose whole masked text is exactly one piece can be stored;
-        // anything else marks the unit stale so its partial answers are not cached
-        // with the one-day TTL at all.
-        const open = unit.pieces
-          .map((piece, position) => (piece.fixed ? -1 : position))
-          .filter(position => position >= 0)
-        const only = open[0]
-
-        if (
-          open.length === 1 &&
-          only !== undefined &&
-          unit.pieces[only]?.text === entry.masked
-        ) {
-          unit.answers[only] = { text: answer, ok: true, translated: true }
-        } else {
-          unit.stale = true
-        }
-      }
+      retryable.push(unit)
     }
   }
 
-  if (retried) {
+  let improved = 0
+
+  await mapConcurrent(retryable, CHUNK_CONCURRENCY, async (unit, index) => {
+    const entry = maskCode(unit.text)
+    const label = `suspect=${index + 1}/${suspects.length}`
+
+    let answer: string | undefined
+
+    try {
+      const dlx = await translateWithDlx(
+        entry.masked,
+        target,
+        source,
+        service,
+        label,
+      )
+      answer = dlx.text
+    } catch (error) {
+      console.warn('[translate] DLX retry failed', label, String(error))
+      return
+    }
+
+    const current = unit.result
+
+    if (answer === undefined || current === undefined) {
+      return
+    }
+
+    const restored = entry.codeSpans.length
+      ? unmask(answer, entry.codeSpans)
+      : answer
+
+    if (
+      restored !== undefined &&
+      sharedProse(unit.text, restored).cover <
+        sharedProse(unit.text, current).cover
+    ) {
+      unit.result = restored
+      improved++
+
+      // Cache the better answer so a continuation or a later request reuses it
+      // instead of the half-translated provider answer. A piece-level cache entry
+      // has to hold the *masked* answer (the one still carrying the tokens), so
+      // only a unit whose whole masked text is exactly one piece can be stored;
+      // anything else marks the unit stale so its partial answers are not cached
+      // with the one-day TTL at all.
+      const open = unit.pieces
+        .map((piece, position) => (piece.fixed ? -1 : position))
+        .filter(position => position >= 0)
+      const only = open[0]
+
+      if (
+        open.length === 1 &&
+        only !== undefined &&
+        unit.pieces[only]?.text === entry.masked
+      ) {
+        unit.answers[only] = { text: answer, ok: true, translated: true }
+      } else {
+        unit.stale = true
+      }
+    }
+  })
+
+  if (retryable.length) {
     console.warn(
       '[translate] DLX retry finished',
-      `suspects=${retried}/${suspects.length}`,
+      `suspects=${retryable.length}/${suspects.length}`,
       `improved=${improved}`,
     )
   }
 
-  // without a DLX fallback a suspect cannot be retried, so it is not reported as
-  // `remaining` (which promises a continuation): an echoed piece is already a
-  // `failedChunk`, and a partly translated one has nothing better to fall back to
-  if (service.url) {
-    for (const unit of suspects) {
-      if (unit.result !== undefined && isSuspect(unit.text, unit.result)) {
-        unit.suspect = true
-      }
+  // A unit that still holds source prose is never the final text, so it must not
+  // be cached for a day -- with or without a fallback. With a DLX it is
+  // `remaining`, because a continuation can still improve it; without one there is
+  // nothing left to try, so it is a failure instead of a promise.
+  for (const unit of suspects) {
+    if (unit.result !== undefined && isSuspect(unit.text, unit.result)) {
+      unit.suspect = true
     }
   }
 
@@ -1653,7 +1662,9 @@ export default defineEventHandler(async event => {
     entry => !entry.piece.fixed && !entry.answer,
   ).length
   const suspectUnits = allUnits.filter(unit => unit.suspect).length
-  const remaining = remainingPieces + suspectUnits
+  // a suspect is unfinished only while a fallback exists to finish it; without
+  // one it is a failure, so it is not promised as `remaining`
+  const remaining = remainingPieces + (service.url ? suspectUnits : 0)
 
   // cache every piece that produced a real answer, even when the request as a
   // whole was cut short: that is what lets a follow-up request finish the rest
@@ -1693,9 +1704,10 @@ export default defineEventHandler(async event => {
     )
   }
 
-  const failedChunks = pieces.filter(
-    entry => entry.answer && !entry.answer.ok,
-  ).length
+  const failedChunks =
+    pieces.filter(entry => entry.answer && !entry.answer.ok).length +
+    // without a fallback a suspect has nowhere left to go, so it is a failure
+    (service.url ? 0 : suspectUnits)
   const translatedPieces = pieces.filter(entry => entry.answer?.translated).length
 
   const payload: TranslatePayload = {
@@ -1712,8 +1724,9 @@ export default defineEventHandler(async event => {
     // translation at all. A body that came back whole but unchanged (or that is
     // only code) is complete, yet nothing was translated, so it is not reported as
     // one; a piece that had to fall back is a failure either way, and pieces the
-    // budget did not reach -- or that still hold source prose -- are reported as
-    // `remaining` so a follow-up request can finish them.
+    // budget did not reach -- or units that still hold source prose while a
+    // fallback can still improve them -- are reported as `remaining` so a
+    // follow-up request can finish them.
     translated:
       !failedChunks && !remaining && (translatedPieces > 0 || !pieces.length),
     failedChunks,
