@@ -1,16 +1,9 @@
 import {
-  IOS_APP_BUILD,
-  IOS_APP_VERSION,
-  IOS_CFNETWORK_VERSION,
-  IOS_DARWIN_VERSION,
-  IOS_OS_VERSION,
   MAX_FREE_TEXT_LENGTH,
-  ONESHOT_FREE_ENDPOINT,
-  SOURCE_LANG_MAP,
-  TARGET_LANG_MAP,
+  chunkByLength,
   translateByDeepLX,
 } from '@deeplx/core'
-import { $fetch } from 'ofetch'
+import { isXFetchError, xfetch } from 'x-fetch'
 
 import { LOCALE_COOKIE, Locale, TOGGLE_LOCALE, isLocale } from '../../shared/utils/locale'
 import { getEnv } from '../utils/env'
@@ -21,10 +14,11 @@ import { getEnv } from '../utils/env'
  * Powered by `@deeplx/core`, which talks to DeepL's free endpoints, so no API
  * key or other environment variable is required. When `DEEPLX_URL` is set
  * (e.g. `https://<your-dlx-host>`) a self-hosted DLX instance
- * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a chunk
- * whose library attempts failed or that the library echoed unchanged gets one
- * request to `<DEEPLX_URL>/translate` with an optional `DEEPLX_TOKEN` bearer
- * header and a shorter 4 s budget. The
+ * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a unit
+ * whose batched answer failed the checks below gets one request to
+ * `<DEEPLX_URL>/translate` with an optional `DEEPLX_TOKEN` bearer header and a
+ * shorter 4 s budget. That call is single-text, because a self-hosted DLX has no
+ * documented batch contract. The
  * endpoint should serve `/translate` directly: redirects are followed, but a
  * 301/302/303 becomes a GET and drops the body, so only a method-preserving
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
@@ -43,14 +37,15 @@ import { getEnv } from '../utils/env'
  *
  * Only prose is ever sent: `<pre>` blocks are lifted out of the body and spliced
  * back byte-for-byte, and the prose is split into block-level units (paragraphs,
- * list items, headings, table cells) that are translated one by one, so a provider
- * sees a whole paragraph rather than an arbitrary slice of one. Inline `<code>`
- * inside a unit is masked with a numbered token -- it is never sent either -- and
- * the original span is spliced back on return; when a token is not preserved the
- * unit falls back to translating its prose fragments separately. A unit whose
- * answer still shares a meaningful run of source prose is retried once through a
- * batched DLX request and, if that does not improve it, is reported as
- * `remaining` instead of as translated. A unit that comes back unchanged --
+ * list items, headings, table cells) so a provider sees whole paragraphs rather
+ * than arbitrary slices. `chunkByLength` from `@deeplx/core` packs those units
+ * into as few requests as the library's total-length limit allows, and the library
+ * refuses an oversized batch itself. Inline `<code>` inside a unit is masked with
+ * a numbered token -- it is never sent either -- and the original span is spliced
+ * back on return; when a token is not preserved the unit falls back to translating
+ * its prose fragments separately. A unit whose answer still shares a meaningful run
+ * of source prose is retried once through a single-text DLX request and, if that
+ * does not improve it, is reported as `remaining` instead of as translated. A unit that comes back unchanged --
  * compared with markup, code and whitespace removed, and with the provider's own
  * `sourceLang`/`source_lang` taken into account when it says the source already is
  * the target language -- keeps its source text and is counted in `failedChunks`.
@@ -64,7 +59,7 @@ const DEEPL_LOCALES: Record<Locale, string> = {
 /** The provider rejects anything longer than its anonymous oneshot limit, so the
  * splitting cap is that limit itself rather than a copy of the number. */
 const MAX_CHARS = MAX_FREE_TEXT_LENGTH
-// the budget is generous: a batched translation can take seconds (measured ~2 s
+// the budget is generous: a translation can take seconds (measured ~2 s
 // per translation from node), and the library path may still make its own warm-up
 // request when it is used
 const CHUNK_TIMEOUT = 8000
@@ -624,6 +619,31 @@ const unmask = (answer: string, codeSpans: string[]): string | undefined => {
 const MAX_ATTEMPTS = 2
 
 /**
+ * One primary request through `@deeplx/core`, carrying a whole batch. Since
+ * 0.3.0 the library takes an array of texts and answers position by position
+ * (`data: string[]`), and it owns the anonymous endpoint's limits: `chunkByLength`
+ * groups our units so the **sum** of a batch's texts stays inside
+ * `MAX_FREE_TEXT_LENGTH`, and the library itself refuses anything larger (a
+ * `code: 413` value) before sending it. A malformed call is a `code: 400` value,
+ * an HTTP failure keeps its status, and only a translation-count mismatch throws
+ * (it is outside the library's own try/catch), so the caller wraps this call and
+ * treats a throw as a batch failure rather than letting it escape as a 502.
+ */
+const translateBatchWithLibrary = (
+  texts: string[],
+  target: TargetLanguage,
+  source: SourceLanguage | undefined,
+) =>
+  translateByDeepLX(
+    source,
+    target,
+    texts,
+    undefined,
+    undefined,
+    AbortSignal.timeout(CHUNK_TIMEOUT),
+  )
+
+/**
  * One primary attempt through `@deeplx/core`, which talks to DeepL's anonymous
  * oneshot endpoint. A caller-provided source is passed through; without one the
  * provider detects the language itself. `translateByDeepLX` reports failures as
@@ -645,21 +665,24 @@ const translateWithLibrary = (
   )
 
 /**
- * One fallback request to the self-hosted DLX service. The origin (host, port
- * and any path prefix) comes from `DEEPLX_URL` verbatim and only `/translate`
- * is appended, so nothing here is host or port specific. `source_lang` is sent
- * when the caller named a source and omitted otherwise (JSON drops `undefined`),
- * so the DLX detects the language itself exactly when the library does.
+ * One fallback request to the self-hosted DLX service, sent through the same
+ * `xfetch` helper `@deeplx/core` uses (`x-fetch`), so body serialisation,
+ * timeout, redirect and error semantics match the library instead of being
+ * reinvented here. The origin (host, port and any path prefix) comes from
+ * `DEEPLX_URL` verbatim and only `/translate` is appended, so nothing here is
+ * host or port specific. `source_lang` is sent when the caller named a source
+ * and omitted otherwise (JSON drops `undefined`), so the DLX detects the
+ * language itself exactly when the library does.
  *
- * Redirects are followed (the runtime default), but the endpoint should serve
- * `/translate` directly: a 301/302/303 is re-issued as a GET and drops the JSON
- * body, so only a method-preserving redirect (307/308) still translates. The
- * `authorization` header goes to the configured origin on the first request.
- * `ignoreResponseError` keeps ofetch from throwing on a non-2xx, so the status of
- * the final response can be inspected here.
+ * The endpoint should serve `/translate` directly: a redirect is followed, but a
+ * 301/302/303 is re-issued as a GET and drops the JSON body, so only a
+ * method-preserving redirect (307/308) still translates. The `authorization`
+ * header goes to the configured origin on the first request. `xfetch` throws an
+ * `XFetchError` (carrying the `Response`) for a non-2xx answer and for a body it
+ * cannot parse as JSON, so the status is read off that error.
  *
- * It counts as a success only when the final HTTP status is 200, the JSON `code`
- * is 200 and `data` is a non-empty string that actually translated the chunk;
+ * It counts as a success only when the HTTP status is 2xx, the JSON `code` is
+ * 200 and `data` is a non-empty string that actually translated the chunk;
  * anything else (429, an auth failure whose body may not even be JSON, an empty
  * payload or an answer that is still the source, markup noise aside) throws. The
  * token is never logged.
@@ -679,36 +702,32 @@ const translateWithDlx = async (
     throw new Error('DEEPLX_URL is not configured')
   }
 
-  const response = await $fetch.raw<DlxResponse>(`${url}${DEEPLX_PATH}`, {
+  // exactly one fallback request: the helper does not retry either
+  const payload = await xfetch<DlxResponse>(`${url}${DEEPLX_PATH}`, {
     method: 'POST',
     headers: {
-      'content-type': 'application/json',
       ...(service.token && { authorization: `Bearer ${service.token}` }),
     },
+    // `xfetch` serialises a plain object itself and sets the JSON content type
     body: {
       text: chunk,
       // omitted for auto-detection: JSON.stringify drops an undefined value
       source_lang: source,
       target_lang: target,
     },
-    // exactly one fallback request: ofetch does not retry POST by default
+    type: 'json',
     redirect: 'follow',
-    ignoreResponseError: true,
     signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
-  })
-
-  if (response.status !== 200) {
+  }).catch((error: unknown) => {
     console.warn(
-      '[translate] DLX answered with a non-200 status',
+      '[translate] DLX answered with an error',
       label,
-      `status=${response.status}`,
+      `status=${isXFetchError(error) ? (error.response?.status ?? 'none') : 'none'}`,
       `length=${chunk.length}`,
     )
-    throw new Error(`DLX responded with HTTP ${response.status}`)
-  }
+    throw error
+  })
 
-  // ofetch parses the body into `_data` (destr, so a non-JSON body stays a string)
-  const payload: DlxResponse | undefined = response._data
   const { code, data, source_lang: reported } = payload ?? {}
 
   const detected = detectedFor(reported, source)
@@ -731,75 +750,6 @@ const translateWithDlx = async (
   return { text: data, detected }
 }
 
-/**
- * One batched request to the self-hosted DLX: an array of texts in, one answer
- * per input out, in order. It is used only to re-ask for the units whose first
- * answer still looked partly translated. The endpoint answers `data` as an array
- * for an array input; anything else (a non-200, a `code` other than 200, a
- * mismatched length or a non-string entry) makes that position unusable and the
- * caller keeps what it already had. The token is never logged or sent anywhere but
- * the configured origin.
- */
-const translateBatchWithDlx = async (
-  texts: string[],
-  target: TargetLanguage,
-  source: SourceLanguage | undefined,
-  service: DlxService,
-): Promise<Array<string | undefined>> => {
-  const url = service.url
-
-  if (!url) {
-    return texts.map(() => undefined)
-  }
-
-  try {
-    const response = await $fetch.raw<DlxResponse>(`${url}${DEEPLX_PATH}`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(service.token && { authorization: `Bearer ${service.token}` }),
-      },
-      body: {
-        text: texts,
-        // omitted for auto-detection: JSON.stringify drops an undefined value
-        source_lang: source,
-        target_lang: target,
-      },
-      redirect: 'follow',
-      ignoreResponseError: true,
-      signal: AbortSignal.timeout(FALLBACK_TIMEOUT),
-    })
-
-    if (response.status !== 200) {
-      console.warn(
-        '[translate] DLX batch answered with a non-200 status',
-        `status=${response.status}`,
-        `texts=${texts.length}`,
-      )
-      return texts.map(() => undefined)
-    }
-
-    const payload: DlxResponse | undefined = response._data
-    const data = payload?.data
-
-    if (payload?.code !== 200 || !Array.isArray(data) || data.length !== texts.length) {
-      console.warn(
-        '[translate] DLX batch did not line up',
-        `texts=${texts.length}`,
-        `data=${Array.isArray(data) ? data.length : typeof data}`,
-      )
-      return texts.map(() => undefined)
-    }
-
-    return data.map(value =>
-      typeof value === 'string' && value ? value : undefined,
-    )
-  } catch (error) {
-    console.warn('[translate] DLX batch threw', String(error), `texts=${texts.length}`)
-    return texts.map(() => undefined)
-  }
-}
-
 /** What one unit's translation produced: the text plus how it came back. */
 interface ChunkResult {
   text: string
@@ -820,6 +770,12 @@ interface ChunkTask {
   service: DlxService
   /** the batch path already asked the library, so only the fallback is left */
   skipLibrary?: boolean
+  /**
+   * Reserves one subrequest right before an outbound call. `false` means the
+   * request's budget is used up: nothing is sent and the chunk stays unanswered,
+   * so it is reported as `remaining` for a continuation instead of as a failure.
+   */
+  reserve: () => boolean
 }
 
 const translateChunk = async ({
@@ -831,7 +787,8 @@ const translateChunk = async ({
   attempts,
   service,
   skipLibrary,
-}: ChunkTask): Promise<ChunkResult> => {
+  reserve,
+}: ChunkTask): Promise<ChunkResult | undefined> => {
   // every log line names the chunk, so a partly translated body can be traced to
   // the chunks that failed instead of being invisible
   const label = `chunk=${index + 1}/${total}`
@@ -839,6 +796,16 @@ const translateChunk = async ({
   // primary: the `@deeplx/core` library, up to `attempts` tries. It reports its
   // outcome as a value, so the retry decision is a plain check on `code`
   for (let attempt = 1; !skipLibrary && attempt <= attempts; attempt++) {
+    // one outbound call, reserved before it is sent
+    if (!reserve()) {
+      console.warn(
+        '[translate] subrequest budget is used up',
+        label,
+        `attempt=${attempt}/${attempts}`,
+      )
+      return undefined
+    }
+
     try {
       const result = await translateWithLibrary(chunk, target, source)
 
@@ -928,6 +895,12 @@ const translateChunk = async ({
   // up the attempts) or did not translate the chunk; a translated chunk never
   // reaches it, and without `DEEPLX_URL` the chunk simply keeps its source text.
   if (service.url) {
+    // one outbound call, reserved before it is sent
+    if (!reserve()) {
+      console.warn('[translate] subrequest budget is used up', label, 'fallback')
+      return undefined
+    }
+
     console.warn(
       '[translate] falling back to the self-hosted DLX',
       label,
@@ -978,23 +951,6 @@ const translateChunk = async ({
 const CHUNK_CONCURRENCY = 6
 
 /**
- * The oneshot endpoint takes an **array** of texts and answers with one
- * translation per input, in order, so a batch is a single subrequest however many
- * units it carries. `@deeplx/core` only exposes a single-text helper, so the
- * batch request is built here from the constants the library itself uses; the
- * helper stays the fallback for a single unit.
- */
-const BATCH_MAX_TEXTS = 16
-/**
- * The endpoint caps the **total** text of one request at its free-text limit:
- * measured against the live endpoint, 1500 characters across all items is
- * accepted while 1600 is rejected with `text exceeds maximum length`. A larger
- * ceiling made every batch that exceeded one long paragraph fail with a 400 and
- * left the whole page untranslated, because a failed batch sends all of its
- * units to the fallback. `MAX_FREE_TEXT_LENGTH` is exactly that limit.
- */
-const BATCH_MAX_CHARS = MAX_FREE_TEXT_LENGTH
-/**
  * How many provider subrequests one request may spend. The Workers free plan caps subrequests per request at 50, and a render
  * also talks to the GitHub API, so 16 leaves a wide margin (34 of the 50 stay for
  * the GitHub calls and the rest of the request). Every outbound call reserves its
@@ -1005,7 +961,7 @@ const BATCH_MAX_CHARS = MAX_FREE_TEXT_LENGTH
  */
 const MAX_SUBREQUESTS = 16
 
-/** One unit waiting to be translated, with the batch it belongs to. */
+/** One piece inside a batch, addressed back into the request's `misses`. */
 interface BatchJob {
   index: number
   text: string
@@ -1025,106 +981,9 @@ interface PlanSegment {
   units: ProseUnit[]
 }
 
-interface OneshotTranslation {
-  text?: string
-  detected_source_language?: string
-}
-
-interface OneshotResponse {
-  translations?: OneshotTranslation[]
-}
-
-const instanceId = crypto.randomUUID()
-const sessionId = crypto.randomUUID()
-
 /**
- * Translates a batch of units in one request. Every answer is returned position
- * by position, so the caller can still tell which unit failed; a status other
- * than 200, or a response whose `translations` do not line up with the input,
- * fails the whole batch and sends each unit to the fallback.
- *
- * This path deliberately does not warm up: the batch POST carries no cookies,
- * which the endpoint accepts, so a cold isolate pays no extra warm-up request
- * here. The library path (`translateByDeepLX`) still warms itself up whenever it
- * is used.
- */
-const translateBatchWithLibrary = async (
-  texts: string[],
-  target: TargetLanguage,
-  source: SourceLanguage | undefined,
-): Promise<(OneshotAnswer | undefined)[]> => {
-  const response = await fetch(ONESHOT_FREE_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      accept: '*/*',
-      'accept-language': 'en-US,en;q=0.9',
-      authorization: 'None',
-      'user-agent': `DeepL/${IOS_APP_VERSION} CFNetwork/${IOS_CFNETWORK_VERSION} Darwin/${IOS_DARWIN_VERSION}`,
-      'x-app-os-version': IOS_OS_VERSION,
-      'x-app-instance-id': instanceId,
-      'x-app-session-id': sessionId,
-    },
-    body: JSON.stringify({
-      text: texts,
-      // The oneshot endpoint wants the DeepL app's own codes, not the ISO ones:
-      // measured against the live endpoint, `target_lang: "ZH"` answers with the
-      // *source* unchanged while `"zh-Hans"` translates, so the ISO code made
-      // every Chinese target an echo (and therefore a failure on every page that
-      // asked for Chinese). `translateByDeepLX` maps these internally; this
-      // hand-rolled batch request has to apply the same mapping. `EN` is mapped
-      // to `en-US` for the same reason.
-      target_lang: TARGET_LANG_MAP[target] ?? target,
-      // JSON drops an undefined source, which is what auto-detection wants
-      source_lang: source ? (SOURCE_LANG_MAP[source] ?? source) : undefined,
-      usage_type: 'translate',
-      app_information: {
-        os: 'iOS',
-        os_version: IOS_OS_VERSION,
-        app_version: IOS_APP_VERSION,
-        app_build: IOS_APP_BUILD,
-        instance_id: instanceId,
-      },
-    }),
-    signal: AbortSignal.timeout(CHUNK_TIMEOUT),
-  })
-
-  if (response.status !== 200) {
-    console.warn(
-      '[translate] batch request failed',
-      `status=${response.status}`,
-      `texts=${texts.length}`,
-    )
-    return texts.map(() => undefined)
-  }
-
-  const payload = (await response.json().catch(() => null)) as
-    | OneshotResponse
-    | null
-  const translations = payload?.translations
-
-  if (!Array.isArray(translations) || translations.length !== texts.length) {
-    console.warn(
-      '[translate] batch response did not line up',
-      `texts=${texts.length}`,
-      `translations=${Array.isArray(translations) ? translations.length : 'none'}`,
-    )
-    return texts.map(() => undefined)
-  }
-
-  return translations.map(translation =>
-    typeof translation?.text === 'string' && translation.text
-      ? {
-          data: translation.text,
-          sourceLang: translation.detected_source_language,
-        }
-      : undefined,
-  )
-}
-
-/**
- * Runs the batches a few at a time: each batch is one subrequest, and the runtime
- * caps how many connections may be in flight at once.
+ * Runs the tasks a few at a time: each one is an outbound request, and the
+ * runtime caps how many connections may be in flight at once.
  */
 const mapConcurrent = async <Item, Result>(
   items: Item[],
@@ -1149,44 +1008,6 @@ const mapConcurrent = async <Item, Result>(
   return results
 }
 
-/** One unit's raw answer, whoever produced it. */
-interface OneshotAnswer {
-  data: string
-  sourceLang?: string
-}
-
-/**
- * Groups units into requests: at most `BATCH_MAX_TEXTS` texts and
- * `BATCH_MAX_CHARS` characters each, so a batch never has to be split at the
- * provider and every text stays inside the per-text limit on its own.
- */
-const batchUnits = (jobs: BatchJob[]): BatchJob[][] => {
-  const batches: BatchJob[][] = []
-  let batch: BatchJob[] = []
-  let chars = 0
-
-  for (const job of jobs) {
-    if (
-      batch.length &&
-      (batch.length >= BATCH_MAX_TEXTS || chars + job.text.length > BATCH_MAX_CHARS)
-    ) {
-      batches.push(batch)
-      batch = []
-      chars = 0
-    }
-
-    batch.push(job)
-    chars += job.text.length
-  }
-
-  if (batch.length) {
-    batches.push(batch)
-  }
-
-  return batches
-}
-
-/** The smallest shared run that counts as source prose a translation left behind. */
 const SHARED_RUN = 12
 /** The share of the answer that has to be such prose before the unit is a suspect. */
 const SHARED_SHARE = 0.3
@@ -1448,7 +1269,7 @@ export default defineEventHandler(async event => {
   const allUnits = plan.flatMap(segment => segment.units)
 
   // One subrequest budget for the whole request.
-  // Every outbound call reserves its slot *before* it starts, so the batches and
+  // Every outbound call reserves its slot *before* it starts, so the chunks and
   // their fallbacks can never push the total past `MAX_SUBREQUESTS`; whatever is
   // left keeps its source text and is reported as `remaining`. Every piece first
   // gets a chance to come out of the per-piece cache, which costs no subrequest at
@@ -1520,9 +1341,22 @@ export default defineEventHandler(async event => {
     }
 
     const misses = tasks.filter(task => !task.unit.answers[task.piece])
-    const batches = batchUnits(
-      misses.map((task, index) => ({ index, text: task.text })),
-    )
+
+    // `chunkByLength` packs the units into as few requests as the library's own
+    // limit allows: it bounds the **sum** of a batch's texts, not each text, so a
+    // batch of many short paragraphs costs one subrequest. The helper lives in the
+    // library, which also enforces the same limit before it sends anything, so
+    // there is no local batch-size constant to drift from it.
+    const jobs: BatchJob[] = misses.map((task, index) => ({
+      index,
+      text: task.text,
+    }))
+    let offset = 0
+    const batches = chunkByLength(jobs.map(job => job.text)).map(texts => {
+      const slice = jobs.slice(offset, offset + texts.length)
+      offset += texts.length
+      return slice
+    })
 
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
       // one batch is one subrequest, reserved before it is sent; when the budget
@@ -1533,33 +1367,46 @@ export default defineEventHandler(async event => {
 
       batchCount++
 
-      const answers = await translateBatchWithLibrary(
+      // the library can still throw (a translation-count mismatch is outside its
+      // own try/catch), which is a batch failure like any other: the pieces go to
+      // the per-piece fallback instead of the throw escaping as a 502
+      const result = await translateBatchWithLibrary(
         batch.map(job => job.text),
         target,
         source,
-      ).catch(() => batch.map(() => undefined))
+      ).catch(error => {
+        console.warn(
+          '[translate] library batch threw',
+          String(error),
+          `texts=${batch.length}`,
+        )
+        return { code: 503, message: String(error) }
+      })
 
+      const data = 'data' in result ? result.data : undefined
+      const detected = detectedFor(
+        'sourceLang' in result ? result.sourceLang : undefined,
+        source,
+      )
       const failed: BatchJob[] = []
 
-      answers.forEach((answer, position) => {
-        const job = batch[position]
-
-        if (!job) {
-          return
-        }
-
+      batch.forEach((job, position) => {
         const task = misses[job.index]
-        const detected = detectedFor(answer?.sourceLang, source)
+        const answer = data?.[position]
 
         if (!task) {
           return
         }
 
-        if (answer && !isUntranslated(task.text, answer.data, target, detected)) {
+        if (
+          typeof answer === 'string' &&
+          answer &&
+          !isUntranslated(task.text, answer, target, detected)
+        ) {
           task.unit.answers[task.piece] = {
-            text: answer.data,
+            text: answer,
             ok: true,
-            translated: !isAlreadyTarget(task.text, answer.data, target, detected),
+            translated: !isAlreadyTarget(task.text, answer, target, detected),
           }
           return
         }
@@ -1580,7 +1427,7 @@ export default defineEventHandler(async event => {
           // no fallback configured: the piece keeps its source text and is a
           // failure, not unfinished work -- a later request would only send it to
           // the same provider again, so `remaining` (which promises a continuation)
-          // would be wrong. Only the budget path below leaves a piece `remaining`.
+          // would be wrong. Only the budget path leaves a piece `remaining`.
           task.unit.answers[task.piece] = {
             text: task.text,
             ok: false,
@@ -1589,11 +1436,7 @@ export default defineEventHandler(async event => {
           return
         }
 
-        if (!reserve()) {
-          return
-        }
-
-        task.unit.answers[task.piece] = await translateChunk({
+        const answer = await translateChunk({
           chunk: task.text,
           index: job.index,
           total: misses.length,
@@ -1602,7 +1445,12 @@ export default defineEventHandler(async event => {
           attempts,
           service,
           skipLibrary: true,
+          reserve,
         })
+
+        if (answer) {
+          task.unit.answers[task.piece] = answer
+        }
       })
     })
   }
@@ -1695,30 +1543,47 @@ export default defineEventHandler(async event => {
     )
   }
 
-  // one batched DLX request for all of them, reserved like every other call; the
-  // answer that shares less source prose wins, so a retry can never make a unit
-  // worse, and a unit that still shares a meaningful run is not reported as
-  // translated. The batch is bounded like the provider batch above, so a
-  // pathological body cannot build one enormous request.
-  const retried = suspects.slice(0, BATCH_MAX_TEXTS)
+  // one single-text DLX request per suspect, each reserved like every other call;
+  // the answer that shares less source prose wins, so a retry can never make a
+  // unit worse, and a unit that still shares a meaningful run is not reported as
+  // translated. The shared budget bounds the loop, so a pathological body cannot
+  // fire an unbounded number of retries.
+  let retried = 0
+  let improved = 0
 
-  if (retried.length && service.url && reserve()) {
-    const masked = retried.map(unit => maskCode(unit.text))
-    const answers = await translateBatchWithDlx(
-      masked.map(entry => entry.masked),
-      target,
-      source,
-      service,
-    )
-    let improved = 0
+  if (service.url) {
+    for (const unit of suspects) {
+      if (!reserve()) {
+        break
+      }
 
-    retried.forEach((unit, index) => {
-      const answer = answers[index]
-      const entry = masked[index]
+      const entry = maskCode(unit.text)
+      retried++
+
+      let answer: string | undefined
+
+      try {
+        const dlx = await translateWithDlx(
+          entry.masked,
+          target,
+          source,
+          service,
+          `suspect=${retried}/${suspects.length}`,
+        )
+        answer = dlx.text
+      } catch (error) {
+        console.warn(
+          '[translate] DLX retry failed',
+          `suspect=${retried}/${suspects.length}`,
+          String(error),
+        )
+        continue
+      }
+
       const current = unit.result
 
-      if (answer === undefined || entry === undefined || current === undefined) {
-        return
+      if (answer === undefined || current === undefined) {
+        continue
       }
 
       const restored = entry.codeSpans.length
@@ -1754,11 +1619,13 @@ export default defineEventHandler(async event => {
           unit.stale = true
         }
       }
-    })
+    }
+  }
 
+  if (retried) {
     console.warn(
-      '[translate] DLX batch retry finished',
-      `suspects=${retried.length}`,
+      '[translate] DLX retry finished',
+      `suspects=${retried}/${suspects.length}`,
       `improved=${improved}`,
     )
   }

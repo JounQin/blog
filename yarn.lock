@@ -52,7 +52,7 @@ __metadata:
   resolution: "@1stg/blog@workspace:."
   dependencies:
     "@1stg/app-config": "npm:^15.0.0"
-    "@deeplx/core": "npm:^0.2.4"
+    "@deeplx/core": "npm:^0.3.0"
     "@nuxt/eslint": "npm:^1.17.0"
     "@types/node": "npm:^24"
     "@typescript/native": "npm:typescript@^7"
@@ -75,6 +75,7 @@ __metadata:
     vue: "npm:^3"
     vue-router: "npm:^5.0.0"
     wrangler: "npm:^4"
+    x-fetch: "npm:^0.3.0"
   languageName: unknown
   linkType: soft
 
@@ -3280,13 +3281,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@deeplx/core@npm:^0.2.4":
-  version: 0.2.4
-  resolution: "@deeplx/core@npm:0.2.4"
+"@deeplx/core@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@deeplx/core@npm:0.3.0"
   dependencies:
     node-fetch-native: "npm:^1.6.7"
-    x-fetch: "npm:^0.2.6"
-  checksum: 10/ef7eeda10664fdc8f8721201cc7f335c0eebc76a3ae64468f26dfad83099f43be981b9cbf0212bcc8fcef8620c09bbb264fce601a7f2ef820a3d4cb0db1f6ffb
+    x-fetch: "npm:^0.3.0"
+  checksum: 10/2b0c2c04348663f397890f3a05928684999433995bbb38a6c97e87f5571a9143b56acca6adfaf677eb1f7ebb3ecd8cf0e14ec36e4d4b993d4026be9d8ef76fdf
   languageName: node
   linkType: hard
 
@@ -22829,10 +22830,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"x-fetch@npm:^0.2.6":
-  version: 0.2.7
-  resolution: "x-fetch@npm:0.2.7"
-  checksum: 10/78149375973383046aaf2a4f51dd2a4212b2f32df972f4ee5806cae1a57a352bc0387bde1fa2e29a3f3af6fadd1632194a13a8154914fef37e842dd872e9465f
+"x-fetch@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "x-fetch@npm:0.3.0"
+  checksum: 10/badb3cec088891568f4dca15d24ac6c55ba5d232b95e1cc856fe15cb8446086c23d59d2404f156e8a94ac0a5714567fc35f3cb9e20cd4dd4df995663f1b1f78c
   languageName: node
   linkType: hard
 
