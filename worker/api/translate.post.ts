@@ -1304,6 +1304,16 @@ export default defineEventHandler(async event => {
           return
         }
 
+        if (!hasProse(piece.text)) {
+          // Nothing a provider could change: digits, punctuation, symbols,
+          // whitespace or a lone code token. Answering it here keeps it out of a
+          // batch and, above all, out of the per-piece fallback -- its echo is not
+          // a failed translation, and a single-text fallback for it would spend a
+          // whole subrequest of the render's budget.
+          unit.answers[index] = { text: piece.text, ok: true, translated: false }
+          return
+        }
+
         tasks.push({ unit, piece: index, text: piece.text })
       })
     }
@@ -1358,6 +1368,13 @@ export default defineEventHandler(async event => {
       return slice
     })
 
+    const failed: BatchJob[] = []
+
+    // Batches first. A batch carries whole paragraphs and is the cheap way to
+    // translate a body, so every batch has to get its chance before a single
+    // fallback can spend the budget: spending it on fallbacks first is what left
+    // the tail of a long article in its source language. Each batch still reserves
+    // before it is sent, so the cap holds whatever happens.
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
       // one batch is one subrequest, reserved before it is sent; when the budget
       // is used up the batch is skipped and its pieces stay `remaining`
@@ -1388,7 +1405,6 @@ export default defineEventHandler(async event => {
         'sourceLang' in result ? result.sourceLang : undefined,
         source,
       )
-      const failed: BatchJob[] = []
 
       batch.forEach((job, position) => {
         const task = misses[job.index]
@@ -1413,45 +1429,47 @@ export default defineEventHandler(async event => {
 
         failed.push(job)
       })
+    })
 
-      // one fallback request per piece the batch could not translate, each one
-      // reserved first so the cap holds even with several batches in flight
-      await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
-        const task = misses[job.index]
+    // Only then the fallbacks, one single-text request per piece no batch could
+    // translate. Each one reserves before it is sent too, so a body that spent the
+    // budget on batches simply leaves the rest `remaining` for a continuation
+    // instead of taking slots away from a batch that never ran.
+    await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
+      const task = misses[job.index]
 
-        if (!task) {
-          return
+      if (!task) {
+        return
+      }
+
+      if (!service.url) {
+        // no fallback configured: the piece keeps its source text and is a
+        // failure, not unfinished work -- a later request would only send it to
+        // the same provider again, so `remaining` (which promises a continuation)
+        // would be wrong. Only the budget path leaves a piece `remaining`.
+        task.unit.answers[task.piece] = {
+          text: task.text,
+          ok: false,
+          translated: false,
         }
+        return
+      }
 
-        if (!service.url) {
-          // no fallback configured: the piece keeps its source text and is a
-          // failure, not unfinished work -- a later request would only send it to
-          // the same provider again, so `remaining` (which promises a continuation)
-          // would be wrong. Only the budget path leaves a piece `remaining`.
-          task.unit.answers[task.piece] = {
-            text: task.text,
-            ok: false,
-            translated: false,
-          }
-          return
-        }
-
-        const answer = await translateChunk({
-          chunk: task.text,
-          index: job.index,
-          total: misses.length,
-          target,
-          source,
-          attempts,
-          service,
-          skipLibrary: true,
-          reserve,
-        })
-
-        if (answer) {
-          task.unit.answers[task.piece] = answer
-        }
+      const answer = await translateChunk({
+        chunk: task.text,
+        index: job.index,
+        total: misses.length,
+        target,
+        source,
+        attempts,
+        service,
+        skipLibrary: true,
+        reserve,
       })
+
+      if (answer) {
+        task.unit.answers[task.piece] = answer
+      }
     })
   }
 

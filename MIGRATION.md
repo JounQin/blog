@@ -254,7 +254,9 @@ optional KV namespace and read by the GraphQL client:
 - A request spends at most `MAX_SUBREQUESTS` (16) provider subrequests. Each outbound request
   reserves exactly one slot before it is sent — every provider batch, every DLX fallback call and
   every suspect retry — so a batch and its fallbacks can never push the total over the cap, and
-  following a redirect does not reserve a slot of its own. The Workers free plan caps subrequests per
+  following a redirect does not reserve a slot of its own. Every batch is sent **before** any fallback
+  can spend the budget, so the budget reaches whole paragraphs first and the tail of a long article is
+  not the part that goes untranslated. The Workers free plan caps subrequests per
   request at 50, which leaves 34 for the GitHub calls and the rest of the request. A block-heavy
   article like `/article/323` is 13 units in as few batches as `chunkByLength` allows, so a render is
   normally a handful of subrequests. Units the budget does not reach keep their source text and are
