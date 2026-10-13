@@ -961,6 +961,26 @@ const CHUNK_CONCURRENCY = 6
  */
 const MAX_SUBREQUESTS = 16
 
+/**
+ * The share of the budget the fallback phase is guaranteed. A body can need more
+ * batches than the request has slots; with batches first, the batch phase would
+ * hold every slot before a single fallback ran, so a provider that echoes a lot
+ * would starve the very per-piece requests meant to rescue those pieces -- the
+ * opposite of what batches-first is for. The batch phase is therefore capped
+ * below the full budget so this many slots survive it. It is a floor, not a
+ * withheld reservation: every slot the batches do not spend is still available
+ * to the fallbacks, and when nothing needs a fallback the reserve goes unused.
+ *
+ * A quarter of the budget, at least one: measured production renders echo on the
+ * order of a dozen pieces, so a single slot would barely change the outcome,
+ * while batches each carry whole paragraphs and deserve the clear majority (12
+ * of 16). The reserve is also one concurrent wave (`CHUNK_CONCURRENCY` is 6).
+ */
+const FALLBACK_RESERVE = Math.max(1, Math.ceil(MAX_SUBREQUESTS / 4))
+
+/** The most the batch phase may spend, so `FALLBACK_RESERVE` survives it. */
+const BATCH_BUDGET = MAX_SUBREQUESTS - FALLBACK_RESERVE
+
 /** One piece inside a batch, addressed back into the request's `misses`. */
 interface BatchJob {
   index: number
@@ -1284,6 +1304,13 @@ export default defineEventHandler(async event => {
     return true
   }
 
+  // the batch phase stops at `BATCH_BUDGET` rather than the full cap, so
+  // `FALLBACK_RESERVE` slots are still there for the per-piece fallbacks even
+  // when there are more batches than the whole budget. `reserve()` still enforces
+  // `MAX_SUBREQUESTS` on every path, so the total can never exceed it.
+  const reserveBatch = (): boolean =>
+    spent < BATCH_BUDGET && reserve()
+
   const unitKeyOf = async (unit: string) =>
     new Request(
       `${CACHE_ORIGIN}/?v=${CACHE_VERSION}&unit=1&source=${source ?? 'auto'}&target=${target}&hash=${await digest(unit)}`,
@@ -1371,14 +1398,15 @@ export default defineEventHandler(async event => {
     const failed: BatchJob[] = []
 
     // Batches first. A batch carries whole paragraphs and is the cheap way to
-    // translate a body, so every batch has to get its chance before a single
-    // fallback can spend the budget: spending it on fallbacks first is what left
-    // the tail of a long article in its source language. Each batch still reserves
-    // before it is sent, so the cap holds whatever happens.
+    // translate a body, so every batch gets its chance before a single fallback
+    // can spend the budget. The batch phase is capped at `BATCH_BUDGET`, though,
+    // so the fallback phase keeps `FALLBACK_RESERVE` slots even when the body has
+    // more batches than the request can send; the batches that do not fit stay
+    // `remaining` for a continuation.
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
       // one batch is one subrequest, reserved before it is sent; when the budget
       // is used up the batch is skipped and its pieces stay `remaining`
-      if (!reserve()) {
+      if (!reserveBatch()) {
         return
       }
 
@@ -1432,9 +1460,10 @@ export default defineEventHandler(async event => {
     })
 
     // Only then the fallbacks, one single-text request per piece no batch could
-    // translate. Each one reserves before it is sent too, so a body that spent the
-    // budget on batches simply leaves the rest `remaining` for a continuation
-    // instead of taking slots away from a batch that never ran.
+    // translate. `FALLBACK_RESERVE` slots were held back from the batch phase, so
+    // this loop runs even when the batches used everything they were allowed to;
+    // each call reserves before it is sent, so a body that spends the rest of the
+    // budget here leaves its unreached pieces `remaining` for a continuation.
     await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
       const task = misses[job.index]
 
