@@ -14,11 +14,12 @@ import { getEnv } from '../utils/env'
  * Powered by `@deeplx/core`, which talks to DeepL's free endpoints, so no API
  * key or other environment variable is required. When `DEEPLX_URL` is set
  * (e.g. `https://<your-dlx-host>`) a self-hosted DLX instance
- * (https://github.com/OwO-Network/DLX) is used as a **fallback**: only a unit
- * whose batched answer failed the checks below gets one request to
- * `<DEEPLX_URL>/translate` with an optional `DEEPLX_TOKEN` bearer header and a
- * shorter 4 s budget. That call is single-text, because a self-hosted DLX has no
- * documented batch contract. The
+ * (https://github.com/OwO-Network/DLX) is used as a **fallback**: the pieces a
+ * batch could not translate are grouped and re-sent as one `text: string[]`
+ * request to `<DEEPLX_URL>/translate` with an optional `DEEPLX_TOKEN` bearer
+ * header and a shorter 4 s budget. DLX >= 1.3.1 answers an array position by
+ * position, and a response whose length does not match the number of texts sent
+ * is rejected whole, so an answer can never be mapped onto the wrong piece. The
  * endpoint should serve `/translate` directly: redirects are followed, but a
  * 301/302/303 becomes a GET and drops the body, so only a method-preserving
  * redirect (307/308) still carries the POST. With `DEEPLX_URL` unset the
@@ -665,13 +666,13 @@ const translateWithLibrary = (
   )
 
 /**
- * One fallback request to the self-hosted DLX service, sent through the same
- * `xfetch` helper `@deeplx/core` uses (`x-fetch`), so body serialisation,
- * timeout, redirect and error semantics match the library instead of being
- * reinvented here. The origin (host, port and any path prefix) comes from
- * `DEEPLX_URL` verbatim and only `/translate` is appended, so nothing here is
- * host or port specific. `source_lang` is sent when the caller named a source
- * and omitted otherwise (JSON drops `undefined`), so the DLX detects the
+ * One fallback request to the self-hosted DLX service, carrying a whole array of
+ * texts, sent through the same `xfetch` helper `@deeplx/core` uses (`x-fetch`),
+ * so body serialisation, timeout, redirect and error semantics match the library
+ * instead of being reinvented here. The origin (host, port and any path prefix)
+ * comes from `DEEPLX_URL` verbatim and only `/translate` is appended, so nothing
+ * here is host or port specific. `source_lang` is sent when the caller named a
+ * source and omitted otherwise (JSON drops `undefined`), so the DLX detects the
  * language itself exactly when the library does.
  *
  * The endpoint should serve `/translate` directly: a redirect is followed, but a
@@ -681,19 +682,24 @@ const translateWithLibrary = (
  * `XFetchError` (carrying the `Response`) for a non-2xx answer and for a body it
  * cannot parse as JSON, so the status is read off that error.
  *
- * It counts as a success only when the HTTP status is 2xx, the JSON `code` is
- * 200 and `data` is a non-empty string that actually translated the chunk;
- * anything else (429, an auth failure whose body may not even be JSON, an empty
- * payload or an answer that is still the source, markup noise aside) throws. The
- * token is never logged.
+ * DLX >= 1.3.1 answers a `text: string[]` request position by position in
+ * `data: string[]`. The array is only usable when its length is exactly the
+ * number of texts that were sent: a short or long answer is rejected whole, so a
+ * provider answer can never be attached to the wrong piece. Every position is
+ * then checked on its own -- a non-string, empty or unchanged answer is a failed
+ * piece rather than a translation, and `isAlreadyTarget` marks the accepted
+ * verbatim answer of a source that already is the target language. A whole
+ * request that fails (429, an auth failure whose body may not even be JSON, an
+ * empty payload or a length mismatch) throws, and the caller records every piece
+ * of the group as a failure. The token is never logged.
  */
-const translateWithDlx = async (
-  chunk: string,
+const translatePiecesWithDlx = async (
+  texts: string[],
   target: TargetLanguage,
   source: SourceLanguage | undefined,
   service: DlxService,
   label: string,
-): Promise<{ text: string; detected?: string }> => {
+): Promise<{ answers: PieceResult[]; detected?: string }> => {
   const url = service.url
 
   // the caller only takes this path when `DEEPLX_URL` is set; the guard keeps the
@@ -702,7 +708,8 @@ const translateWithDlx = async (
     throw new Error('DEEPLX_URL is not configured')
   }
 
-  // exactly one fallback request: the helper does not retry either
+  // exactly one fallback request no matter how many texts it carries: the helper
+  // does not retry either
   const payload = await xfetch<DlxResponse>(`${url}${DEEPLX_PATH}`, {
     method: 'POST',
     headers: {
@@ -710,7 +717,7 @@ const translateWithDlx = async (
     },
     // `xfetch` serialises a plain object itself and sets the JSON content type
     body: {
-      text: chunk,
+      text: texts,
       // omitted for auto-detection: JSON.stringify drops an undefined value
       source_lang: source,
       target_lang: target,
@@ -723,31 +730,82 @@ const translateWithDlx = async (
       '[translate] DLX answered with an error',
       label,
       `status=${isXFetchError(error) ? (error.response?.status ?? 'none') : 'none'}`,
-      `length=${chunk.length}`,
+      `texts=${texts.length}`,
+      `length=${texts.reduce((total, text) => total + text.length, 0)}`,
     )
     throw error
   })
 
   const { code, data, source_lang: reported } = payload ?? {}
 
-  const detected = detectedFor(reported, source)
-
-  if (code !== 200 || typeof data !== 'string' || !data) {
-    throw new Error(`DLX responded with HTTP 200, code ${code}`)
+  if (code !== 200 || !Array.isArray(data) || data.length !== texts.length) {
+    throw new Error(
+      `DLX answered HTTP 200, code ${code}, ${
+        Array.isArray(data) ? `data length ${data.length}` : typeof data
+      } for ${texts.length} texts`,
+    )
   }
 
-  if (isUntranslated(chunk, data, target, detected)) {
-    console.warn(
-      '[translate] DLX did not translate the chunk',
-      label,
-      `length=${chunk.length}`,
-      `source=${source ?? 'auto'} target=${target}`,
-      `detected=${reported ?? 'none'}`,
-    )
+  const detected = detectedFor(reported, source)
+  const dataset = data as unknown[]
+
+  return {
+    answers: texts.map((text, position) => {
+      const answer = dataset[position]
+
+      if (typeof answer !== 'string' || !answer) {
+        return { text, ok: false, translated: false }
+      }
+
+      if (isUntranslated(text, answer, target, detected)) {
+        console.warn(
+          '[translate] DLX did not translate the piece',
+          label,
+          `position=${position + 1}/${texts.length}`,
+          `length=${text.length}`,
+          `source=${source ?? 'auto'} target=${target}`,
+          `detected=${reported ?? 'none'}`,
+        )
+        return { text, ok: false, translated: false }
+      }
+
+      return {
+        text: answer,
+        ok: true,
+        // the DLX can also answer that the source already is the target language
+        translated: !isAlreadyTarget(text, answer, target, detected),
+      }
+    }),
+    detected,
+  }
+}
+
+/**
+ * The single-text form of the fallback, kept for the suspect retry below: it
+ * sends the same one-element array through `translatePiecesWithDlx` and keeps the
+ * one-piece contract -- the piece has to come back translated or this throws.
+ */
+const translateWithDlx = async (
+  chunk: string,
+  target: TargetLanguage,
+  source: SourceLanguage | undefined,
+  service: DlxService,
+  label: string,
+): Promise<{ text: string; detected?: string }> => {
+  const { answers, detected } = await translatePiecesWithDlx(
+    [chunk],
+    target,
+    source,
+    service,
+    label,
+  )
+  const answer = answers[0]
+
+  if (!answer?.ok) {
     throw new Error('DLX did not translate the chunk')
   }
 
-  return { text: data, detected }
+  return { text: answer.text, detected }
 }
 
 /** What one unit's translation produced: the text plus how it came back. */
@@ -1484,47 +1542,132 @@ export default defineEventHandler(async event => {
       })
     })
 
-    // Only then the fallbacks, one single-text request per piece no batch could
-    // translate. `FALLBACK_RESERVE` slots were held back from the batch phase, so
-    // this loop runs even when the batches used everything they were allowed to;
-    // each call reserves before it is sent, so a body that spends the rest of the
-    // budget here leaves its unreached pieces `remaining` for a continuation.
-    await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
-      const task = misses[job.index]
+    // Only then the fallbacks, one *array* request per group of pieces no batch
+    // could translate. `FALLBACK_RESERVE` slots were held back from the batch
+    // phase, so this loop runs even when the batches used everything they were
+    // allowed to; each request reserves before it is sent, so a body that spends
+    // the rest of the budget here leaves its unreached pieces `remaining` for a
+    // continuation. A group costs a single slot no matter how many pieces it
+    // carries, so a body whose batches echoed a dozen pieces needs one or two
+    // fallback calls instead of a dozen -- and those slots then remain available
+    // to the pieces the old per-piece loop could never reach.
+    let fallbackOffset = 0
+    const fallbackGroups = chunkByLength(failed.map(job => job.text)).map(
+      texts => {
+        const group = failed.slice(fallbackOffset, fallbackOffset + texts.length)
+        fallbackOffset += texts.length
+        return group
+      },
+    )
 
-      if (!task) {
-        return
-      }
+    await mapConcurrent(
+      fallbackGroups,
+      CHUNK_CONCURRENCY,
+      async (group, groupIndex) => {
+        const label = `fallback=${groupIndex + 1}/${fallbackGroups.length} texts=${group.length}`
 
-      if (!service.url) {
-        // no fallback configured: the piece keeps its source text and is a
-        // failure, not unfinished work -- a later request would only send it to
-        // the same provider again, so `remaining` (which promises a continuation)
-        // would be wrong. Only the budget path leaves a piece `remaining`.
-        task.unit.answers[task.piece] = {
-          text: task.text,
-          ok: false,
-          translated: false,
+        if (!service.url) {
+          // no fallback configured: every piece keeps its source text and is a
+          // failure, not unfinished work -- a later request would only send it to
+          // the same provider again, so `remaining` (which promises a continuation)
+          // would be wrong. Only the budget path leaves a piece `remaining`.
+          for (const job of group) {
+            const task = misses[job.index]
+
+            if (task) {
+              task.unit.answers[task.piece] = {
+                text: task.text,
+                ok: false,
+                translated: false,
+              }
+            }
+          }
+          return
         }
-        return
-      }
 
-      const answer = await translateChunk({
-        chunk: task.text,
-        index: job.index,
-        total: misses.length,
-        target,
-        source,
-        attempts,
-        service,
-        skipLibrary: true,
-        reserve,
-      })
+        // a lone piece cannot be grouped with anything, so it keeps the original
+        // single-piece path (which also sends a one-element array)
+        if (group.length === 1) {
+          const [job] = group
 
-      if (answer) {
-        task.unit.answers[task.piece] = answer
-      }
-    })
+          if (!job) {
+            return
+          }
+
+          const task = misses[job.index]
+
+          if (!task) {
+            return
+          }
+
+          const answer = await translateChunk({
+            chunk: task.text,
+            index: job.index,
+            total: misses.length,
+            target,
+            source,
+            attempts,
+            service,
+            skipLibrary: true,
+            reserve,
+          })
+
+          if (answer) {
+            task.unit.answers[task.piece] = answer
+          }
+          return
+        }
+
+        // one array request, reserved before it is sent
+        if (!reserve()) {
+          console.warn('[translate] subrequest budget is used up', label)
+          return
+        }
+
+        console.warn(
+          '[translate] falling back to the self-hosted DLX',
+          label,
+          `source=${source ?? 'auto'} target=${target}`,
+        )
+
+        try {
+          const { answers } = await translatePiecesWithDlx(
+            group.map(job => job.text),
+            target,
+            source,
+            service,
+            label,
+          )
+
+          group.forEach((job, position) => {
+            const task = misses[job.index]
+            const answer = answers[position]
+
+            if (task && answer) {
+              task.unit.answers[task.piece] = answer
+            }
+          })
+        } catch (error) {
+          // The whole response was rejected (bad status, unparseable body, or a
+          // `data` length that does not match the texts sent), so no answer may be
+          // mapped: every piece of the group keeps its source text as a failure,
+          // exactly as a single failed call did.
+          console.warn('[translate] DLX fallback failed', label, String(error))
+
+          for (const job of group) {
+            const task = misses[job.index]
+
+            if (task) {
+              task.unit.answers[task.piece] = {
+                text: task.text,
+                ok: false,
+                translated: false,
+              }
+            }
+          }
+        }
+      },
+    )
   }
 
   await runTasks(tasksOf(allUnits))
