@@ -1352,8 +1352,15 @@ export default defineEventHandler(async event => {
    * Translates every task that is not already cached, spending the shared
    * subrequest budget. An answer is written straight onto its unit, so a unit
    * whose pieces were all answered needs no index bookkeeping.
+   *
+   * `recovery` marks the token-fragment pass: it is repair work for a provider
+   * that mangled a placeholder, so it may spend the share held back for the
+   * fallbacks, while the normal pass stops at `BATCH_BUDGET`.
    */
-  const runTasks = async (tasks: UnitTask[]): Promise<void> => {
+  const runTasks = async (
+    tasks: UnitTask[],
+    recovery = false,
+  ): Promise<void> => {
     if (!tasks.length) {
       return
     }
@@ -1399,14 +1406,26 @@ export default defineEventHandler(async event => {
 
     // Batches first. A batch carries whole paragraphs and is the cheap way to
     // translate a body, so every batch gets its chance before a single fallback
-    // can spend the budget. The batch phase is capped at `BATCH_BUDGET`, though,
-    // so the fallback phase keeps `FALLBACK_RESERVE` slots even when the body has
-    // more batches than the request can send; the batches that do not fit stay
-    // `remaining` for a continuation.
+    // can spend the budget. The normal pass is capped at `BATCH_BUDGET`, so the
+    // fallback phase keeps `FALLBACK_RESERVE` slots even when the body has more
+    // batches than the request can send; the recovery pass may use the whole
+    // budget, because it only exists to repair a mangled placeholder and shares
+    // the reserved share with the fallbacks.
+    //
+    // A batch the budget cannot afford is not dropped: its pieces join `failed`,
+    // so the fallback loop below can still pick them up, and a piece no fallback
+    // can afford stays unanswered and is reported as `remaining`.
+    const takeBatchSlot = recovery ? reserve : reserveBatch
+
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
-      // one batch is one subrequest, reserved before it is sent; when the budget
-      // is used up the batch is skipped and its pieces stay `remaining`
-      if (!reserveBatch()) {
+      // one batch is one subrequest, reserved before it is sent
+      if (!takeBatchSlot()) {
+        console.warn(
+          '[translate] subrequest budget is used up, batch skipped',
+          `texts=${batch.length}`,
+          `recovery=${recovery}`,
+        )
+        failed.push(...batch)
         return
       }
 
@@ -1533,7 +1552,9 @@ export default defineEventHandler(async event => {
 
   // a token that did not survive: translate the block's prose fragments on their
   // own, exactly as before tokens existed, so the code is still never sent and the
-  // answer still cannot corrupt it
+  // answer still cannot corrupt it. This is a recovery pass (`true`): the normal
+  // batch phase may already have spent `BATCH_BUDGET`, so a fragment batch has to
+  // be allowed into the reserved share instead of being skipped.
   const fragmented = allUnits.filter(
     unit => unit.result === undefined && unit.fragments,
   )
@@ -1552,7 +1573,7 @@ export default defineEventHandler(async event => {
       unit.answers = new Array<PieceResult | undefined>(unit.pieces.length)
     }
 
-    await runTasks(tasksOf(fragmented))
+    await runTasks(tasksOf(fragmented), true)
 
     for (const unit of fragmented) {
       unit.result = rebuild(unit) ?? unit.text
