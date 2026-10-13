@@ -961,6 +961,26 @@ const CHUNK_CONCURRENCY = 6
  */
 const MAX_SUBREQUESTS = 16
 
+/**
+ * The share of the budget the fallback phase is guaranteed. A body can need more
+ * batches than the request has slots; with batches first, the batch phase would
+ * hold every slot before a single fallback ran, so a provider that echoes a lot
+ * would starve the very per-piece requests meant to rescue those pieces -- the
+ * opposite of what batches-first is for. The batch phase is therefore capped
+ * below the full budget so this many slots survive it. It is a floor, not a
+ * withheld reservation: every slot the batches do not spend is still available
+ * to the fallbacks, and when nothing needs a fallback the reserve goes unused.
+ *
+ * A quarter of the budget, at least one: measured production renders echo on the
+ * order of a dozen pieces, so a single slot would barely change the outcome,
+ * while batches each carry whole paragraphs and deserve the clear majority (12
+ * of 16). The reserve is also one concurrent wave (`CHUNK_CONCURRENCY` is 6).
+ */
+const FALLBACK_RESERVE = Math.max(1, Math.ceil(MAX_SUBREQUESTS / 4))
+
+/** The most the batch phase may spend, so `FALLBACK_RESERVE` survives it. */
+const BATCH_BUDGET = MAX_SUBREQUESTS - FALLBACK_RESERVE
+
 /** One piece inside a batch, addressed back into the request's `misses`. */
 interface BatchJob {
   index: number
@@ -1284,6 +1304,13 @@ export default defineEventHandler(async event => {
     return true
   }
 
+  // the batch phase stops at `BATCH_BUDGET` rather than the full cap, so
+  // `FALLBACK_RESERVE` slots are still there for the per-piece fallbacks even
+  // when there are more batches than the whole budget. `reserve()` still enforces
+  // `MAX_SUBREQUESTS` on every path, so the total can never exceed it.
+  const reserveBatch = (): boolean =>
+    spent < BATCH_BUDGET && reserve()
+
   const unitKeyOf = async (unit: string) =>
     new Request(
       `${CACHE_ORIGIN}/?v=${CACHE_VERSION}&unit=1&source=${source ?? 'auto'}&target=${target}&hash=${await digest(unit)}`,
@@ -1304,6 +1331,16 @@ export default defineEventHandler(async event => {
           return
         }
 
+        if (!hasProse(piece.text)) {
+          // Nothing a provider could change: digits, punctuation, symbols,
+          // whitespace or a lone code token. Answering it here keeps it out of a
+          // batch and, above all, out of the per-piece fallback -- its echo is not
+          // a failed translation, and a single-text fallback for it would spend a
+          // whole subrequest of the render's budget.
+          unit.answers[index] = { text: piece.text, ok: true, translated: false }
+          return
+        }
+
         tasks.push({ unit, piece: index, text: piece.text })
       })
     }
@@ -1315,8 +1352,15 @@ export default defineEventHandler(async event => {
    * Translates every task that is not already cached, spending the shared
    * subrequest budget. An answer is written straight onto its unit, so a unit
    * whose pieces were all answered needs no index bookkeeping.
+   *
+   * `recovery` marks the token-fragment pass: it is repair work for a provider
+   * that mangled a placeholder, so it may spend the share held back for the
+   * fallbacks, while the normal pass stops at `BATCH_BUDGET`.
    */
-  const runTasks = async (tasks: UnitTask[]): Promise<void> => {
+  const runTasks = async (
+    tasks: UnitTask[],
+    recovery = false,
+  ): Promise<void> => {
     if (!tasks.length) {
       return
     }
@@ -1358,10 +1402,36 @@ export default defineEventHandler(async event => {
       return slice
     })
 
+    const failed: BatchJob[] = []
+
+    // Batches first. A batch carries whole paragraphs and is the cheap way to
+    // translate a body, so every batch gets its chance before a single fallback
+    // can spend the budget. The normal pass is capped at `BATCH_BUDGET`, so the
+    // fallback phase keeps `FALLBACK_RESERVE` slots even when the body has more
+    // batches than the request can send; the recovery pass may use the whole
+    // budget, because it only exists to repair a mangled placeholder and shares
+    // the reserved share with the fallbacks.
+    //
+    // A batch the budget cannot afford is not dropped. With a fallback
+    // configured its pieces join `failed`, so the loop below can still pick them
+    // up; a piece no fallback can afford stays unanswered and is reported as
+    // `remaining`. Without a fallback nothing can try them at all, and queueing
+    // them would make the loop's `!service.url` branch record them as failures --
+    // but nothing attempted them, so they are unfinished work: they are left
+    // unanswered from the start and reported as `remaining` for a continuation.
+    const takeBatchSlot = recovery ? reserve : reserveBatch
+
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
-      // one batch is one subrequest, reserved before it is sent; when the budget
-      // is used up the batch is skipped and its pieces stay `remaining`
-      if (!reserve()) {
+      // one batch is one subrequest, reserved before it is sent
+      if (!takeBatchSlot()) {
+        console.warn(
+          '[translate] subrequest budget is used up, batch skipped',
+          `texts=${batch.length}`,
+          `recovery=${recovery}`,
+        )
+        if (service.url) {
+          failed.push(...batch)
+        }
         return
       }
 
@@ -1388,7 +1458,6 @@ export default defineEventHandler(async event => {
         'sourceLang' in result ? result.sourceLang : undefined,
         source,
       )
-      const failed: BatchJob[] = []
 
       batch.forEach((job, position) => {
         const task = misses[job.index]
@@ -1413,45 +1482,48 @@ export default defineEventHandler(async event => {
 
         failed.push(job)
       })
+    })
 
-      // one fallback request per piece the batch could not translate, each one
-      // reserved first so the cap holds even with several batches in flight
-      await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
-        const task = misses[job.index]
+    // Only then the fallbacks, one single-text request per piece no batch could
+    // translate. `FALLBACK_RESERVE` slots were held back from the batch phase, so
+    // this loop runs even when the batches used everything they were allowed to;
+    // each call reserves before it is sent, so a body that spends the rest of the
+    // budget here leaves its unreached pieces `remaining` for a continuation.
+    await mapConcurrent(failed, CHUNK_CONCURRENCY, async job => {
+      const task = misses[job.index]
 
-        if (!task) {
-          return
+      if (!task) {
+        return
+      }
+
+      if (!service.url) {
+        // no fallback configured: the piece keeps its source text and is a
+        // failure, not unfinished work -- a later request would only send it to
+        // the same provider again, so `remaining` (which promises a continuation)
+        // would be wrong. Only the budget path leaves a piece `remaining`.
+        task.unit.answers[task.piece] = {
+          text: task.text,
+          ok: false,
+          translated: false,
         }
+        return
+      }
 
-        if (!service.url) {
-          // no fallback configured: the piece keeps its source text and is a
-          // failure, not unfinished work -- a later request would only send it to
-          // the same provider again, so `remaining` (which promises a continuation)
-          // would be wrong. Only the budget path leaves a piece `remaining`.
-          task.unit.answers[task.piece] = {
-            text: task.text,
-            ok: false,
-            translated: false,
-          }
-          return
-        }
-
-        const answer = await translateChunk({
-          chunk: task.text,
-          index: job.index,
-          total: misses.length,
-          target,
-          source,
-          attempts,
-          service,
-          skipLibrary: true,
-          reserve,
-        })
-
-        if (answer) {
-          task.unit.answers[task.piece] = answer
-        }
+      const answer = await translateChunk({
+        chunk: task.text,
+        index: job.index,
+        total: misses.length,
+        target,
+        source,
+        attempts,
+        service,
+        skipLibrary: true,
+        reserve,
       })
+
+      if (answer) {
+        task.unit.answers[task.piece] = answer
+      }
     })
   }
 
@@ -1486,7 +1558,9 @@ export default defineEventHandler(async event => {
 
   // a token that did not survive: translate the block's prose fragments on their
   // own, exactly as before tokens existed, so the code is still never sent and the
-  // answer still cannot corrupt it
+  // answer still cannot corrupt it. This is a recovery pass (`true`): the normal
+  // batch phase may already have spent `BATCH_BUDGET`, so a fragment batch has to
+  // be allowed into the reserved share instead of being skipped.
   const fragmented = allUnits.filter(
     unit => unit.result === undefined && unit.fragments,
   )
@@ -1505,7 +1579,7 @@ export default defineEventHandler(async event => {
       unit.answers = new Array<PieceResult | undefined>(unit.pieces.length)
     }
 
-    await runTasks(tasksOf(fragmented))
+    await runTasks(tasksOf(fragmented), true)
 
     for (const unit of fragmented) {
       unit.result = rebuild(unit) ?? unit.text
