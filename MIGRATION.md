@@ -255,11 +255,13 @@ optional KV namespace and read by the GraphQL client:
   reserves exactly one slot before it is sent — every provider batch, every DLX fallback call and
   every suspect retry — so nothing can push the total over the cap, and following a redirect does not
   reserve a slot of its own. Batches are attempted **first**, while the budget allows: a request needing
-  more batches than the cap sends what fits and hands the rest to the fallback queue, and only then are
-  the pieces no batch could translate retried through the DLX fallback, one single-text call per piece,
-  each reserving a slot before it is sent. A batch the budget cannot afford is never dropped: its pieces
-  join that same fallback queue, and a piece neither a batch nor a fallback can afford stays unanswered
-  and is reported as `remaining`. The fallback phase is
+  more batches than the cap sends what fits and hands the rest on, and only then are the pieces no batch
+  could translate retried through the DLX fallback, one single-text call per piece, each reserving a slot
+  before it is sent. A batch the budget cannot afford is never dropped, and never counted as a failure:
+  nothing attempted it, so it is unfinished work. With a fallback configured its pieces join that same
+  fallback queue, and a piece neither a batch nor a fallback can afford stays unanswered and is reported
+  as `remaining`; without a fallback there is nothing left to try them with, so they are reported as
+  `remaining` from the start instead of as `failedChunks`. The fallback phase is
   guaranteed a reserved share of the budget (`FALLBACK_RESERVE`: a quarter of the cap, at least one
   slot), so a provider that echoes a lot cannot consume every slot with batches and starve the
   per-piece calls. That reserve is a floor rather than a withheld reservation — every slot the batches

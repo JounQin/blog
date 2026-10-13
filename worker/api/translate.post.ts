@@ -1412,9 +1412,13 @@ export default defineEventHandler(async event => {
     // budget, because it only exists to repair a mangled placeholder and shares
     // the reserved share with the fallbacks.
     //
-    // A batch the budget cannot afford is not dropped: its pieces join `failed`,
-    // so the fallback loop below can still pick them up, and a piece no fallback
-    // can afford stays unanswered and is reported as `remaining`.
+    // A batch the budget cannot afford is not dropped. With a fallback
+    // configured its pieces join `failed`, so the loop below can still pick them
+    // up; a piece no fallback can afford stays unanswered and is reported as
+    // `remaining`. Without a fallback nothing can try them at all, and queueing
+    // them would make the loop's `!service.url` branch record them as failures --
+    // but nothing attempted them, so they are unfinished work: they are left
+    // unanswered from the start and reported as `remaining` for a continuation.
     const takeBatchSlot = recovery ? reserve : reserveBatch
 
     await mapConcurrent(batches, CHUNK_CONCURRENCY, async batch => {
@@ -1425,7 +1429,9 @@ export default defineEventHandler(async event => {
           `texts=${batch.length}`,
           `recovery=${recovery}`,
         )
-        failed.push(...batch)
+        if (service.url) {
+          failed.push(...batch)
+        }
         return
       }
 
