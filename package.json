@@ -30,9 +30,9 @@
     "x-fetch": "^0.3.0"
   },
   "devDependencies": {
-    "@1stg/app-config": "^16.0.0",
+    "@1stg/app-config": "^17.0.0",
     "@nuxt/eslint": "^1.17.0",
-    "@types/node": "^24",
+    "@types/node": "^26.0.0",
     "@typescript/native": "npm:typescript@^7",
     "@vite-pwa/nuxt": "^1.1.1",
     "bootstrap": "^5.3.8",
